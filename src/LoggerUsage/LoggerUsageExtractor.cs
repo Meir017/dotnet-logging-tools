@@ -1,4 +1,4 @@
-using System.Diagnostics.Metrics;
+using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -12,9 +12,29 @@ namespace LoggerUsage
         public required string MethodName { get; set; }
         public string? MessageTemplate { get; set; }
         public LogLevel LogLevel { get; set; }
-        public string? EventId { get; set; }
+        public EventIdBase? EventId { get; set; }
         public List<MessageParameter> MessageParameters { get; set; } = new();
-        public required Location Location { get; set; }
+        public required MethodCallLocation Location { get; set; }
+    }
+
+    public class MethodCallLocation
+    {
+        public required int LineNumber { get; set; }
+        public required int ColumnNumber { get; set; }
+    }
+
+    [JsonPolymorphic]
+    [JsonDerivedType(typeof(EventIdDetails))]
+    [JsonDerivedType(typeof(EventIdRef))]
+    public abstract record class EventIdBase;
+
+    public record class EventIdDetails(ConstantOrReference Id, ConstantOrReference Name) : EventIdBase;
+    public record class EventIdRef(string Kind, string Name) : EventIdBase;
+
+    public record ConstantOrReference(string Kind, object? Value)
+    {
+        public static ConstantOrReference Missing => new("Missing", null);
+        public static ConstantOrReference Constant(object value) => new("Constant", value);
     }
 
     public class MessageParameter
@@ -64,10 +84,14 @@ namespace LoggerUsage
                     var usage = new LoggerUsageInfo
                     {
                         MethodName = method.Name,
-                        Location = invocation.GetLocation(),
+                        Location = new MethodCallLocation
+                        {
+                            LineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
+                            ColumnNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Character,
+                        },
                     };
 
-                    if (TryExtractEventId(invocation, method, out var eventId))
+                    if (TryExtractEventId(invocation, method, semanticModel, out var eventId))
                     {
                         usage.EventId = eventId;
                     }
@@ -98,18 +122,75 @@ namespace LoggerUsage
             return null;
         }
 
-        private static bool TryExtractEventId(InvocationExpressionSyntax invocation, IMethodSymbol method, out string eventId)
+        private static bool TryExtractEventId(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel semanticModel, out EventIdBase eventId)
         {
-            var i = method.IsExtensionMethod ? 1 : 0;
-            for (; i < method.Parameters.Length; i++)
+            int parameterStartIndex = method.IsExtensionMethod ? 1 : 0;
+            for (var i = parameterStartIndex; i < method.Parameters.Length; i++)
             {
-                if (method.Parameters[i].Type?.Name == "EventId")
+                if (method.Parameters[i].Type?.Name == nameof(EventId))
                 {
-                    eventId = invocation.ArgumentList.Arguments[i].ToString();
-                    return true;
+                    var argument = invocation.ArgumentList.Arguments[i - parameterStartIndex];
+                    var argumentOperation = semanticModel.GetOperation(argument.Expression);
+                    if (argumentOperation is null) continue;
+
+                    // Attempt to create EventId from constructor arguments
+                    if (argumentOperation is IObjectCreationOperation objectCreationOperation &&
+                        objectCreationOperation.Type?.Name == nameof(EventId))
+                    {
+                        if (objectCreationOperation.Arguments.Length is 0) continue;
+
+                        ConstantOrReference id = ConstantOrReference.Missing;
+                        ConstantOrReference name = ConstantOrReference.Missing;
+
+                        if (objectCreationOperation.Arguments.Length > 0)
+                        {
+                            if (objectCreationOperation.Arguments[0].Value.ConstantValue.Value is int idValue)
+                            {
+                                id = ConstantOrReference.Constant(idValue);
+                            }
+                            else
+                            {
+                                id = new ConstantOrReference(
+                                    objectCreationOperation.Arguments[0].Value.Kind.ToString(),
+                                    objectCreationOperation.Arguments[0].Value.Syntax.ToString()
+                                );
+                            }
+                        }
+
+                        if (objectCreationOperation.Arguments.Length > 1)
+                        {
+                            if (objectCreationOperation.Arguments[1].Value.ConstantValue.HasValue)
+                            {
+                                name = ConstantOrReference.Constant(objectCreationOperation.Arguments[1].Value.ConstantValue.Value!);
+                            }
+                            else
+                            {
+                                name = new ConstantOrReference(
+                                    objectCreationOperation.Arguments[1].Value.Kind.ToString(),
+                                    objectCreationOperation.Arguments[1].Value.Syntax.ToString()
+                                );
+                            }
+                        }
+
+                        eventId = new EventIdDetails(id, name);
+                        return true;
+                    }
+                    else if (argumentOperation.Kind is OperationKind.DefaultValue)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        eventId = new EventIdRef(
+                            argumentOperation.Kind.ToString(),
+                            argumentOperation.Syntax.ToString()
+                        );
+                        return true;
+                    }
                 }
             }
-            eventId = null!;
+
+            eventId = default!;
             return false;
         }
 
