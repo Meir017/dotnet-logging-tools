@@ -164,12 +164,139 @@ public class TestClass
         Assert.Single(result);
     }
 
+    public static TheoryData<string, string, EventIdRef> LoggerEventIdScenariosReference() => new()
+    {
+        { "LogInformation", "eidVar", new EventIdRef(nameof(OperationKind.LocalReference), "eidVar") },
+        { "LogInformation", "eidParam", new EventIdRef(nameof(OperationKind.ParameterReference), "eidParam") },
+        { "LogInformation", "_eidField", new EventIdRef(nameof(OperationKind.FieldReference), "_eidField") },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerEventIdScenariosReference))]
+    public async Task TestLoggerEventIdScenariosReference(string methodName, string eventId, EventIdRef expectedEventIdRef)
+    {
+        var code = $@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{{
+    private readonly EventId _eidField = new EventId(5, ""VarEvent"");
+
+    public void TestMethod(ILogger logger, EventId eidParam)
+    {{
+        var eidVar = new EventId(5, ""VarEvent"");
+        logger.{methodName}({eventId}, ""Test message"");
+    }}
+}}";
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+        var result = extractor.ExtractLoggerUsages(compilation);
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.NotNull(result[0].EventId);
+        var @ref = Assert.IsType<EventIdRef>(result[0].EventId);
+        Assert.Equal(expectedEventIdRef, @ref);
+    }
+
+    public static TheoryData<string, string, ConstantOrReference, ConstantOrReference> LoggerEventIdScenariosConstructor() => new()
+    {
+        { "LogWarning", "new EventId(1)", ConstantOrReference.Constant(1), ConstantOrReference.Constant(null!) },
+        { "LogError", "new EventId(1, \"EventName\")", ConstantOrReference.Constant(1), ConstantOrReference.Constant("EventName") },
+        { "LogCritical", "new EventId(int.MaxValue, \"MaxValueEvent\")", ConstantOrReference.Constant(int.MaxValue), ConstantOrReference.Constant("MaxValueEvent") },
+        { "LogDebug", "new EventId(42, \"CustomEvent\")", ConstantOrReference.Constant(42), ConstantOrReference.Constant("CustomEvent") },
+        { "LogWarning", "new EventId(0, \"OnlyName\")", ConstantOrReference.Constant(0), ConstantOrReference.Constant("OnlyName") },
+        { "LogCritical", "new EventId(-1, \"NegativeId\")", ConstantOrReference.Constant(-1), ConstantOrReference.Constant("NegativeId") },
+        { "LogDebug", "new EventId(0, \"\")", ConstantOrReference.Constant(0), ConstantOrReference.Constant("") },
+        { "LogInformation", "new EventId(1 + 2, \"ExprName\")", ConstantOrReference.Constant(3), ConstantOrReference.Constant("ExprName") },
+        { "LogWarning", "new EventId(id: 7, name: \"NamedArgs\")", ConstantOrReference.Constant(7), ConstantOrReference.Constant("NamedArgs") },
+        { "LogInformation", "new EventId(_id, _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") },
+        { "LogInformation", "new EventId(_id, name: _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") },
+        { "LogInformation", "new EventId(id: _id, _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") },
+        { "LogInformation", "new EventId(_id, name: \"FieldName\")", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), ConstantOrReference.Constant("FieldName") },
+        { "LogInformation", "new EventId(5, name: \"FieldName\")", ConstantOrReference.Constant(5), ConstantOrReference.Constant("FieldName") },
+        { "LogInformation", "new EventId(idVar, nameVar)", new ConstantOrReference(nameof(OperationKind.LocalReference), "idVar"), new ConstantOrReference(nameof(OperationKind.LocalReference), "nameVar") },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerEventIdScenariosConstructor))]
+    public async Task TestLoggerEventIdScenariosConstructor(string methodName, string eventId, ConstantOrReference expectedId, ConstantOrReference expectedName)
+    {
+        var code = $@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{{
+    private readonly string _name;
+    private readonly int _id;
+
+    public void TestMethod(ILogger logger, int id, string name)
+    {{
+        int idVar = 5;
+        string nameVar = ""VarEvent"";
+        logger.{methodName}({eventId}, ""Test message"");
+    }}
+}}";
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+        var result = extractor.ExtractLoggerUsages(compilation);
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.NotNull(result[0].EventId);
+        var details = Assert.IsType<EventIdDetails>(result[0].EventId);
+        Assert.Equal(expectedId, details.Id);
+        Assert.Equal(expectedName, details.Name);
+    }
+
+    [Theory]
+    [InlineData("default(EventId)")]
+    [InlineData("eventId: default")]
+    [InlineData("new EventId()")]
+    public async Task TestLoggerWithDefaultEventId(string eventId)
+    {
+        // Arrange
+        var code = $@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{{
+    public void TestMethod(ILogger logger, EventId eidParam, int id, string name)
+    {{
+        logger.LogInformation({eventId}, ""Test message"");
+    }}
+}}";
+
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Null(result[0].EventId);
+    }
+
     private static async Task<CSharpCompilation> CreateCompilationAsync(string sourceCode)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
         var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
         references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
-        var compilation = CSharpCompilation.Create("TestAssembly", [syntaxTree], references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        var compilation = CSharpCompilation.Create(
+            "TestAssembly",
+            [syntaxTree],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithSpecificDiagnosticOptions(
+                new Dictionary<string, ReportDiagnostic>
+                {
+                    ["CS0169"] = ReportDiagnostic.Suppress, // Suppress unused field warning
+                    ["CS0649"] = ReportDiagnostic.Suppress, // Suppress unassigned field warning
+                    ["CS0219"] = ReportDiagnostic.Suppress, // Suppress assigned but unused variable warning
+                }
+            )
+        );
         Assert.Empty(compilation.GetDiagnostics());
         return compilation;
     }
