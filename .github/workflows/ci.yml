@@ -4,6 +4,9 @@ on:
   pull_request_target:
     branches: [ "main" ]
 
+permissions:
+  issues: write
+
 jobs:
   build:
 
@@ -27,7 +30,7 @@ jobs:
         dotnet tool install -g dotnet-reportgenerator-globaltool
         reportgenerator -reports:test/LoggerUsage.Tests/**/coverage.cobertura.xml -targetdir:coveragereport -reporttypes:MarkdownSummaryGithub
     - name: Comment coverage summary on PR
-      if: github.event_name == 'pull_request_target'
+      if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
