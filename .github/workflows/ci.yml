@@ -27,5 +27,5 @@ jobs:
       run: |
         # using github:
         dotnet tool install -g dotnet-reportgenerator-globaltool
-        reportgenerator -reports:coverage.cobertura.xml -targetdir:coveragereport -reporttypes:MarkdownSummaryGithub
+        reportgenerator -reports:test/LoggerUsage.Tests/**/coverage.cobertura.xml -targetdir:coveragereport -reporttypes:MarkdownSummaryGithub
 
