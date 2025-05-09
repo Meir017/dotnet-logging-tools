@@ -1,4 +1,6 @@
+using System.Diagnostics.Metrics;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
@@ -24,11 +26,8 @@ namespace LoggerUsage
 
     public class LoggerUsageExtractor
     {
-        public async Task<List<LoggerUsageInfo>> ExtractLoggerUsages(Project project)
+        public List<LoggerUsageInfo> ExtractLoggerUsages(CSharpCompilation compilation)
         {
-            var compilation = await project.GetCompilationAsync();
-            if (compilation == null) return [];
-
             var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
             if (loggerInterface == null) return [];
 
@@ -36,41 +35,54 @@ namespace LoggerUsage
             if (loggingTypes.ILogger == null) return [];
 
             var results = new List<LoggerUsageInfo>();
-            foreach (var document in project.Documents)
+            foreach (var syntaxTree in compilation.SyntaxTrees)
             {
-                var root = await document.GetSyntaxRootAsync();
-                var semanticModel = await document.GetSemanticModelAsync();
+                var root = syntaxTree.GetRoot();
+                var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
                 if (root == null || semanticModel == null) continue;
 
-                // Fallback: walk the tree for invocations
                 var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
                 foreach (var invocation in invocations)
                 {
-                    if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation) continue;
+                    IMethodSymbol? method;
+                    Optional<object?>[] constantValues;
+                    if (semanticModel.GetOperation(invocation) is IInvocationOperation operation)
+                    {
+                        method = operation.TargetMethod;
+                        constantValues = [.. operation.Arguments.Select(arg => arg.ConstantValue)];
+                    }
+                    else
+                    {
+                        (method, constantValues) = MethodSymbolHelper.GetMethodSymbol(invocation, semanticModel);
+                    }
 
-                    var method = operation.TargetMethod;
+                    if (method == null) continue;
+
                     if (!loggingTypes.LoggerExtensionModeler.IsLoggerMethod(method)) continue;
 
                     var usage = new LoggerUsageInfo
                     {
                         MethodName = method.Name,
                         Location = invocation.GetLocation(),
-                        MessageTemplate = ExtractMessageTemplate(operation)
                     };
-                    if (TryExtractEventId(operation, out var eventId))
+
+                    if (TryExtractEventId(invocation, method, out var eventId))
                     {
                         usage.EventId = eventId;
                     }
-                    if (TryExtractLogLevel(operation, out var logLevel))
+                    if (TryExtractLogLevel(invocation, method, out var logLevel))
                     {
                         usage.LogLevel = logLevel;
                     }
-                    usage.MessageParameters = ExtractArguments(operation);
+
+                    // usage.MessageTemplate = ExtractMessageTemplate(operation);
+                    // usage.MessageParameters = ExtractArguments(invocation, method, constantValues);
 
                     results.Add(usage);
                 }
             }
+
             return results;
         }
 
@@ -86,13 +98,14 @@ namespace LoggerUsage
             return null;
         }
 
-        private static bool TryExtractEventId(IInvocationOperation operation, out string eventId)
+        private static bool TryExtractEventId(InvocationExpressionSyntax invocation, IMethodSymbol method, out string eventId)
         {
-            foreach (var arg in operation.Arguments)
+            var i = method.IsExtensionMethod ? 1 : 0;
+            for (; i < method.Parameters.Length; i++)
             {
-                if (arg.Parameter?.Type?.Name == "EventId")
+                if (method.Parameters[i].Type?.Name == "EventId")
                 {
-                    eventId = arg.Value.Syntax.ToString();
+                    eventId = invocation.ArgumentList.Arguments[i].ToString();
                     return true;
                 }
             }
@@ -100,32 +113,40 @@ namespace LoggerUsage
             return false;
         }
 
-        private bool TryExtractLogLevel(IInvocationOperation operation, out LogLevel logLevel)
+        private static bool TryExtractLogLevel(InvocationExpressionSyntax invocation, IMethodSymbol method, out LogLevel logLevel)
         {
-            foreach (var arg in operation.Arguments)
+            var i = method.IsExtensionMethod ? 1 : 0;
+            for (; i < method.Parameters.Length; i++)
             {
-                if (arg.Parameter?.Type?.Name == "LogLevel")
+                if (method.Parameters[i].Type?.Name == "LogLevel")
                 {
-                    logLevel = (LogLevel)arg.Value.ConstantValue.Value!;
-                    return true;
+                    var logLevelString = invocation.ArgumentList.Arguments[i].ToString();
+                    if (Enum.TryParse(logLevelString, out LogLevel parsedLogLevel))
+                    {
+                        logLevel = parsedLogLevel;
+                        return true;
+                    }
                 }
             }
+
             logLevel = default;
             return false;
         }
 
-        private static List<MessageParameter> ExtractArguments(IInvocationOperation operation)
+        private static List<MessageParameter> ExtractArguments(InvocationExpressionSyntax invocation, IMethodSymbol method, Optional<object?>[] constantValues)
         {
             var args = new List<MessageParameter>();
-            foreach (var arg in operation.Arguments)
+            var i = method.IsExtensionMethod ? 1 : 0;
+            for (; i < method.Parameters.Length; i++)
             {
-                if (arg.Parameter?.Name != null && !arg.Parameter.Name.ToLowerInvariant().Contains("message") && arg.Parameter.Type?.Name != "EventId")
+                var param = method.Parameters[i];
+                if (param.Name != null && !param.Name.Equals("message") && param.Type?.Name != "EventId")
                 {
                     args.Add(new MessageParameter
                     {
-                        Name = arg.Parameter.Name,
-                        Type = arg.Parameter.Type?.Name,
-                        Value = arg.Value.ConstantValue.HasValue ? arg.Value.ConstantValue.Value?.ToString() : null
+                        Name = param.Name,
+                        Type = param.Type?.Name,
+                        Value = constantValues.Length >= i && constantValues[i].HasValue ? constantValues[i].Value?.ToString() : null
                     });
                 }
             }
