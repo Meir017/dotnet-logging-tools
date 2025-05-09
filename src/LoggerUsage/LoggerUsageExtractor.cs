@@ -1,49 +1,12 @@
-using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.Models;
 
 namespace LoggerUsage
 {
-    public class LoggerUsageInfo
-    {
-        public required string MethodName { get; set; }
-        public string? MessageTemplate { get; set; }
-        public LogLevel? LogLevel { get; set; }
-        public EventIdBase? EventId { get; set; }
-        public List<MessageParameter> MessageParameters { get; set; } = new();
-        public required MethodCallLocation Location { get; set; }
-    }
-
-    public class MethodCallLocation
-    {
-        public required int LineNumber { get; set; }
-        public required int ColumnNumber { get; set; }
-    }
-
-    [JsonPolymorphic]
-    [JsonDerivedType(typeof(EventIdDetails))]
-    [JsonDerivedType(typeof(EventIdRef))]
-    public abstract record class EventIdBase;
-
-    public record class EventIdDetails(ConstantOrReference Id, ConstantOrReference Name) : EventIdBase;
-    public record class EventIdRef(string Kind, string Name) : EventIdBase;
-
-    public record ConstantOrReference(string Kind, object? Value)
-    {
-        public static ConstantOrReference Missing => new("Missing", null);
-        public static ConstantOrReference Constant(object value) => new("Constant", value);
-    }
-
-    public class MessageParameter
-    {
-        public required string Name { get; set; }
-        public string? Type { get; set; }
-        public string? Value { get; set; }
-    }
-
     public class LoggerUsageExtractor
     {
         public List<LoggerUsageInfo> ExtractLoggerUsages(CSharpCompilation compilation)
