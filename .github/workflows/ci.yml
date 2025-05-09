@@ -22,4 +22,10 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet run --project test/LoggerUsage.Tests --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml
+    - name: Generate Code Coverage Report
+      run: |
+        # using github:
+        dotnet tool install -g dotnet-reportgenerator-globaltool
+        reportgenerator -reports:coverage.cobertura.xml -targetdir:coveragereport -reporttypes:MarkdownSummaryGithub
+
