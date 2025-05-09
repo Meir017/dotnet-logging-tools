@@ -11,7 +11,7 @@ namespace LoggerUsage
     {
         public required string MethodName { get; set; }
         public string? MessageTemplate { get; set; }
-        public LogLevel LogLevel { get; set; }
+        public LogLevel? LogLevel { get; set; }
         public EventIdBase? EventId { get; set; }
         public List<MessageParameter> MessageParameters { get; set; } = new();
         public required MethodCallLocation Location { get; set; }
@@ -95,7 +95,7 @@ namespace LoggerUsage
                     {
                         usage.EventId = eventId;
                     }
-                    if (TryExtractLogLevel(invocation, method, out var logLevel))
+                    if (TryExtractLogLevel(invocation, method, semanticModel, out var logLevel))
                     {
                         usage.LogLevel = logLevel;
                     }
@@ -194,24 +194,53 @@ namespace LoggerUsage
             return false;
         }
 
-        private static bool TryExtractLogLevel(InvocationExpressionSyntax invocation, IMethodSymbol method, out LogLevel logLevel)
+        private static bool TryExtractLogLevel(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel semanticModel, out LogLevel logLevel)
         {
-            var i = method.IsExtensionMethod ? 1 : 0;
-            for (; i < method.Parameters.Length; i++)
+            return method.Name switch
             {
-                if (method.Parameters[i].Type?.Name == "LogLevel")
+                nameof(ILogger.Log) => TryGetLogLevelFromArguments(invocation, method, semanticModel, out logLevel),
+                nameof(LoggerExtensions.LogTrace) => ReturnLogLevel(LogLevel.Trace, out logLevel),
+                nameof(LoggerExtensions.LogDebug) => ReturnLogLevel(LogLevel.Debug, out logLevel),
+                nameof(LoggerExtensions.LogInformation) => ReturnLogLevel(LogLevel.Information, out logLevel),
+                nameof(LoggerExtensions.LogWarning) => ReturnLogLevel(LogLevel.Warning, out logLevel),
+                nameof(LoggerExtensions.LogError) => ReturnLogLevel(LogLevel.Error, out logLevel),
+                nameof(LoggerExtensions.LogCritical) => ReturnLogLevel(LogLevel.Critical, out logLevel),
+                _ => NotFound(out logLevel)
+            };
+
+            static bool TryGetLogLevelFromArguments(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel semanticModel, out LogLevel logLevel)
+            {
+                int parameterStartIndex = method.IsExtensionMethod ? 1 : 0;
+                for (var i = parameterStartIndex; i < method.Parameters.Length; i++)
                 {
-                    var logLevelString = invocation.ArgumentList.Arguments[i].ToString();
-                    if (Enum.TryParse(logLevelString, out LogLevel parsedLogLevel))
+                    if (method.Parameters[i].Type?.Name == nameof(LogLevel))
                     {
-                        logLevel = parsedLogLevel;
-                        return true;
+                        var argumentOperation = semanticModel.GetOperation(invocation.ArgumentList.Arguments[i - parameterStartIndex].Expression);
+                        if (argumentOperation is not IFieldReferenceOperation fieldReferenceOperation) continue;
+
+                        if (fieldReferenceOperation.ConstantValue.HasValue)
+                        {
+                            logLevel = (LogLevel)fieldReferenceOperation.ConstantValue.Value!;
+                            return true;
+                        }
                     }
                 }
+
+                logLevel = default;
+                return false;
             }
 
-            logLevel = default;
-            return false;
+            static bool ReturnLogLevel(LogLevel level, out LogLevel logLevel)
+            {
+                logLevel = level;
+                return true;
+            }
+
+            static bool NotFound(out LogLevel logLevel)
+            {
+                logLevel = default;
+                return false;
+            }
         }
 
         private static List<MessageParameter> ExtractArguments(InvocationExpressionSyntax invocation, IMethodSymbol method, Optional<object?>[] constantValues)
