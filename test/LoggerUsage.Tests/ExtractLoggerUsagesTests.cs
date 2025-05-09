@@ -164,6 +164,47 @@ public class TestClass
         Assert.Single(result);
     }
 
+    public static TheoryData<string, LogLevel?> LoggerLogLevelScenarios() => new()
+    {
+        { "LogInformation(", LogLevel.Information },
+        { "LogWarning(", LogLevel.Warning },
+        { "LogError(", LogLevel.Error },
+        { "LogCritical(", LogLevel.Critical },
+        { "LogDebug(", LogLevel.Debug },
+        { "LogTrace(", LogLevel.Trace },
+        { "Log(LogLevel.Information, ", LogLevel.Information },
+        { "Log(LogLevel.Warning, ", LogLevel.Warning },
+        { "Log(LogLevel.Error, ", LogLevel.Error },
+        { "Log(LogLevel.Critical, ", LogLevel.Critical },
+        { "Log(LogLevel.Debug, ", LogLevel.Debug },
+        { "Log(LogLevel.Trace, ", LogLevel.Trace },
+        { "Log(LogLevel.None, ", LogLevel.None }
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerLogLevelScenarios))]
+    public async Task TestLoggerLogLevelScenarios(string methodName, LogLevel? expectedLogLevel)
+    {
+        var code = $@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{{
+    public void TestMethod(ILogger logger)
+    {{
+        logger.{methodName}""Test message"");
+    }}
+}}";
+
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal(expectedLogLevel, result[0].LogLevel);
+    }
+
     public static TheoryData<string, string, EventIdRef> LoggerEventIdScenariosReference() => new()
     {
         { "LogInformation", "eidVar", new EventIdRef(nameof(OperationKind.LocalReference), "eidVar") },
