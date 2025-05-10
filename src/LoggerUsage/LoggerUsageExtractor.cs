@@ -52,8 +52,11 @@ namespace LoggerUsage
                     {
                         usage.LogLevel = logLevel;
                     }
+                    if (TryExtractMessageTemplate(operation, loggingTypes, out var messageTemplate))
+                    {
+                        usage.MessageTemplate = messageTemplate;
+                    }
 
-                    // usage.MessageTemplate = ExtractMessageTemplate(operation);
                     // usage.MessageParameters = ExtractArguments(invocation, method, constantValues);
 
                     results.Add(usage);
@@ -61,18 +64,6 @@ namespace LoggerUsage
             }
 
             return results;
-        }
-
-        private static string? ExtractMessageTemplate(IInvocationOperation operation)
-        {
-            foreach (var arg in operation.Arguments)
-            {
-                if (arg.Parameter?.Name?.Equals("message") == true)
-                {
-                    return arg.Value.ConstantValue.HasValue ? arg.Value.ConstantValue.Value?.ToString() : null;
-                }
-            }
-            return null;
         }
 
         private static bool TryExtractEventId(IInvocationOperation operation, LoggingTypes loggingTypes, out EventIdBase eventId)
@@ -194,6 +185,26 @@ namespace LoggerUsage
                 logLevel = default;
                 return false;
             }
+        }
+
+        private static bool TryExtractMessageTemplate(IInvocationOperation operation, LoggingTypes loggingTypes, out string messageTemplate)
+        {
+            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
+            for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
+            {
+                if (operation.Arguments[i].Value.Type?.SpecialType is SpecialType.System_String)
+                {
+                    var argumentOperation = operation.Arguments[i].Value;
+                    if (argumentOperation.ConstantValue.HasValue)
+                    {
+                        messageTemplate = argumentOperation.ConstantValue.Value?.ToString() ?? string.Empty;
+                        return true;
+                    }
+                }
+            }
+
+            messageTemplate = string.Empty;
+            return false;
         }
 
         private static List<MessageParameter> ExtractArguments(InvocationExpressionSyntax invocation, IMethodSymbol method, Optional<object?>[] constantValues)

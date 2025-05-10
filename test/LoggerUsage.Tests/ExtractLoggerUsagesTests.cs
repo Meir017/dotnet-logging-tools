@@ -1,7 +1,6 @@
 ﻿using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.Extensions.Logging;
 
@@ -9,21 +8,6 @@ namespace LoggerUsage.Tests;
 
 public class ExtractLoggerUsagesTests
 {
-    private class LoggerUsageAnalyzerTest : AnalyzerTest<DefaultVerifier>
-    {
-        public override string Language => LanguageNames.CSharp;
-
-        protected override string DefaultFileExt => "cs";
-
-        protected override CompilationOptions CreateCompilationOptions()
-            => new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true);
-
-        protected override ParseOptions CreateParseOptions()
-            => new CSharpParseOptions(LanguageVersion.Latest, DocumentationMode.Diagnose);
-
-        protected override IEnumerable<DiagnosticAnalyzer> GetDiagnosticAnalyzers() => [];
-    }
-
     [Fact]
     public async Task BasicTest()
     {
@@ -319,6 +303,95 @@ public class TestClass
         Assert.NotNull(result);
         Assert.Single(result);
         Assert.Null(result[0].EventId);
+    }
+
+    public static TheoryData<string, string[]> LoggerMessageTemplates() => new()
+    {
+        { "Test message", [] },
+        { "Test message {arg1}", [ "\"arg1\"" ] },
+        { "Test message {arg1} {arg2}", [ "\"arg1\"", "\"arg2\"" ] },
+        { "Test message {arg1} {arg2} {arg3}", [ "\"arg1\"", "\"arg2\"", "\"arg3\"" ] },
+        { "Test message with \"quotes\"", []},
+        { "Test message with {arg1} and \"quotes\"", [ "\"arg1\"" ] },
+        { "Test message with {arg1} and {arg2} and \"quotes\"", [ "\"arg1\"", "\"arg2\"" ] },
+        { "Test message with {arg1} and {arg2} and {arg3} and \"quotes\"", [ "\"arg1\"", "\"arg2\"", "\"arg3\"" ] },
+
+        // Placeholders with format strings
+        { "Test message {arg1:N2}", [ "\"arg1\"" ] },
+        { "Test message {arg1:D} {arg2:X}", [ "\"arg1\"", "\"arg2\"" ] },
+        { "Logged on {PlaceHolderName:MMMM dd, yyyy}", ["System.DateTimeOffset.UtcNow"] },
+        { "Test message {arg1} and {arg2:N0} and {arg3}", [ "\"arg1\"", "\"arg2\"", "\"arg3\"" ] },
+        { "Test message {arg1:}", [ "\"arg1\"" ] }, // empty format
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerMessageTemplates))]
+    public async Task TestLoggerMessageTemplate(string template, string[] args)
+    {
+        // Arrange
+        var quotedMessage = '"' + template.Replace("\"", "\\\"") + '"';
+        var methodArgs = quotedMessage + (args.Length > 0 ? ", " : "") + string.Join(", ", args);
+        var code = $@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{{
+    public void TestMethod(ILogger logger)
+    {{
+        logger.LogInformation({methodArgs});
+    }}
+}}";
+
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal(template, result[0].MessageTemplate);
+    }
+
+    public static TheoryData<string, string[], string> LoggerInterpolatedTemplateCases() => new()
+    {
+        { $"test {nameof(System)} message with {{arg1}} template", ["\"arg1\""], "test System message with {arg1} template" },
+        { $"prefix {nameof(System)} and {{arg}}", ["\"arg\""], "prefix System and {arg}" },
+        { $"just {{arg}} and {nameof(System)}", ["\"arg\""], "just {arg} and System" },
+        { $"no placeholders {nameof(System)}", [], "no placeholders System" },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerInterpolatedTemplateCases))]
+    public async Task TestLoggerMessageTemplateWithInterpolatedConstant(string template, string[] args, string expectedTemplate)
+    {
+        // Arrange
+        var quotedMessage = '"' + template.Replace("\"", "\\\"") + '"';
+        var methodArgs = quotedMessage + (args.Length > 0 ? ", " : "") + string.Join(", ", args);
+        var code = $@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{{
+    public void TestMethod(ILogger logger)
+    {{
+        logger.LogInformation({methodArgs});
+    }}
+}}";
+
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal(expectedTemplate, result[0].MessageTemplate);
     }
 
     private static async Task<CSharpCompilation> CreateCompilationAsync(string sourceCode)
