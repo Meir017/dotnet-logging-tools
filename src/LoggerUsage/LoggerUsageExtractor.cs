@@ -48,7 +48,7 @@ namespace LoggerUsage
                     {
                         usage.EventId = eventId;
                     }
-                    if (TryExtractLogLevel(operation, out var logLevel))
+                    if (TryExtractLogLevel(operation, loggingTypes, out var logLevel))
                     {
                         usage.LogLevel = logLevel;
                     }
@@ -147,11 +147,11 @@ namespace LoggerUsage
             return false;
         }
 
-        private static bool TryExtractLogLevel(IInvocationOperation operation, out LogLevel logLevel)
+        private static bool TryExtractLogLevel(IInvocationOperation operation, LoggingTypes loggingTypes, out LogLevel logLevel)
         {
             return operation.TargetMethod.Name switch
             {
-                nameof(ILogger.Log) => TryGetLogLevelFromArguments(operation, out logLevel),
+                nameof(ILogger.Log) => TryGetLogLevelFromArguments(operation, loggingTypes, out logLevel),
                 nameof(LoggerExtensions.LogTrace) => ReturnLogLevel(LogLevel.Trace, out logLevel),
                 nameof(LoggerExtensions.LogDebug) => ReturnLogLevel(LogLevel.Debug, out logLevel),
                 nameof(LoggerExtensions.LogInformation) => ReturnLogLevel(LogLevel.Information, out logLevel),
@@ -161,12 +161,12 @@ namespace LoggerUsage
                 _ => NotFound(out logLevel)
             };
 
-            static bool TryGetLogLevelFromArguments(IInvocationOperation operation, out LogLevel logLevel)
+            static bool TryGetLogLevelFromArguments(IInvocationOperation operation, LoggingTypes loggingTypes, out LogLevel logLevel)
             {
                 int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
                 for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
                 {
-                    if (operation.TargetMethod.Parameters[i].Type?.Name == nameof(LogLevel))
+                    if (loggingTypes.LogLevel.Equals(operation.TargetMethod.Parameters[i].Type, SymbolEqualityComparer.Default))
                     {
                         var argumentOperation = operation.Arguments[i].Value;
                         if (argumentOperation is not IFieldReferenceOperation fieldReferenceOperation) continue;
