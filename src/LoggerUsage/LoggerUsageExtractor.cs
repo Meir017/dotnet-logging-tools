@@ -15,7 +15,6 @@ namespace LoggerUsage
             if (loggerInterface == null) return [];
 
             var loggingTypes = new LoggingTypes(compilation, loggerInterface);
-            if (loggingTypes.ILogger == null) return [];
 
             var results = new List<LoggerUsageInfo>();
             foreach (var syntaxTree in compilation.SyntaxTrees)
@@ -28,25 +27,16 @@ namespace LoggerUsage
                 var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
                 foreach (var invocation in invocations)
                 {
-                    IMethodSymbol? method;
-                    Optional<object?>[] constantValues;
-                    if (semanticModel.GetOperation(invocation) is IInvocationOperation operation)
+                    if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
                     {
-                        method = operation.TargetMethod;
-                        constantValues = [.. operation.Arguments.Select(arg => arg.ConstantValue)];
+                        continue;
                     }
-                    else
-                    {
-                        (method, constantValues) = MethodSymbolHelper.GetMethodSymbol(invocation, semanticModel);
-                    }
-
-                    if (method == null) continue;
-
-                    if (!loggingTypes.LoggerExtensionModeler.IsLoggerMethod(method)) continue;
+                    
+                    if (!loggingTypes.LoggerExtensionModeler.IsLoggerMethod(operation.TargetMethod)) continue;
 
                     var usage = new LoggerUsageInfo
                     {
-                        MethodName = method.Name,
+                        MethodName = operation.TargetMethod.Name,
                         Location = new MethodCallLocation
                         {
                             LineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
@@ -54,11 +44,11 @@ namespace LoggerUsage
                         },
                     };
 
-                    if (TryExtractEventId(invocation, method, semanticModel, out var eventId))
+                    if (TryExtractEventId(operation, loggingTypes, out var eventId))
                     {
                         usage.EventId = eventId;
                     }
-                    if (TryExtractLogLevel(invocation, method, semanticModel, out var logLevel))
+                    if (TryExtractLogLevel(operation, out var logLevel))
                     {
                         usage.LogLevel = logLevel;
                     }
@@ -85,71 +75,71 @@ namespace LoggerUsage
             return null;
         }
 
-        private static bool TryExtractEventId(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel semanticModel, out EventIdBase eventId)
+        private static bool TryExtractEventId(IInvocationOperation operation, LoggingTypes loggingTypes, out EventIdBase eventId)
         {
-            int parameterStartIndex = method.IsExtensionMethod ? 1 : 0;
-            for (var i = parameterStartIndex; i < method.Parameters.Length; i++)
+            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
+            for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
             {
-                if (method.Parameters[i].Type?.Name == nameof(EventId))
+                if (!loggingTypes.EventId.Equals(operation.Arguments[i].Value.Type, SymbolEqualityComparer.Default))
                 {
-                    var argument = invocation.ArgumentList.Arguments[i - parameterStartIndex];
-                    var argumentOperation = semanticModel.GetOperation(argument.Expression);
-                    if (argumentOperation is null) continue;
+                    continue;
+                }
 
-                    // Attempt to create EventId from constructor arguments
-                    if (argumentOperation is IObjectCreationOperation objectCreationOperation &&
-                        objectCreationOperation.Type?.Name == nameof(EventId))
+                var argumentOperation = operation.Arguments[i].Value.UnwrapConversion();
+
+                // Attempt to create EventId from constructor arguments
+                if (argumentOperation is IObjectCreationOperation objectCreationOperation &&
+                    objectCreationOperation.Type?.Name == nameof(EventId))
+                {
+                    if (objectCreationOperation.Arguments.Length is 0) continue;
+
+                    ConstantOrReference id = ConstantOrReference.Missing;
+                    ConstantOrReference name = ConstantOrReference.Missing;
+
+                    if (objectCreationOperation.Arguments.Length > 0)
                     {
-                        if (objectCreationOperation.Arguments.Length is 0) continue;
-
-                        ConstantOrReference id = ConstantOrReference.Missing;
-                        ConstantOrReference name = ConstantOrReference.Missing;
-
-                        if (objectCreationOperation.Arguments.Length > 0)
+                        if (objectCreationOperation.Arguments[0].Value.ConstantValue.Value is int idValue)
                         {
-                            if (objectCreationOperation.Arguments[0].Value.ConstantValue.Value is int idValue)
-                            {
-                                id = ConstantOrReference.Constant(idValue);
-                            }
-                            else
-                            {
-                                id = new ConstantOrReference(
-                                    objectCreationOperation.Arguments[0].Value.Kind.ToString(),
-                                    objectCreationOperation.Arguments[0].Value.Syntax.ToString()
-                                );
-                            }
+                            id = ConstantOrReference.Constant(idValue);
                         }
-
-                        if (objectCreationOperation.Arguments.Length > 1)
+                        else
                         {
-                            if (objectCreationOperation.Arguments[1].Value.ConstantValue.HasValue)
-                            {
-                                name = ConstantOrReference.Constant(objectCreationOperation.Arguments[1].Value.ConstantValue.Value!);
-                            }
-                            else
-                            {
-                                name = new ConstantOrReference(
-                                    objectCreationOperation.Arguments[1].Value.Kind.ToString(),
-                                    objectCreationOperation.Arguments[1].Value.Syntax.ToString()
-                                );
-                            }
+                            id = new ConstantOrReference(
+                                objectCreationOperation.Arguments[0].Value.Kind.ToString(),
+                                objectCreationOperation.Arguments[0].Value.Syntax.ToString()
+                            );
                         }
+                    }
 
-                        eventId = new EventIdDetails(id, name);
-                        return true;
-                    }
-                    else if (argumentOperation.Kind is OperationKind.DefaultValue)
+                    if (objectCreationOperation.Arguments.Length > 1)
                     {
-                        continue;
+                        if (objectCreationOperation.Arguments[1].Value.ConstantValue.HasValue)
+                        {
+                            name = ConstantOrReference.Constant(objectCreationOperation.Arguments[1].Value.ConstantValue.Value!);
+                        }
+                        else
+                        {
+                            name = new ConstantOrReference(
+                                objectCreationOperation.Arguments[1].Value.Kind.ToString(),
+                                objectCreationOperation.Arguments[1].Value.Syntax.ToString()
+                            );
+                        }
                     }
-                    else
-                    {
-                        eventId = new EventIdRef(
-                            argumentOperation.Kind.ToString(),
-                            argumentOperation.Syntax.ToString()
-                        );
-                        return true;
-                    }
+
+                    eventId = new EventIdDetails(id, name);
+                    return true;
+                }
+                else if (argumentOperation.Kind is OperationKind.DefaultValue)
+                {
+                    continue;
+                }
+                else
+                {
+                    eventId = new EventIdRef(
+                        argumentOperation.Kind.ToString(),
+                        argumentOperation.Syntax.ToString()
+                    );
+                    return true;
                 }
             }
 
@@ -157,11 +147,11 @@ namespace LoggerUsage
             return false;
         }
 
-        private static bool TryExtractLogLevel(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel semanticModel, out LogLevel logLevel)
+        private static bool TryExtractLogLevel(IInvocationOperation operation, out LogLevel logLevel)
         {
-            return method.Name switch
+            return operation.TargetMethod.Name switch
             {
-                nameof(ILogger.Log) => TryGetLogLevelFromArguments(invocation, method, semanticModel, out logLevel),
+                nameof(ILogger.Log) => TryGetLogLevelFromArguments(operation, out logLevel),
                 nameof(LoggerExtensions.LogTrace) => ReturnLogLevel(LogLevel.Trace, out logLevel),
                 nameof(LoggerExtensions.LogDebug) => ReturnLogLevel(LogLevel.Debug, out logLevel),
                 nameof(LoggerExtensions.LogInformation) => ReturnLogLevel(LogLevel.Information, out logLevel),
@@ -171,14 +161,14 @@ namespace LoggerUsage
                 _ => NotFound(out logLevel)
             };
 
-            static bool TryGetLogLevelFromArguments(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel semanticModel, out LogLevel logLevel)
+            static bool TryGetLogLevelFromArguments(IInvocationOperation operation, out LogLevel logLevel)
             {
-                int parameterStartIndex = method.IsExtensionMethod ? 1 : 0;
-                for (var i = parameterStartIndex; i < method.Parameters.Length; i++)
+                int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
+                for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
                 {
-                    if (method.Parameters[i].Type?.Name == nameof(LogLevel))
+                    if (operation.TargetMethod.Parameters[i].Type?.Name == nameof(LogLevel))
                     {
-                        var argumentOperation = semanticModel.GetOperation(invocation.ArgumentList.Arguments[i - parameterStartIndex].Expression);
+                        var argumentOperation = operation.Arguments[i].Value;
                         if (argumentOperation is not IFieldReferenceOperation fieldReferenceOperation) continue;
 
                         if (fieldReferenceOperation.ConstantValue.HasValue)
