@@ -13,6 +13,8 @@ namespace LoggerUsage
             LogLevel = compilation.GetTypeByMetadataName(typeof(LogLevel).FullName!)!;
             LoggerExtensions = compilation.GetTypeByMetadataName(typeof(LoggerExtensions).FullName!)!;
             LoggerExtensionModeler = new(this);
+            ObjectNullableArray = compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Object), 
+                elementNullableAnnotation: NullableAnnotation.Annotated);
         }
 
         public INamedTypeSymbol ILogger { get; }
@@ -20,6 +22,7 @@ namespace LoggerUsage
         public INamedTypeSymbol EventId { get; }
         public INamedTypeSymbol LogLevel { get; }
         public INamedTypeSymbol LoggerExtensions { get; }
+        public IArrayTypeSymbol ObjectNullableArray { get; }
 
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
     }
