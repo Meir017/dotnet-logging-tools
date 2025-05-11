@@ -497,7 +497,7 @@ public class TestClass
         Assert.Equal(expectedParameters, parameters);
     }
 
-    private static async Task<CSharpCompilation> CreateCompilationAsync(string sourceCode)
+    internal static async Task<Compilation> CreateCompilationAsync(string sourceCode)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
         var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);

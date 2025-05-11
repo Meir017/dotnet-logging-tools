@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
@@ -9,7 +8,26 @@ namespace LoggerUsage
 {
     public class LoggerUsageExtractor
     {
-        public List<LoggerUsageInfo> ExtractLoggerUsages(CSharpCompilation compilation)
+        public async Task<List<LoggerUsageInfo>> ExtractLoggerUsagesAsync(Workspace workspace)
+        {
+            var results = new List<LoggerUsageInfo>();
+
+            foreach (var project in workspace.CurrentSolution.Projects)
+            {
+                if (project.Language != LanguageNames.CSharp)
+                    continue;
+
+                var compilation = await project.GetCompilationAsync();
+                if (compilation == null)
+                    continue;
+
+                results.AddRange(ExtractLoggerUsages(compilation));
+            }
+
+            return results;
+        }
+
+        public List<LoggerUsageInfo> ExtractLoggerUsages(Compilation compilation)
         {
             var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
             if (loggerInterface == null) return [];
