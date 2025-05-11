@@ -31,7 +31,7 @@ namespace LoggerUsage
                     {
                         continue;
                     }
-                    
+
                     if (!loggingTypes.LoggerExtensionModeler.IsLoggerMethod(operation.TargetMethod)) continue;
 
                     var usage = new LoggerUsageInfo
@@ -55,9 +55,11 @@ namespace LoggerUsage
                     if (TryExtractMessageTemplate(operation, loggingTypes, out var messageTemplate))
                     {
                         usage.MessageTemplate = messageTemplate;
+                        if (TryExtractMessageParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
+                        {
+                            usage.MessageParameters = messageParameters;
+                        }
                     }
-
-                    // usage.MessageParameters = ExtractArguments(invocation, method, constantValues);
 
                     results.Add(usage);
                 }
@@ -207,24 +209,41 @@ namespace LoggerUsage
             return false;
         }
 
-        private static List<MessageParameter> ExtractArguments(InvocationExpressionSyntax invocation, IMethodSymbol method, Optional<object?>[] constantValues)
+        private static bool TryExtractMessageParameters(IInvocationOperation operation, LoggingTypes loggingTypes, string messageTemplate, out List<MessageParameter> messageParameters)
         {
-            var args = new List<MessageParameter>();
-            var i = method.IsExtensionMethod ? 1 : 0;
-            for (; i < method.Parameters.Length; i++)
+            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
+            messageParameters = new List<MessageParameter>();
+
+            for (int i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length && i < operation.Arguments.Length; i++)
             {
-                var param = method.Parameters[i];
-                if (param.Name != null && !param.Name.Equals("message") && param.Type?.Name != "EventId")
+                var param = operation.TargetMethod.Parameters[i];
+                var arg = operation.Arguments[i].Value;
+
+                if (!loggingTypes.ObjectNullableArray.Equals(param.Type, SymbolEqualityComparer.Default))
                 {
-                    args.Add(new MessageParameter
-                    {
-                        Name = param.Name,
-                        Type = param.Type?.Name,
-                        Value = constantValues.Length >= i && constantValues[i].HasValue ? constantValues[i].Value?.ToString() : null
-                    });
+                    continue;
+                }
+
+                if (arg is not IArrayCreationOperation arrayCreation)
+                {
+                    continue;
+                }
+
+                var formatter = new LogValuesFormatter(messageTemplate);
+
+                foreach (var element in arrayCreation.Initializer?.ElementValues ?? [])
+                {
+                    var paramValue = element.UnwrapConversion();
+
+                    messageParameters.Add(new MessageParameter(
+                        Name: formatter.ValueNames[messageParameters.Count],
+                        Type: paramValue.Type!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.UseSpecialTypes)),
+                        Kind: paramValue.ConstantValue.HasValue ? "Constant" : paramValue.Kind.ToString()
+                    ));
                 }
             }
-            return args;
+
+            return messageParameters.Count > 0;
         }
     }
 }

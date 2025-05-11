@@ -394,6 +394,95 @@ public class TestClass
         Assert.Equal(expectedTemplate, result[0].MessageTemplate);
     }
 
+    public static TheoryData<string, string[], List<MessageParameter>> LoggerMessageParameterCases() => new()
+    {
+        { "Test message {arg1}", ["strArg"], [ 
+                new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference))
+        ] },
+        { "Test message {arg1} {arg2}", ["strArg", "intArg"], [ 
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)) 
+        ] },
+        { "Test message {arg1} {arg2} {arg3}", ["strArg", "intArg", "boolArg"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)), 
+            new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
+        ] },
+        { "Test message {arg1} and {arg2} and {arg3}", ["strArg", "intArg", "boolArg"], [ 
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)), 
+            new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
+         ] },
+        { "Test message with no params", [], [] },
+
+        // Constant references
+        { "Test message {arg1}", ["constStr"], [
+            new MessageParameter("arg1", "string", "Constant") // const is local in Roslyn
+        ] },
+        { "Test message {arg1} {arg2}", ["constStr", "constInt"], [
+            new MessageParameter("arg1", "string", "Constant"),
+            new MessageParameter("arg2", "int", "Constant")
+        ] },
+        { "Test message {arg1} {arg2} {arg3}", ["constStr", "constInt", "constBool"], [
+            new MessageParameter("arg1", "string", "Constant"),
+            new MessageParameter("arg2", "int", "Constant"),
+            new MessageParameter("arg3", "bool", "Constant")
+        ] },
+
+        // Local variable references
+        { "Test message {arg1}", ["localStr"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.LocalReference))
+        ] },
+        { "Test message {arg1} {arg2}", ["localStr", "localInt"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.LocalReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.LocalReference))
+        ] },
+        { "Test message {arg1} {arg2} {arg3}", ["localStr", "localInt", "localBool"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.LocalReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.LocalReference)),
+            new MessageParameter("arg3", "bool", nameof(OperationKind.LocalReference))
+        ] },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerMessageParameterCases))]
+    public async Task TestLoggerMessageParameters(string template, string[] argNames, List<MessageParameter> expectedParameters)
+    {
+        // Arrange
+        var quotedMessage = '"' + template.Replace("\"", "\\\"") + '"';
+        var methodArgs = quotedMessage + (argNames.Length > 0 ? ", " : "") + string.Join(", ", argNames);
+        var code = $@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{{
+    public void TestMethod(ILogger logger, string strArg, int intArg, bool boolArg)
+    {{
+        const string constStr = ""constStrValue"";
+        const int constInt = 42;
+        const bool constBool = true;
+        string localStr = ""localStr"";
+        int localInt = 42;
+        bool localBool = true;
+
+        logger.LogInformation({methodArgs});
+    }}
+}}";
+        var compilation = await CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        var parameters = result[0].MessageParameters;
+        Assert.Equal(expectedParameters.Count, parameters.Count);
+        Assert.Equal(expectedParameters, parameters);
+    }
+
     private static async Task<CSharpCompilation> CreateCompilationAsync(string sourceCode)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
