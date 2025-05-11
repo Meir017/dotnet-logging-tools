@@ -442,6 +442,20 @@ public class TestClass
             new MessageParameter("arg2", "int", nameof(OperationKind.LocalReference)),
             new MessageParameter("arg3", "bool", nameof(OperationKind.LocalReference))
         ] },
+
+        // with formatting
+        { "Test message {arg1:N2}", ["strArg"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference))
+        ] },
+        { "Test message {arg1:D} {arg2:X}", ["strArg", "intArg"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference))
+        ] },
+        { "Test message {arg1} and {arg2:N0} and {arg3}", ["strArg", "intArg", "boolArg"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)),
+            new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
+        ] },
     };
 
     [Theory]
