@@ -32,6 +32,34 @@ public class TestClass
         Assert.Single(result);
     }
 
+    [Fact]
+    public async Task BasicTestNamedArguments()
+    {
+        // Arrange
+        var compilation = await CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        logger.LogInformation(message: ""Test message"", eventId: 6);
+    }
+}");
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("Test message", result[0].MessageTemplate);
+        var details = Assert.IsType<EventIdDetails>(result[0].EventId);
+        Assert.Equal(6, details.Id.Value);
+        Assert.Same(ConstantOrReference.Missing, details.Name);
+    }
+
     public static TheoryData<string[]> LoggerLogArguments() =>
     [
         /*
@@ -225,8 +253,9 @@ public class TestClass
         Assert.Equal(expectedEventIdRef, @ref);
     }
 
-    public static TheoryData<string, string, ConstantOrReference, ConstantOrReference> LoggerEventIdScenariosConstructor() => new()
+    public static TheoryData<string, string, ConstantOrReference, ConstantOrReference> LoggerEventIdScenariosValues() => new()
     {
+        { "LogWarning", "6", ConstantOrReference.Constant(6), ConstantOrReference.Missing },
         { "LogWarning", "new EventId(1)", ConstantOrReference.Constant(1), ConstantOrReference.Constant(null!) },
         { "LogError", "new EventId(1, \"EventName\")", ConstantOrReference.Constant(1), ConstantOrReference.Constant("EventName") },
         { "LogCritical", "new EventId(int.MaxValue, \"MaxValueEvent\")", ConstantOrReference.Constant(int.MaxValue), ConstantOrReference.Constant("MaxValueEvent") },
@@ -245,8 +274,8 @@ public class TestClass
     };
 
     [Theory]
-    [MemberData(nameof(LoggerEventIdScenariosConstructor))]
-    public async Task TestLoggerEventIdScenariosConstructor(string methodName, string eventId, ConstantOrReference expectedId, ConstantOrReference expectedName)
+    [MemberData(nameof(LoggerEventIdScenariosValues))]
+    public async Task TestLoggerEventIdScenariosValues(string methodName, string eventId, ConstantOrReference expectedId, ConstantOrReference expectedName)
     {
         var code = $@"using Microsoft.Extensions.Logging;
 
