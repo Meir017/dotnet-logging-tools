@@ -144,6 +144,22 @@ namespace LoggerUsage
                 {
                     continue;
                 }
+                else if (argumentOperation is ILiteralOperation literalOperation)
+                {
+                    if (literalOperation.ConstantValue.HasValue)
+                    {
+                        eventId = new EventIdDetails(ConstantOrReference.Constant(literalOperation.ConstantValue.Value!), ConstantOrReference.Missing);
+                        return true;
+                    }
+                    else
+                    {
+                        eventId = new EventIdRef(
+                            literalOperation.Kind.ToString(),
+                            literalOperation.Syntax.ToString()
+                        );
+                        return true;
+                    }
+                }
                 else
                 {
                     eventId = new EventIdRef(
