@@ -25,13 +25,15 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
+    - name: Unit Test
       run: dotnet run --project test/LoggerUsage.Tests --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml
+    - name: Cli Test
+      run: dotnet run --project test/LoggerUsage.Cli.Tests --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml
     - name: Generate Code Coverage Report
       run: |
         # using github:
         dotnet tool install -g dotnet-reportgenerator-globaltool
-        reportgenerator -reports:test/LoggerUsage.Tests/**/coverage.cobertura.xml -targetdir:coveragereport -reporttypes:MarkdownSummaryGithub
+        reportgenerator -reports:test/**/coverage.cobertura.xml -targetdir:coveragereport -reporttypes:MarkdownSummaryGithub
     - name: Comment coverage summary on PR
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
