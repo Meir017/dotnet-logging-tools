@@ -56,7 +56,7 @@ namespace LoggerUsage.Analyzers
             }
         }
 
-        private static bool TryExtractEventId(AttributeData attribute, IMethodSymbol methodSymbol, LoggingTypes loggingTypes, out EventIdDetails eventId)
+        private static bool TryExtractEventId(AttributeData attribute, IMethodSymbol methodSymbol, LoggingTypes loggingTypes, out EventIdDetails eventIdDetails)
         {
             string? eventName = null;
             int? eventId = null;
