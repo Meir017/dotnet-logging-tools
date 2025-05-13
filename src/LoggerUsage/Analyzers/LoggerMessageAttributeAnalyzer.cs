@@ -95,12 +95,6 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private static bool TryExtractLogLevel(AttributeData attribute, LoggingTypes loggingTypes, out LogLevel logLevel)
-        {
-            logLevel = LogLevel.None;
-            return false;
-        }
-
         private static bool TryExtractMessageTemplate(AttributeData attribute, LoggingTypes loggingTypes, out string messageTemplate)
         {
             messageTemplate = string.Empty;
