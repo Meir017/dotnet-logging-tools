@@ -56,15 +56,42 @@ namespace LoggerUsage.Analyzers
             }
         }
 
-        private static bool TryExtractEventId(AttributeData attribute, IMethodSymbol methodSymbol, LoggingTypes loggingTypes, out EventIdDetails eventId)
+        private static bool TryExtractEventId(AttributeData attribute, IMethodSymbol methodSymbol, LoggingTypes loggingTypes, out EventIdDetails eventIdDetails)
         {
-            eventId = null!;
-            return false;
+            string? eventName = null;
+            int? eventId = null;
+            foreach (var namedArg in attribute.NamedArguments)
+            {
+                if (namedArg.Key == nameof(LoggerMessageAttribute.EventId))
+                {
+                    if (namedArg.Value.Value is int eventIdValue)
+                    {
+                        eventId = eventIdValue;
+                    }
+                }
+                if (namedArg.Key == nameof(LoggerMessageAttribute.EventName))
+                {
+                    if (namedArg.Value.Value is string eventNameValue)
+                    {
+                        eventName = eventNameValue;
+                    }
+                }
+            }
+
+            eventIdDetails = (eventName, eventId) switch
+            {
+                (null, int id) => new EventIdDetails(ConstantOrReference.Constant(id), ConstantOrReference.Missing),
+                (string name, null) => new EventIdDetails(ConstantOrReference.Missing, ConstantOrReference.Constant(name)),
+                (string name, int id) => new EventIdDetails(ConstantOrReference.Constant(id), ConstantOrReference.Constant(name)),
+                (null, null) => null!
+            };
+
+            return eventIdDetails is not null;
         }
 
-        private static bool TryExtractLogLevel(AttributeData attribute, LoggingTypes loggingTypes, out LogLevel logLevel)
+        private static bool TryExtractLogLevel(AttributeData attribute, LoggingTypes loggingTypes, out LogLevel? logLevel)
         {
-            logLevel = LogLevel.None;
+            logLevel = null;
             return false;
         }
 
