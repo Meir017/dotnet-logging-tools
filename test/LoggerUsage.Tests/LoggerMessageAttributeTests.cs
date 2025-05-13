@@ -24,7 +24,7 @@ public static partial class Log
 }
 
 // mock generated code:
-public static partial class Log
+partial class Log
 {
     public static partial void TestMethod(ILogger logger) { }
 }
