@@ -1,18 +1,16 @@
 ﻿using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Testing;
 using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage.Tests;
 
-public class ExtractLoggerUsagesTests
+public class LoggerMethodsTests
 {
     [Fact]
     public async Task BasicTest()
     {
         // Arrange
-        var compilation = await CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
 namespace TestNamespace;
 
 public class TestClass
@@ -36,7 +34,7 @@ public class TestClass
     public async Task BasicTestNamedArguments()
     {
         // Arrange
-        var compilation = await CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
 namespace TestNamespace;
 
 public class TestClass
@@ -96,7 +94,7 @@ public class TestClass
         logger.Log({string.Join(", ", logArgs)});
     }}
 }}";
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
         // Act
@@ -168,7 +166,7 @@ public class TestClass
     }}
 }}";
 
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
         var result = extractor.ExtractLoggerUsages(compilation);
@@ -209,7 +207,7 @@ public class TestClass
     }}
 }}";
 
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
         var result = extractor.ExtractLoggerUsages(compilation);
 
@@ -243,7 +241,7 @@ public class TestClass
         logger.{methodName}({eventId}, ""Test message"");
     }}
 }}";
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
         var result = extractor.ExtractLoggerUsages(compilation);
         Assert.NotNull(result);
@@ -293,7 +291,7 @@ public class TestClass
         logger.{methodName}({eventId}, ""Test message"");
     }}
 }}";
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
         var result = extractor.ExtractLoggerUsages(compilation);
         Assert.NotNull(result);
@@ -322,7 +320,7 @@ public class TestClass
     }}
 }}";
 
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
         // Act
@@ -372,7 +370,7 @@ public class TestClass
     }}
 }}";
 
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
         // Act
@@ -411,7 +409,7 @@ public class TestClass
     }}
 }}";
 
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
         // Act
@@ -512,7 +510,7 @@ public class TestClass
         logger.LogInformation({methodArgs});
     }}
 }}";
-        var compilation = await CreateCompilationAsync(code);
+        var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
         // Act
@@ -524,27 +522,5 @@ public class TestClass
         var parameters = result[0].MessageParameters;
         Assert.Equal(expectedParameters.Count, parameters.Count);
         Assert.Equal(expectedParameters, parameters);
-    }
-
-    internal static async Task<Compilation> CreateCompilationAsync(string sourceCode)
-    {
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
-        var compilation = CSharpCompilation.Create(
-            "TestAssembly",
-            [syntaxTree],
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithSpecificDiagnosticOptions(
-                new Dictionary<string, ReportDiagnostic>
-                {
-                    ["CS0169"] = ReportDiagnostic.Suppress, // Suppress unused field warning
-                    ["CS0649"] = ReportDiagnostic.Suppress, // Suppress unassigned field warning
-                    ["CS0219"] = ReportDiagnostic.Suppress, // Suppress assigned but unused variable warning
-                }
-            )
-        );
-        Assert.Empty(compilation.GetDiagnostics());
-        return compilation;
     }
 }
