@@ -55,6 +55,12 @@ partial class Log
         { "1, LogLevel.Information, \"ctor message\", EventId = 3,", 3, null },
         { "1, LogLevel.Information, \"ctor message\", EventId = int.MaxValue,", int.MaxValue, null },
         { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null },
+        { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null },
+        { "eventId: 1, level: LogLevel.Information, message: \"ctor message\",", 1, null },
+        { "level: LogLevel.Information, eventId: 1, message: \"ctor message\",", 1, null },
+        { "level: LogLevel.Information, message: \"ctor message\", eventId: 1,", 1, null },
+
+        
         { string.Empty, null, null },
     };
 
