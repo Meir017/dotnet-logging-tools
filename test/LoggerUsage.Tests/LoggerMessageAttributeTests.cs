@@ -184,4 +184,55 @@ var l = (LogLevel)3;
         Assert.Single(result);
         Assert.Equal(expectedLogLevel, result[0].LogLevel);
     }
+
+    public static TheoryData<string, string?> LoggerMessageMessageScenarios() => new()
+    {
+        { "Message = \"Test message\",", "Test message" },
+        { "Message = \"Another message\",", "Another message" },
+        { "1, LogLevel.Information, \"Ctor message\",", "Ctor message" },
+        { "1, LogLevel.Information, \"\",", "" },
+        { "1, LogLevel.Information, null,", null },
+        { "message: \"Named message\",", "Named message" },
+        { "LogLevel.Information, \"Ctor message 2\",", "Ctor message 2" },
+        { "1, LogLevel.Information, \"Ctor message 3\", Message = \"Override message\",", "Override message" },
+        { string.Empty, null },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerMessageMessageScenarios))]
+    public async Task LoggerMessage_Message_Scenarios(string? messageArg, string? expectedMessage)
+    {
+        // Arrange
+        var code = $@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{{
+    [LoggerMessage(
+        {messageArg}
+        Level = LogLevel.Information
+    )]
+    public static partial void TestMethod(ILogger logger);
+}}
+
+// mock generated code:
+partial class Log
+{{
+    public static partial void TestMethod(ILogger logger) {{ }}
+}}
+";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        if (expectedMessage == null)
+            Assert.True(string.IsNullOrEmpty(result[0].MessageTemplate));
+        else
+            Assert.Equal(expectedMessage, result[0].MessageTemplate);
+    }
 }

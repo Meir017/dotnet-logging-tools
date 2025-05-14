@@ -129,6 +129,36 @@ namespace LoggerUsage.Analyzers
 
         private static bool TryExtractMessageTemplate(AttributeData attribute, LoggingTypes loggingTypes, out string messageTemplate)
         {
+            foreach (var namedArg in attribute.NamedArguments)
+            {
+                if (namedArg.Key == nameof(LoggerMessageAttribute.Message))
+                {
+                    messageTemplate = (string)namedArg.Value.Value!;
+                    return true;
+                }
+            }
+
+            if (attribute.ConstructorArguments is { Length: 1 } &&
+                SpecialType.System_String.Equals(attribute.ConstructorArguments[0].Type?.SpecialType))
+            {
+                messageTemplate = (string)attribute.ConstructorArguments[0].Value!;
+                return true;
+            }
+
+            if (attribute.ConstructorArguments is { Length: 2 } &&
+                SpecialType.System_String.Equals(attribute.ConstructorArguments[1].Type?.SpecialType))
+            {
+                messageTemplate = (string)attribute.ConstructorArguments[1].Value!;
+                return true;
+            }
+
+            if (attribute.ConstructorArguments is { Length: 3 } &&
+                SpecialType.System_String.Equals(attribute.ConstructorArguments[2].Type?.SpecialType))
+            {
+                messageTemplate = (string)attribute.ConstructorArguments[2].Value!;
+                return true;
+            }
+
             messageTemplate = string.Empty;
             return false;
         }
