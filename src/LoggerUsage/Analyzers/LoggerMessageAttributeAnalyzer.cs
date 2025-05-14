@@ -100,6 +100,29 @@ namespace LoggerUsage.Analyzers
 
         private static bool TryExtractLogLevel(AttributeData attribute, LoggingTypes loggingTypes, out LogLevel? logLevel)
         {
+            foreach (var namedArg in attribute.NamedArguments)
+            {
+                if (namedArg.Key == nameof(LoggerMessageAttribute.Level))
+                {
+                    logLevel = (LogLevel)namedArg.Value.Value!;
+                    return true;
+                }
+            }
+
+            if (attribute.ConstructorArguments is { Length: 1 } or { Length: 2 } &&
+                loggingTypes.LogLevel.Equals(attribute.ConstructorArguments[0].Type, SymbolEqualityComparer.Default))
+            {
+                logLevel = (LogLevel)attribute.ConstructorArguments[0].Value!;
+                return true;
+            }
+
+            if (attribute.ConstructorArguments is { Length: 3 } &&
+                loggingTypes.LogLevel.Equals(attribute.ConstructorArguments[1].Type, SymbolEqualityComparer.Default))
+            {
+                logLevel = (LogLevel)attribute.ConstructorArguments[1].Value!;
+                return true;
+            }
+
             logLevel = null;
             return false;
         }

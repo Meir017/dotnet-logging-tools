@@ -119,4 +119,69 @@ partial class Log
         else
             Assert.Same(ConstantOrReference.Missing, details.Name);
     }
+
+    public static TheoryData<string, LogLevel?> LoggerMessageLogLevelScenarios() => new()
+    {
+        { "Level = LogLevel.Information,", LogLevel.Information },
+        { "Level = LogLevel.Warning,", LogLevel.Warning },
+        { "Level = LogLevel.Error,", LogLevel.Error },
+        { "Level = LogLevel.Critical,", LogLevel.Critical },
+        { "Level = LogLevel.Trace,", LogLevel.Trace },
+        { "Level = LogLevel.Debug,", LogLevel.Debug },
+        { "Level = LogLevel.None,", LogLevel.None },
+
+        { "(LogLevel)0,", LogLevel.Trace },
+        { "(LogLevel)1,", LogLevel.Debug },
+        { "(LogLevel)2,", LogLevel.Information },
+        { "(LogLevel)3,", LogLevel.Warning },
+        { "(LogLevel)4,", LogLevel.Error },
+        { "(LogLevel)5,", LogLevel.Critical },
+        { "(LogLevel)6,", LogLevel.None },
+        { "LogLevel.Information,", LogLevel.Information },
+        { "LogLevel.Information, \"ctor message\",", LogLevel.Information },
+        { "1, LogLevel.Information, \"ctor message\",", LogLevel.Information },
+        { "1, LogLevel.Warning, \"ctor message\",", LogLevel.Warning },
+        { "level: LogLevel.Error, eventId: 1, message: \"ctor message\",", LogLevel.Error },
+        { "eventId: 1, level: LogLevel.Critical, message: \"ctor message\",", LogLevel.Critical },
+        { "eventId: 1, message: \"ctor message\", level: LogLevel.Trace,", LogLevel.Trace },
+        { "LogLevel.Warning, Level = LogLevel.Information,", LogLevel.Information },
+        { string.Empty, null },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerMessageLogLevelScenarios))]
+    public async Task LoggerMessage_LogLevel_Scenarios(string? logLevelArg, LogLevel? expectedLogLevel)
+    {
+        // Arrange
+        var code = $@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{{
+    [LoggerMessage(
+        {logLevelArg}
+        Message = ""Test message""
+    )]
+    public static partial void TestMethod(ILogger logger);
+}}
+
+// mock generated code:
+partial class Log
+{{
+    public static partial void TestMethod(ILogger logger) {{ }}
+}}
+";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+var l = (LogLevel)3;
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal(expectedLogLevel, result[0].LogLevel);
+    }
 }
