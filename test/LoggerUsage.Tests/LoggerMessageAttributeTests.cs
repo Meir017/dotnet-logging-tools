@@ -174,8 +174,6 @@ partial class Log
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
-var l = (LogLevel)3;
-
         // Act
         var result = extractor.ExtractLoggerUsages(compilation);
 

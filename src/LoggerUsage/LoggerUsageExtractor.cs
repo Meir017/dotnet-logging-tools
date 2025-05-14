@@ -2,6 +2,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
 using LoggerUsage.Analyzers;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics;
 
 namespace LoggerUsage
 {
@@ -12,6 +14,16 @@ namespace LoggerUsage
             new LogMethodAnalyzer(),
             new LoggerMessageAttributeAnalyzer()
         };
+        private readonly ILogger<LoggerUsageExtractor> _logger;
+
+        public LoggerUsageExtractor(ILogger<LoggerUsageExtractor> logger)
+        {
+            _logger = logger;
+        }
+
+        public LoggerUsageExtractor() : this(NullLogger<LoggerUsageExtractor>.Instance)
+        {
+        }
 
         public async Task<List<LoggerUsageInfo>> ExtractLoggerUsagesAsync(Workspace workspace)
         {
@@ -25,6 +37,8 @@ namespace LoggerUsage
                 var compilation = await project.GetCompilationAsync();
                 if (compilation == null)
                     continue;
+
+                _logger.LogDebug("Analyzing project compilation {Project}", compilation.AssemblyName);
 
                 results.AddRange(ExtractLoggerUsages(compilation));
             }
@@ -42,6 +56,10 @@ namespace LoggerUsage
 
             foreach (var syntaxTree in compilation.SyntaxTrees)
             {
+                if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs")) continue;
+
+                _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
+
                 var root = syntaxTree.GetRoot();
                 var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
@@ -49,7 +67,13 @@ namespace LoggerUsage
 
                 foreach (var analyzer in _analyzers)
                 {
-                    results.AddRange(analyzer.Analyze(loggingTypes, root, semanticModel));
+                    var start = Stopwatch.GetTimestamp();
+                    _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
+                    var usages = analyzer.Analyze(loggingTypes, root, semanticModel);
+                    var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
+                    var duration = Stopwatch.GetElapsedTime(start);
+                    _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
+                    results.AddRange(usages);
                 }
             }
 

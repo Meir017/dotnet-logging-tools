@@ -21,6 +21,7 @@ public class Program
             options.TimestampFormat = "[HH:mm:ss] ";
         });
         builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
+        builder.Logging.SetMinimumLevel(LogLevel.Information);
 
         builder.Services.AddSingleton<LoggerUsageExtractor>();
         builder.Services.Configure<LoggerUsageOptions>(options =>
