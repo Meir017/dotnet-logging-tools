@@ -41,7 +41,7 @@ partial class Log
         Assert.Single(result);
     }
 
-    public static TheoryData<string, int?, string?> LoggerMessageEventIdNamedArgumentsScenarios() => new()
+    public static TheoryData<string, int?, string?> LoggerMessageEventIdScenarios() => new()
     {
         { "EventId = 1,", 1, null },
         { "EventId = 2, EventName = \"Name2\",", 2, "Name2" },
@@ -51,12 +51,22 @@ partial class Log
         { "EventId = int.MaxValue,", int.MaxValue, null },
         { "EventId = 1 + 2,", 3, null },
         { "EventName = nameof(TestMethod),", null, "TestMethod" },
+        { "1, LogLevel.Information, \"ctor message\",", 1, null },
+        { "1, LogLevel.Information, \"ctor message\", EventId = 3,", 3, null },
+        { "1, LogLevel.Information, \"ctor message\", EventId = int.MaxValue,", int.MaxValue, null },
+        { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null },
+        { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null },
+        { "eventId: 1, level: LogLevel.Information, message: \"ctor message\",", 1, null },
+        { "level: LogLevel.Information, eventId: 1, message: \"ctor message\",", 1, null },
+        { "level: LogLevel.Information, message: \"ctor message\", eventId: 1,", 1, null },
+
+        
         { string.Empty, null, null },
     };
 
     [Theory]
-    [MemberData(nameof(LoggerMessageEventIdNamedArgumentsScenarios))]
-    public async Task LoggerMessage_EventId_EventName_NamesArguments_Scenarios(string? eventIdAndNameArg, int? expectedId, string? expectedName)
+    [MemberData(nameof(LoggerMessageEventIdScenarios))]
+    public async Task LoggerMessage_EventId_EventName_Scenarios(string? eventIdAndNameArg, int? expectedId, string? expectedName)
     {
         // Arrange
         var code = $@"using Microsoft.Extensions.Logging;

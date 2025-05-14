@@ -78,6 +78,15 @@ namespace LoggerUsage.Analyzers
                 }
             }
 
+            if (eventId is null && attribute.ConstructorArguments is { Length: 3 })
+            {
+                var eventIdArg = attribute.ConstructorArguments[0];
+                if (eventIdArg.Value is int eventIdValue)
+                {
+                    eventId = eventIdValue;
+                }
+            }
+
             eventIdDetails = (eventName, eventId) switch
             {
                 (null, int id) => new EventIdDetails(ConstantOrReference.Constant(id), ConstantOrReference.Missing),
