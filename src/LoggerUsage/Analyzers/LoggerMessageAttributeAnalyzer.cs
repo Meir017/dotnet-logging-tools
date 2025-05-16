@@ -2,10 +2,11 @@ using Microsoft.CodeAnalysis;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace LoggerUsage.Analyzers
 {
-    internal class LoggerMessageAttributeAnalyzer : ILoggerUsageAnalyzer
+    internal partial class LoggerMessageAttributeAnalyzer : ILoggerUsageAnalyzer
     {
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
@@ -163,10 +164,40 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
+        [GeneratedRegex(@"\{([^}:,]+)(?:[^}]*)\}", RegexOptions.Compiled)]
+        private static partial Regex MessageTemplateRegex { get; }
+
         private static bool TryExtractMessageParameters(AttributeData attribute, LoggingTypes loggingTypes, IMethodSymbol methodSymbol, string messageTemplate, out List<MessageParameter> messageParameters)
         {
             messageParameters = new List<MessageParameter>();
-            return false;
+            if (string.IsNullOrEmpty(messageTemplate))
+                return false;
+
+            // 1. Extract placeholders from the message template
+            var matches = MessageTemplateRegex.Matches(messageTemplate);
+            if (matches.Count == 0)
+                return false;
+
+            // 2. Get method parameters, excluding ILogger, LogLevel, and Exception (by type)
+            var parameters = methodSymbol.Parameters
+                .Where(p =>
+                    !loggingTypes.ILogger.Equals(p.Type, SymbolEqualityComparer.Default) &&
+                    !loggingTypes.LogLevel.Equals(p.Type, SymbolEqualityComparer.Default) &&
+                    !loggingTypes.Exception.Equals(p.Type, SymbolEqualityComparer.Default))
+                .ToList();
+
+            // 3. For each placeholder, find a matching parameter (case-insensitive)
+            foreach (Match match in matches)
+            {
+                var placeholder = match.Groups[1].Value;
+                var param = parameters.FirstOrDefault(p => string.Equals(p.Name, placeholder, StringComparison.OrdinalIgnoreCase));
+                if (param != null)
+                {
+                    messageParameters.Add(new MessageParameter(param.Name, param.Type.ToDisplayString(), null));
+                }
+            }
+
+            return messageParameters.Count > 0;
         }
     }
 }

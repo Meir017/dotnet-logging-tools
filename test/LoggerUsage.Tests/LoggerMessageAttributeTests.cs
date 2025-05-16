@@ -60,7 +60,7 @@ partial class Log
         { "level: LogLevel.Information, eventId: 1, message: \"ctor message\",", 1, null },
         { "level: LogLevel.Information, message: \"ctor message\", eventId: 1,", 1, null },
 
-        
+
         { string.Empty, null, null },
     };
 
@@ -232,5 +232,63 @@ partial class Log
             Assert.True(string.IsNullOrEmpty(result[0].MessageTemplate));
         else
             Assert.Equal(expectedMessage, result[0].MessageTemplate);
+    }
+
+    public static TheoryData<string, string, List<MessageParameter>> LoggerMessageParameterScenarios() => new()
+    {
+        // Single parameter
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", [new MessageParameter("userId", "int", null)] },
+        // Multiple parameters
+        { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", [new MessageParameter("userId", "int", null), new MessageParameter("action", "string", null), new MessageParameter("time", "System.DateTime", null)] },
+        // Case insensitivity
+        { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", [new MessageParameter("UserId", "int", null), new MessageParameter("Action", "string", null)] },
+        // Exclude ILogger, LogLevel, Exception
+        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new MessageParameter("userId", "int", null)] },
+        // Complex placeholder syntax
+        { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new MessageParameter("userId", "int", null)] },
+    };
+
+    [Theory]
+    [MemberData(nameof(LoggerMessageParameterScenarios))]
+    public async Task LoggerMessage_Parameter_Scenarios(string messageArg, string methodParameters, List<MessageParameter> expectedParameters)
+    {
+        // Arrange
+        var code = $@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{{
+    [LoggerMessage(
+        {messageArg}
+        Level = LogLevel.Information
+    )]
+    public static partial void TestMethod({methodParameters});
+}}
+
+// mock generated code:
+partial class Log
+{{
+    public static partial void TestMethod({methodParameters}) {{ }}
+}}
+";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var result = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        var usage = result[0];
+        if (expectedParameters.Count == 0)
+        {
+            Assert.Empty(usage.MessageParameters);
+        }
+        else
+        {
+            Assert.Equal(expectedParameters.Count, usage.MessageParameters.Count);
+            Assert.Equal(expectedParameters, usage.MessageParameters);
+        }
     }
 }
