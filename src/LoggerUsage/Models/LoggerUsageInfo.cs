@@ -5,6 +5,7 @@ namespace LoggerUsage.Models;
 public class LoggerUsageInfo
 {
     public required string MethodName { get; set; }
+    public required LoggerUsageMethodType MethodType { get; set; }
     public string? MessageTemplate { get; set; }
     public LogLevel? LogLevel { get; set; }
     public EventIdBase? EventId { get; set; }
