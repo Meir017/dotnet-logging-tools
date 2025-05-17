@@ -26,8 +26,8 @@ public class Program
         builder.Services.AddSingleton<LoggerUsageExtractor>();
         builder.Services.Configure<LoggerUsageOptions>(options =>
         {
-            var path = args.Length > 0 ? args[0] : null;
-            options.Path = path;
+            options.Path = args.Length > 0 ? args[0] : null;
+            options.OutputPath = args.Length > 1 ? args[1] : null;
         });
         builder.Services.AddSingleton<LoggerUsageWorker>();
 
