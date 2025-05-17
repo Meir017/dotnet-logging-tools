@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using LoggerUsage.Cli.ReportGenerator;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -30,6 +31,7 @@ public class Program
             options.OutputPath = args.Length > 1 ? args[1] : null;
         });
         builder.Services.AddSingleton<LoggerUsageWorker>();
+        builder.Services.AddSingleton<ILoggerReportGeneratorFactory, LoggerReportGeneratorFactory>();
 
         configure?.Invoke(builder);
 

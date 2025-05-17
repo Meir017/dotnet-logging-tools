@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Hosting;
-
 namespace LoggerUsage.Cli.Tests;
 
 public class ProgramTests
@@ -39,12 +37,14 @@ public class ProgramTests
         Assert.Equal(0, result);
     }
 
-    [Fact]
-    public async Task RunProgramWithPathAndOutputPath()
+    [Theory]
+    [InlineData("output.json")]
+    [InlineData("output.html")]
+    public async Task RunProgramWithPathAndOutputPath(string outputFileName)
     {
         // Arrange
         using var tempDirectory = new TempDirectory();
-        var outputPath = Path.Combine(tempDirectory.Path, "output.json");
+        var outputPath = Path.Combine(tempDirectory.Path, outputFileName);
         var csprojPath = GetCliCsprojPath();
         var worker = Program.CreateWorker([csprojPath, outputPath]);
 
