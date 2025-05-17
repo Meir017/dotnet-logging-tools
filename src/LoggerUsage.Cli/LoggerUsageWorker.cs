@@ -7,7 +7,7 @@ using LoggerUsage.Cli.ReportGenerator;
 
 namespace LoggerUsage.Cli;
 
-public class LoggerUsageWorker(
+public partial class LoggerUsageWorker(
     LoggerUsageExtractor extractor,
     IOptions<LoggerUsageOptions> options,
     ILogger<LoggerUsageWorker> logger,
@@ -49,14 +49,14 @@ public class LoggerUsageWorker(
         if (fileInfo.Extension == ".sln" || fileInfo.Extension == ".slnx")
         {
             var start = Stopwatch.GetTimestamp();
-            _logger.LogInformation("Loading solution '{path}'", path);
+            LogInfoLoadingSolution(_logger, path);
             var solution = await workspace.OpenSolutionAsync(path);
             _logger.LogInformation("Loaded solution '{path}' with {count} projects in {duration}ms", solution.FilePath, solution.Projects.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
         else if (fileInfo.Extension == ".csproj")
         {
             var start = Stopwatch.GetTimestamp();
-            _logger.LogInformation("Loading project '{path}'", path);
+            LogInfoLoadingProject(_logger, path);
             var project = await workspace.OpenProjectAsync(path);
             _logger.LogInformation("Loaded project '{path}' with {count} documents in {duration}ms", project.FilePath, project.Documents.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
@@ -70,9 +70,22 @@ public class LoggerUsageWorker(
             _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
             var generator = _reportGeneratorFactory.GetReportGenerator(_options.OutputPath);
             await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(results));
-            _logger.LogInformation("Wrote results to '{outputPath}'", _options.OutputPath);
+            _logger.LogInformation("Wrote results to '{outputPath}'", 
+                _options.OutputPath);
         }
 
         return 0;
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Information, 
+        Message = "Loading solution '{Path}'"
+    )]
+    private static partial void LogInfoLoadingSolution(ILogger logger, string path);
+
+    [LoggerMessage(
+        Level = LogLevel.Information, 
+        Message = "Loading project '{Path}'"
+    )]
+    private static partial void LogInfoLoadingProject(ILogger logger, string path);
 }
