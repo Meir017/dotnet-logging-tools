@@ -29,6 +29,7 @@ namespace LoggerUsage.Analyzers
             var usage = new LoggerUsageInfo
             {
                 MethodName = operation.TargetMethod.Name,
+                MethodType = LoggerUsageMethodType.LoggerExtensions,
                 Location = new MethodCallLocation
                 {
                     LineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,

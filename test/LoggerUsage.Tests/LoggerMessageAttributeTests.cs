@@ -39,6 +39,7 @@ partial class Log
         // Assert
         Assert.NotNull(result);
         Assert.Single(result);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, result[0].MethodType);
     }
 
     public static TheoryData<string, int?, string?> LoggerMessageEventIdScenarios() => new()

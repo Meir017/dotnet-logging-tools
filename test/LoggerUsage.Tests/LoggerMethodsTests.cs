@@ -28,6 +28,7 @@ public class TestClass
         // Assert
         Assert.NotNull(result);
         Assert.Single(result);
+        Assert.Equal(LoggerUsageMethodType.LoggerExtensions, result[0].MethodType);
     }
 
     [Fact]
