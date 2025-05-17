@@ -39,6 +39,23 @@ public class ProgramTests
         Assert.Equal(0, result);
     }
 
+    [Fact]
+    public async Task RunProgramWithPathAndOutputPath()
+    {
+        // Arrange
+        using var tempDirectory = new TempDirectory();
+        var outputPath = Path.Combine(tempDirectory.Path, "output.json");
+        var csprojPath = GetCliCsprojPath();
+        var worker = Program.CreateWorker([csprojPath, outputPath]);
+
+        // Act
+        var result = await worker.RunAsync();
+
+        // Assert
+        Assert.Equal(0, result);
+        Assert.True(File.Exists(outputPath));
+    }
+
     private static string GetCliCsprojPath()
     {
         var gitRoot = FindGitRoot();
@@ -52,6 +69,22 @@ public class ProgramTests
                 currentDirectory = Directory.GetParent(currentDirectory)?.FullName;
             }
             return currentDirectory ?? throw new InvalidOperationException("Git root not found");
+        }
+    }
+
+    private class TempDirectory : IDisposable
+    {
+        public string Path { get; }
+
+        public TempDirectory()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(Path);
+        }
+
+        public void Dispose()
+        {
+            Directory.Delete(Path, true);
         }
     }
 }

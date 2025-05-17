@@ -15,6 +15,11 @@ public class LoggerUsageWorker(
     private readonly LoggerUsageOptions _options = options.Value;
     private readonly ILogger<LoggerUsageWorker> _logger = logger;
 
+    static LoggerUsageWorker()
+    {
+        MSBuildLocator.RegisterDefaults();
+    }
+
     public async Task<int> RunAsync()
     {
         if (string.IsNullOrWhiteSpace(_options.Path))
@@ -37,7 +42,6 @@ public class LoggerUsageWorker(
             return -1;
         }
 
-        MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
         if (fileInfo.Extension == ".sln" || fileInfo.Extension == ".slnx")
         {
