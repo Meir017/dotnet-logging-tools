@@ -31,8 +31,8 @@ namespace LoggerUsage.Analyzers
                         MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
                         Location = new MethodCallLocation
                         {
-                            LineNumber = methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Line,
-                            ColumnNumber = methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Character,
+                            StartLineNumber = methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Line,
+                            EndLineNumber = methodDeclaration.GetLocation().GetLineSpan().EndLinePosition.Line,
                             FilePath = root.SyntaxTree.FilePath,
                         },
                     };
