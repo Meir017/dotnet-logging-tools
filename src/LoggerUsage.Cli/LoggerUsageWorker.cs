@@ -1,19 +1,22 @@
 using System.Diagnostics;
-using System.Text.Json;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using LoggerUsage.Cli.ReportGenerator;
 
 namespace LoggerUsage.Cli;
 
 public class LoggerUsageWorker(
     LoggerUsageExtractor extractor,
     IOptions<LoggerUsageOptions> options,
-    ILogger<LoggerUsageWorker> logger)
+    ILogger<LoggerUsageWorker> logger,
+    ILoggerReportGeneratorFactory reportGeneratorFactory)
 {
+    private readonly LoggerUsageExtractor _extractor = extractor;
     private readonly LoggerUsageOptions _options = options.Value;
     private readonly ILogger<LoggerUsageWorker> _logger = logger;
+    private readonly ILoggerReportGeneratorFactory _reportGeneratorFactory = reportGeneratorFactory;
 
     static LoggerUsageWorker()
     {
@@ -59,14 +62,14 @@ public class LoggerUsageWorker(
         }
 
         var extractionStart = Stopwatch.GetTimestamp();
-        var results = await extractor.ExtractLoggerUsagesAsync(workspace);
+        var results = await _extractor.ExtractLoggerUsagesAsync(workspace);
         _logger.LogInformation("Found {count} logger usages in {duration}ms", results.Count, Stopwatch.GetElapsedTime(extractionStart).TotalMilliseconds);
 
         if (!string.IsNullOrWhiteSpace(_options.OutputPath))
         {
             _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
-
-            await File.WriteAllTextAsync(_options.OutputPath, JsonSerializer.Serialize(results));
+            var generator = _reportGeneratorFactory.GetReportGenerator(_options.OutputPath);
+            await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(results));
             _logger.LogInformation("Wrote results to '{outputPath}'", _options.OutputPath);
         }
 
