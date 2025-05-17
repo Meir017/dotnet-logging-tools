@@ -32,6 +32,7 @@ namespace LoggerUsage.Analyzers
                         {
                             LineNumber = methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Line,
                             ColumnNumber = methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Character,
+                            FilePath = root.SyntaxTree.FilePath,
                         },
                     };
 
