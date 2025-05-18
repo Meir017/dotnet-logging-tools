@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage
 {
@@ -8,7 +9,9 @@ namespace LoggerUsage
     internal class LoggerExtensionModeler
     {
         private readonly Dictionary<string, List<IMethodSymbol>> _extensionMethodsByName = new();
-        private readonly Dictionary<string, IMethodSymbol> _loggerMethodsByName;
+        private readonly IMethodSymbol _loggerIsEnabledMethod;
+        private readonly IMethodSymbol _loggerLogMethod;
+
 
         public LoggerExtensionModeler(LoggingTypes types)
         {
@@ -24,14 +27,20 @@ namespace LoggerUsage
                 list.Add(method);
             }
 
-            _loggerMethodsByName = types.ILogger.GetMembers().OfType<IMethodSymbol>()
-                .ToDictionary(m => m.Name, m => m);
+            _loggerIsEnabledMethod = types.ILogger.GetMembers().OfType<IMethodSymbol>()
+                .First(m => m.Name == nameof(ILogger.IsEnabled));
+            _loggerLogMethod = types.ILogger.GetMembers().OfType<IMethodSymbol>()
+                .First(m => m.Name == nameof(ILogger.Log));
         }
 
         internal bool IsLoggerMethod(IMethodSymbol method)
         {
-            if (_loggerMethodsByName.TryGetValue(method.Name, out var loggerMethod)
-                && SymbolEqualityComparer.Default.Equals(method, loggerMethod))
+            if (SymbolEqualityComparer.Default.Equals(method, _loggerIsEnabledMethod))
+            {
+                return false;
+            }
+
+            if (SymbolEqualityComparer.Default.Equals(method, _loggerLogMethod))
             {
                 return true;
             }

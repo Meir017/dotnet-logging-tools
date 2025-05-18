@@ -1,7 +1,7 @@
 namespace LoggerUsage.Tests;
 
 public class LoggerUsageExtractorTests
-{    
+{
     [Fact]
     public async Task BasicTestWithLogMethodAndLoggerMessageAttribute()
     {
@@ -13,7 +13,10 @@ public partial class TestClass
 {
     public void TestMethod(ILogger logger)
     {
-        logger.LogInformation(""Test message"");
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(""Test message"");
+        }
         TestLogMethod(logger);
     }
 
