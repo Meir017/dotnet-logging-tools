@@ -104,32 +104,47 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
 
         // Build improved summary section using StringBuilder
         var summaryBuilder = new System.Text.StringBuilder();
-        summaryBuilder.AppendLine("<div style='margin-bottom:2em;padding:1.5em 2em;background:#f1f3f6;border-radius:12px;box-shadow:0 2px 8px #0002;width:100%;max-width:none;'>");
+        summaryBuilder.AppendLine("<style>\n" +
+            "html.dark-theme .summary-section, html.dark-theme .summary-section * {" +
+            "  background: #23272e !important; color: #e8eaed !important;" +
+            "}\n" +
+            "html.dark-theme .summary-card {" +
+            "  background: #181a1b !important; color: #e8eaed !important; box-shadow: 0 2px 8px #0008;" +
+            "}\n" +
+            "html.dark-theme .summary-card span, html.dark-theme .summary-card div { color: #e8eaed !important; }\n" +
+            "html.dark-theme .summary-inconsistencies { background: #2d2323 !important; color: #ffd54f !important; }\n" +
+            "html.dark-theme .summary-inconsistencies span, html.dark-theme .summary-inconsistencies div { color: #ffd54f !important; }\n" +
+            "html.dark-theme .summary-mostcommon { color: #b0bec5 !important; }\n" +
+            "html.dark-theme .summary-mostcommon span, html.dark-theme .summary-mostcommon div { color: #b0bec5 !important; }\n" +
+            "html.dark-theme .summary-param-chip { background: #263238 !important; color: #90caf9 !important; border: 1px solid #90caf9 !important; }\n" +
+            "html.dark-theme .summary-inconsistency-chip { background: #3a2d1a !important; color: #ffd54f !important; border: 1px solid #ffd54f !important; }\n" +
+            "</style>");
+        summaryBuilder.AppendLine("<div class='summary-section' style='margin-bottom:2em;padding:1.5em 2em;background:#f1f3f6;border-radius:12px;box-shadow:0 2px 8px #0002;width:100%;max-width:none;'>");
         summaryBuilder.AppendLine("  <h2 style='margin-top:0;margin-bottom:1em;font-size:1.5em;'>Summary</h2>");
         summaryBuilder.AppendLine("  <div style='display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:2em 2em;margin-bottom:1.5em;'>");
-        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("    <div class='summary-card' style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
         summaryBuilder.AppendLine("      <span style='font-size:2em;color:#0078d4;'>📝</span>");
         summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Results.Count}</div><div style='font-size:0.95em;color:#555;'>Total Log Usages</div></div>");
         summaryBuilder.AppendLine("    </div>");
-        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("    <div class='summary-card' style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
         summaryBuilder.AppendLine("      <span style='font-size:2em;color:#43a047;'>🔑</span>");
         summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.UniqueParameterNameCount}</div><div style='font-size:0.95em;color:#555;'>Unique Parameter Names</div></div>");
         summaryBuilder.AppendLine("    </div>");
-        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("    <div class='summary-card' style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
         summaryBuilder.AppendLine("      <span style='font-size:2em;color:#f9a825;'>#️⃣</span>");
         summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.TotalParameterUsageCount}</div><div style='font-size:0.95em;color:#555;'>Total Parameter Usages</div></div>");
         summaryBuilder.AppendLine("    </div>");
-        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("    <div class='summary-card' style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
         summaryBuilder.AppendLine("      <span style='font-size:2em;color:#d32f2f;'>⚠️</span>");
         summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.InconsistentParameterNames.Count}</div><div style='font-size:0.95em;color:#555;'>Parameter Name Inconsistencies</div></div>");
         summaryBuilder.AppendLine("    </div>");
         summaryBuilder.AppendLine("  </div>");
         // Most Common Parameter Names
-        summaryBuilder.AppendLine("  <div style='font-size:1.1em;color:#555;'><div style='margin-bottom:0.5em;'><b>Most Common Parameter Names:</b></div><div style='display:flex;flex-wrap:wrap;gap:0.5em 1em;margin-top:0.5em;'>");
+        summaryBuilder.AppendLine("  <div class='summary-mostcommon' style='font-size:1.1em;color:#555;'><div style='margin-bottom:0.5em;'><b>Most Common Parameter Names:</b></div><div style='display:flex;flex-wrap:wrap;gap:0.5em 1em;margin-top:0.5em;'>");
         var topParams = loggerUsage.Summary.CommonParameterNames.Take(8).ToList();
         foreach (var p in topParams)
         {
-            summaryBuilder.Append($"<span style='background:#e3f2fd;color:#1565c0;border-radius:4px;padding:2px 10px 2px 8px;font-size:1em;display:inline-flex;align-items:center;gap:6px;margin-bottom:2px;'>");
+            summaryBuilder.Append($"<span class='summary-param-chip' style='background:#e3f2fd;color:#1565c0;border-radius:4px;padding:2px 10px 2px 8px;font-size:1em;display:inline-flex;align-items:center;gap:6px;margin-bottom:2px;'>");
             summaryBuilder.Append($"<span style='font-weight:600;'>{WebUtility.HtmlEncode(p.Name)}</span>");
             summaryBuilder.Append($"<span style='background:#fff;border-radius:3px;padding:1px 6px 1px 6px;margin-left:6px;font-size:0.97em;color:#0078d4;border:1px solid #b3d6f7;'>{WebUtility.HtmlEncode(p.MostCommonType)}</span>");
             summaryBuilder.Append($"<span style='color:#888;font-size:0.97em;margin-left:4px;'>({p.Count})</span></span>");
@@ -140,7 +155,7 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
         }
         summaryBuilder.AppendLine("</div></div>");
         // Parameter Name Inconsistencies (prettified, improved)
-        summaryBuilder.AppendLine("  <div style='margin-top:1.5em;background:#fff;border-radius:12px;box-shadow:0 2px 8px #0002;padding:1.5em 2em;max-width:1100px;transition:box-shadow 0.2s;'>");
+        summaryBuilder.AppendLine("  <div class='summary-inconsistencies' style='margin-top:1.5em;background:#fff;border-radius:12px;box-shadow:0 2px 8px #0002;padding:1.5em 2em;max-width:1100px;transition:box-shadow 0.2s;'>");
         summaryBuilder.AppendLine("    <div style='display:flex;align-items:center;gap:12px;margin-bottom:0.9em;'>");
         summaryBuilder.AppendLine("      <span style='font-size:1.7em;color:#f9a825;'>⚠️</span>");
         summaryBuilder.AppendLine("      <span style='font-size:1.18em;font-weight:600;color:#d18b00;'>Parameter Name Inconsistencies</span>");
@@ -153,15 +168,15 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
             summaryBuilder.Append("<span style='font-weight:600;color:#0078d4;min-width:60px;'>Names:</span> ");
             summaryBuilder.Append("<span style='display:flex;flex-wrap:wrap;gap:0.3em 0.5em;align-items:center;max-width:70vw;'>");
             summaryBuilder.Append(string.Join("", inc.Names.Select(n =>
-                $"<span style='background:#e3f2fd;color:#1565c0;border-radius:4px;padding:2px 9px 2px 9px;margin:1px 2px 1px 0;font-size:0.97em;display:inline-block;white-space:nowrap;'>"
+                $"<span class='summary-param-chip' style='background:#e3f2fd;color:#1565c0;border-radius:4px;padding:2px 9px 2px 9px;margin:1px 2px 1px 0;font-size:0.97em;display:inline-block;white-space:nowrap;'>"
                 + WebUtility.HtmlEncode(n.Name) + "<span style='color:#b3d6f7;margin:0 0 0 4px;'>:</span>" +
-                $"<span style='background:#fff;border-radius:3px;padding:1px 6px 1px 6px;margin-left:4px;font-size:0.97em;color:#0078d4;border:1px solid #b3d6f7;'>{WebUtility.HtmlEncode(n.Type)}</span></span>"
+                $"<span style='background:#fff;border-radius:3px;padding:1px 6px 1px 6px;margin-left:4px;font-size:0.97em;color:#0078d4;border:1px solid #b3d6f7;'>" + WebUtility.HtmlEncode(n.Type) + "</span></span>"
             )));
             summaryBuilder.Append("</span>");
             summaryBuilder.Append("<span style='font-weight:600;color:#d18b00;margin-left:10px;min-width:60px;'>Issues:</span> ");
             summaryBuilder.Append("<span style='display:flex;flex-wrap:wrap;gap:0.3em 0.5em;align-items:center;'>");
             summaryBuilder.Append(string.Join("", inc.IssueTypes.Select(issue =>
-                $"<span style='background:#fff3cd;color:#b26a00;border-radius:4px;padding:2px 10px 2px 10px;margin:1px 2px 1px 0;font-size:0.97em;display:inline-block;'>"
+                $"<span class='summary-inconsistency-chip' style='background:#fff3cd;color:#b26a00;border-radius:4px;padding:2px 10px 2px 10px;margin:1px 2px 1px 0;font-size:0.97em;display:inline-block;'>"
                 + WebUtility.HtmlEncode(issue) + "</span>"
             )));
             summaryBuilder.Append("</span>");
@@ -220,11 +235,11 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
     </style>
     <table id='loggerTable'>
         <tr>
-            <th>Level</th>
-            <th>Method Type</th>
-            <th>Message</th>
-            <th>Parameters</th>
-            <th>EventId</th>
+            <th data-sort='loglevel' style='cursor:pointer;'>Level <span class='sort-arrow'></span></th>
+            <th data-sort='methodtype' style='cursor:pointer;'>Method Type <span class='sort-arrow'></span></th>
+            <th data-sort='message' style='cursor:pointer;'>Message <span class='sort-arrow'></span></th>
+            <th data-sort='parameters' style='cursor:pointer;'>Parameters <span class='sort-arrow'></span></th>
+            <th data-sort='eventid' style='cursor:pointer;'>EventId <span class='sort-arrow'></span></th>
         </tr>";
 
         foreach (var usage in loggerUsage.Results)
@@ -301,6 +316,13 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
         </tr>";
         }
         html += @"</table>
+<style>
+    .sort-arrow { font-size:0.9em; color:#888; margin-left:2px; transition:color 0.2s; }
+    th.sorted-asc .sort-arrow, th.sorted-desc .sort-arrow { color:#d32f2f !important; }
+    th .sort-arrow::after { content: ''; }
+    th.sorted-asc .sort-arrow::after { content: '▲'; }
+    th.sorted-desc .sort-arrow::after { content: '▼'; }
+</style>
 <script>
 (function() {
     // Populate Method Type dropdown
@@ -337,6 +359,48 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
     document.getElementById('filterLogLevel').addEventListener('change', filterTable);
     document.getElementById('filterMethodType').addEventListener('change', filterTable);
     document.getElementById('filterText').addEventListener('input', filterTable);
+    // Sorting logic
+    var table = document.getElementById('loggerTable');
+    var headers = table.querySelectorAll('th[data-sort]');
+    var sortState = { col: null, dir: 1 };
+    headers.forEach(function(th, idx) {
+        th.addEventListener('click', function() {
+            var sortKey = th.getAttribute('data-sort');
+            var rows = Array.from(table.querySelectorAll('tr.log-row'));
+            // Remove sort classes and reset all arrows
+            headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+            // Determine sort direction
+            if (sortState.col === sortKey) sortState.dir *= -1;
+            else sortState.dir = 1;
+            sortState.col = sortKey;
+            th.classList.add(sortState.dir === 1 ? 'sorted-asc' : 'sorted-desc');
+            // Sort rows
+            rows.sort(function(a, b) {
+                var getVal = function(row) {
+                    switch(sortKey) {
+                        case 'loglevel': return row.getAttribute('data-loglevel') || '';
+                        case 'methodtype': return row.getAttribute('data-methodtype') || '';
+                        case 'message': return row.getAttribute('data-message') || '';
+                        case 'parameters': return row.querySelector('.params')?.innerText || '';
+                        case 'eventid': return row.children[4]?.innerText || '';
+                        default: return '';
+                    }
+                };
+                var va = getVal(a).toLowerCase();
+                var vb = getVal(b).toLowerCase();
+                if (va < vb) return -1 * sortState.dir;
+                if (va > vb) return 1 * sortState.dir;
+                return 0;
+            });
+            // Re-attach sorted rows and their code rows
+            var tbody = table.tBodies[0] || table;
+            rows.forEach(function(row) {
+                var codeRow = row.nextElementSibling;
+                tbody.appendChild(row);
+                if (codeRow && codeRow.classList.contains('code-row')) tbody.appendChild(codeRow);
+            });
+        });
+    });
 })();
 </script>
 </body>

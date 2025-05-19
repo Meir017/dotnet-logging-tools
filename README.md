@@ -19,11 +19,11 @@ run the command:
 dotnet run --project src/LoggerUsage.Cli -- src/LoggerUsage.Cli/LoggerUsage.Cli.csproj report.html
 ```
 
-![alt text](assets/report-light.png)
+![Logger Usage Report in light mode, showing summary cards, most common parameter names, and parameter name inconsistencies, with a light background and dark text for accessibility.](assets/report-light.png)
 
 and in dark mode:
 
-![alt text](assets/report-dark.png)
+![Logger Usage Report in dark mode, showing summary cards, most common parameter names, and parameter name inconsistencies, with a dark background and light text for accessibility.](assets/report-dark.png)
 
 ## Roadmap
 
