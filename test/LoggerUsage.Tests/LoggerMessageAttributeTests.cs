@@ -1,6 +1,4 @@
 using LoggerUsage.Models;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage.Tests;
@@ -34,12 +32,12 @@ partial class Log
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, result[0].MethodType);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, loggerUsages.Results[0].MethodType);
     }
 
     public static TheoryData<string, int?, string?> LoggerMessageEventIdScenarios() => new()
@@ -97,12 +95,12 @@ partial class Log
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        var usage = result[0];
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
         if (expectedId == null && expectedName == null)
         {
             Assert.Null(usage.EventId);
@@ -176,12 +174,12 @@ partial class Log
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(expectedLogLevel, result[0].LogLevel);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
     }
 
     public static TheoryData<string, string?> LoggerMessageMessageScenarios() => new()
@@ -224,15 +222,15 @@ partial class Log
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
         if (expectedMessage == null)
-            Assert.True(string.IsNullOrEmpty(result[0].MessageTemplate));
+            Assert.True(string.IsNullOrEmpty(loggerUsages.Results[0].MessageTemplate));
         else
-            Assert.Equal(expectedMessage, result[0].MessageTemplate);
+            Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
     }
 
     public static TheoryData<string, string, List<MessageParameter>> LoggerMessageParameterScenarios() => new()
@@ -276,12 +274,12 @@ partial class Log
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        var usage = result[0];
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
         if (expectedParameters.Count == 0)
         {
             Assert.Empty(usage.MessageParameters);

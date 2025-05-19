@@ -5,5 +5,5 @@ namespace LoggerUsage.Cli.ReportGenerator;
 
 public class JsonLoggerReportGenerator : ILoggerReportGenerator
 {
-    public string GenerateReport(List<LoggerUsageInfo> results) => JsonSerializer.Serialize(results);
+    public string GenerateReport(LoggerUsageExtractionResult loggerUsage) => JsonSerializer.Serialize(loggerUsage);
 }

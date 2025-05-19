@@ -23,12 +23,12 @@ public class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(LoggerUsageMethodType.LoggerExtensions, result[0].MethodType);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(LoggerUsageMethodType.LoggerExtensions, loggerUsages.Results[0].MethodType);
     }
 
     [Fact]
@@ -48,13 +48,13 @@ public class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal("Test message", result[0].MessageTemplate);
-        var details = Assert.IsType<EventIdDetails>(result[0].EventId);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal("Test message", loggerUsages.Results[0].MessageTemplate);
+        var details = Assert.IsType<EventIdDetails>(loggerUsages.Results[0].EventId);
         Assert.Equal(6, details.Id.Value);
         Assert.Same(ConstantOrReference.Missing, details.Name);
     }
@@ -99,12 +99,12 @@ public class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
+        Assert.NotNull(loggerUsages);
         // TODO: replace with Assert.Single when the method is fixed
-        Assert.Empty(result);
+        Assert.Empty(loggerUsages.Results);
     }
 
     public static TheoryData<string, string[]> LoggerExtensionMethods()
@@ -154,6 +154,7 @@ public class TestClass
     [MemberData(nameof(LoggerExtensionMethods))]
     public async Task TestLoggerExtensionMethods(string methodName, string[] args)
     {
+        // Arrange
         var code = $@"using Microsoft.Extensions.Logging;
 using System;
 
@@ -170,10 +171,12 @@ public class TestClass
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 
-        var result = extractor.ExtractLoggerUsages(compilation);
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
-        Assert.NotNull(result);
-        Assert.Single(result);
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
     }
 
     public static TheoryData<string, LogLevel?> LoggerLogLevelScenarios() => new()
@@ -197,6 +200,7 @@ public class TestClass
     [MemberData(nameof(LoggerLogLevelScenarios))]
     public async Task TestLoggerLogLevelScenarios(string methodName, LogLevel? expectedLogLevel)
     {
+        // Arrange
         var code = $@"using Microsoft.Extensions.Logging;
 namespace TestNamespace;
 
@@ -210,11 +214,14 @@ public class TestClass
 
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
-        var result = extractor.ExtractLoggerUsages(compilation);
 
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(expectedLogLevel, result[0].LogLevel);
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
     }
 
     public static TheoryData<string, string, EventIdRef> LoggerEventIdScenariosReference() => new()
@@ -228,6 +235,7 @@ public class TestClass
     [MemberData(nameof(LoggerEventIdScenariosReference))]
     public async Task TestLoggerEventIdScenariosReference(string methodName, string eventId, EventIdRef expectedEventIdRef)
     {
+        // Arrange
         var code = $@"using Microsoft.Extensions.Logging;
 
 namespace TestNamespace;
@@ -244,11 +252,14 @@ public class TestClass
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
-        var result = extractor.ExtractLoggerUsages(compilation);
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.NotNull(result[0].EventId);
-        var @ref = Assert.IsType<EventIdRef>(result[0].EventId);
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.NotNull(loggerUsages.Results[0].EventId);
+        var @ref = Assert.IsType<EventIdRef>(loggerUsages.Results[0].EventId);
         Assert.Equal(expectedEventIdRef, @ref);
     }
 
@@ -294,11 +305,11 @@ public class TestClass
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
-        var result = extractor.ExtractLoggerUsages(compilation);
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.NotNull(result[0].EventId);
-        var details = Assert.IsType<EventIdDetails>(result[0].EventId);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.NotNull(loggerUsages.Results[0].EventId);
+        var details = Assert.IsType<EventIdDetails>(loggerUsages.Results[0].EventId);
         Assert.Equal(expectedId, details.Id);
         Assert.Equal(expectedName, details.Name);
     }
@@ -325,12 +336,10 @@ public class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Null(result[0].EventId);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Null(loggerUsages.Results[0].EventId);
     }
 
     public static TheoryData<string, string[]> LoggerMessageTemplates() => new()
@@ -375,12 +384,12 @@ public class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(template, result[0].MessageTemplate);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(template, loggerUsages.Results[0].MessageTemplate);
     }
 
     public static TheoryData<string, string[], string> LoggerInterpolatedTemplateCases() => new()
@@ -418,8 +427,8 @@ public class TestClass
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(expectedTemplate, result[0].MessageTemplate);
+        Assert.Single(result.Results);
+        Assert.Equal(expectedTemplate, result.Results[0].MessageTemplate);
     }
 
     public static TheoryData<string, string[], List<MessageParameter>> LoggerMessageParameterCases() => new()
@@ -515,12 +524,12 @@ public class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        var parameters = result[0].MessageParameters;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var parameters = loggerUsages.Results[0].MessageParameters;
         Assert.Equal(expectedParameters.Count, parameters.Count);
         Assert.Equal(expectedParameters, parameters);
     }

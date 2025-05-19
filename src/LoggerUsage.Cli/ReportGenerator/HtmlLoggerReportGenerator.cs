@@ -6,7 +6,7 @@ namespace LoggerUsage.Cli.ReportGenerator;
 
 public class HtmlLoggerReportGenerator : ILoggerReportGenerator
 {
-    public string GenerateReport(List<LoggerUsageInfo> results)
+    public string GenerateReport(LoggerUsageExtractionResult loggerUsage)
     {
         string html = @"<!DOCTYPE html>
 <html>
@@ -109,7 +109,7 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
             <th>EventId</th>
         </tr>";
 
-        foreach (var usage in results)
+        foreach (var usage in loggerUsage.Results)
         {
             var logLevel = usage.LogLevel?.ToString() ?? "";
             var rawMessage = usage.MessageTemplate ?? "";

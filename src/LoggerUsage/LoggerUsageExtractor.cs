@@ -5,79 +5,93 @@ using LoggerUsage.Analyzers;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 
-namespace LoggerUsage
+namespace LoggerUsage;
+
+public class LoggerUsageExtractor
 {
-    public class LoggerUsageExtractor
+    private static readonly ILoggerUsageAnalyzer[] _analyzers =
     {
-        private static readonly ILoggerUsageAnalyzer[] _analyzers =
+        new LogMethodAnalyzer(),
+        new LoggerMessageAttributeAnalyzer()
+    };
+    private readonly ILogger<LoggerUsageExtractor> _logger;
+
+    public LoggerUsageExtractor(ILogger<LoggerUsageExtractor> logger)
+    {
+        _logger = logger;
+    }
+
+    public LoggerUsageExtractor() : this(NullLogger<LoggerUsageExtractor>.Instance)
+    {
+    }
+
+    public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesAsync(Workspace workspace)
+    {
+        var results = new List<LoggerUsageInfo>();
+
+        foreach (var project in workspace.CurrentSolution.Projects)
         {
-            new LogMethodAnalyzer(),
-            new LoggerMessageAttributeAnalyzer()
+            if (project.Language != LanguageNames.CSharp)
+                continue;
+
+            var compilation = await project.GetCompilationAsync();
+            if (compilation == null)
+                continue;
+
+            _logger.LogDebug("Analyzing project compilation {Project}", compilation.AssemblyName);
+
+            var extractionResult = ExtractLoggerUsages(compilation);
+            results.AddRange(extractionResult.Results);
+        }
+
+        // TODO: Populate summary.ParameterTypesByName from results
+
+        var result = new LoggerUsageExtractionResult
+        {
+            Results = results,
+            Summary = new()
         };
-        private readonly ILogger<LoggerUsageExtractor> _logger;
+        new LoggerUsageSummarizer().PopulateSummary(result);
+        return result;
+    }
 
-        public LoggerUsageExtractor(ILogger<LoggerUsageExtractor> logger)
+    public LoggerUsageExtractionResult ExtractLoggerUsages(Compilation compilation)
+    {
+        var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
+        if (loggerInterface == null) return new LoggerUsageExtractionResult();
+
+        var loggingTypes = new LoggingTypes(compilation, loggerInterface);
+        var results = new List<LoggerUsageInfo>();
+
+        foreach (var syntaxTree in compilation.SyntaxTrees)
         {
-            _logger = logger;
-        }
+            if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs")) continue;
 
-        public LoggerUsageExtractor() : this(NullLogger<LoggerUsageExtractor>.Instance)
-        {
-        }
+            _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
 
-        public async Task<List<LoggerUsageInfo>> ExtractLoggerUsagesAsync(Workspace workspace)
-        {
-            var results = new List<LoggerUsageInfo>();
+            var root = syntaxTree.GetRoot();
+            var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
-            foreach (var project in workspace.CurrentSolution.Projects)
+            if (root == null || semanticModel == null) continue;
+
+            foreach (var analyzer in _analyzers)
             {
-                if (project.Language != LanguageNames.CSharp)
-                    continue;
-
-                var compilation = await project.GetCompilationAsync();
-                if (compilation == null)
-                    continue;
-
-                _logger.LogDebug("Analyzing project compilation {Project}", compilation.AssemblyName);
-
-                results.AddRange(ExtractLoggerUsages(compilation));
+                var start = Stopwatch.GetTimestamp();
+                _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
+                var usages = analyzer.Analyze(loggingTypes, root, semanticModel);
+                var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
+                var duration = Stopwatch.GetElapsedTime(start);
+                _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
+                results.AddRange(usages);
             }
-
-            return results;
         }
 
-        public List<LoggerUsageInfo> ExtractLoggerUsages(Compilation compilation)
+        // TODO: Populate summary.ParameterTypesByName from results
+
+        return new LoggerUsageExtractionResult
         {
-            var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
-            if (loggerInterface == null) return [];
-
-            var loggingTypes = new LoggingTypes(compilation, loggerInterface);
-            var results = new List<LoggerUsageInfo>();
-
-            foreach (var syntaxTree in compilation.SyntaxTrees)
-            {
-                if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs")) continue;
-
-                _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
-
-                var root = syntaxTree.GetRoot();
-                var semanticModel = compilation.GetSemanticModel(syntaxTree);
-
-                if (root == null || semanticModel == null) continue;
-
-                foreach (var analyzer in _analyzers)
-                {
-                    var start = Stopwatch.GetTimestamp();
-                    _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
-                    var usages = analyzer.Analyze(loggingTypes, root, semanticModel);
-                    var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
-                    var duration = Stopwatch.GetElapsedTime(start);
-                    _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
-                    results.AddRange(usages);
-                }
-            }
-
-            return results;
-        }
+            Results = results,
+            Summary = new()
+        };
     }
 }
