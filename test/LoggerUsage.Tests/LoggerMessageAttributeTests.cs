@@ -236,21 +236,21 @@ partial class Log
     public static TheoryData<string, string, List<MessageParameter>> LoggerMessageParameterScenarios() => new()
     {
         // Single parameter
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", [new MessageParameter("userId", "int", null)] },
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", [new MessageParameter("UserId", "int", null)] },
         // Multiple parameters
-        { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", [new MessageParameter("userId", "int", null), new MessageParameter("action", "string", null), new MessageParameter("time", "System.DateTime", null)] },
+        { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", [new MessageParameter("UserId", "int", null), new MessageParameter("Action", "string", null), new MessageParameter("Time", "System.DateTime", null)] },
         // Case insensitivity
-        { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", [new MessageParameter("UserId", "int", null), new MessageParameter("Action", "string", null)] },
+        { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", [new MessageParameter("userid", "int", null), new MessageParameter("ACTION", "string", null)] },
         // Exclude ILogger, LogLevel, Exception
-        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new MessageParameter("userId", "int", null)] },
+        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new MessageParameter("UserId", "int", null)] },
         // Complex placeholder syntax
-        { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new MessageParameter("userId", "int", null)] },
+        { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new MessageParameter("UserId", "int", null)] },
         // Fully qualified type
-        { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", [new MessageParameter("userId", "int", null), new MessageParameter("id", "string", null)] },
+        { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", [new MessageParameter("UserId", "int", null), new MessageParameter("Id", "string", null)] },
         // Nullable types
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", [new MessageParameter("userId", "int?", null)] },
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", [new MessageParameter("UserId", "int?", null)] },
         // Generic types
-        { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", [new MessageParameter("ids", "System.Collections.Generic.List<int>", null)] },
+        { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", [new MessageParameter("Ids", "System.Collections.Generic.List<int>", null)] },
     };
 
     [Theory]
