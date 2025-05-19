@@ -22,6 +22,8 @@ internal static class TestUtils
                     ["CS0169"] = ReportDiagnostic.Suppress, // Suppress unused field warning
                     ["CS0649"] = ReportDiagnostic.Suppress, // Suppress unassigned field warning
                     ["CS0219"] = ReportDiagnostic.Suppress, // Suppress assigned but unused variable warning
+                    ["CS0414"] = ReportDiagnostic.Suppress, // Suppress unassigned field warning
+                    ["CS8602"] = ReportDiagnostic.Suppress, // Suppress dereference of a possibly null reference warning
                 }
             )
         );

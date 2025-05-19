@@ -245,6 +245,12 @@ partial class Log
         { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new MessageParameter("userId", "int", null)] },
         // Complex placeholder syntax
         { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new MessageParameter("userId", "int", null)] },
+        // Fully qualified type
+        { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", [new MessageParameter("userId", "int", null), new MessageParameter("id", "string", null)] },
+        // Nullable types
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", [new MessageParameter("userId", "int?", null)] },
+        // Generic types
+        { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", [new MessageParameter("ids", "System.Collections.Generic.List<int>", null)] },
     };
 
     [Theory]

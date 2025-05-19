@@ -452,6 +452,62 @@ public class TestClass
          ] },
         { "Test message with no params", [], [] },
 
+        // Property references
+        { "Test with references properties {arg1}", ["strArg.Length"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference))
+        ] },
+        { "Test with references properties {arg1} and {arg2}", ["strArg.Length", "intArg.ToString()"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.Invocation))
+        ] },
+        { "Test with references properties {arg1} and {arg2} and {arg3}", ["strArg.Length", "intArg.ToString()", "boolArg.ToString()"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.Invocation)),
+            new MessageParameter("arg3", "string", nameof(OperationKind.Invocation))
+        ] },
+
+        // Instance member references
+        { "Test with references properties {arg1}", ["this._strField.Length"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference))
+        ] },
+        { "Test with references properties {arg1} and {arg2}", ["this._strField.Length", "this._intField.ToString()"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.Invocation))
+        ] },
+        { "Test with references properties {arg1} and {arg2} and {arg3}", ["this._strField.Length", "this._intField.ToString()", "this._boolField.ToString()"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.Invocation)),
+            new MessageParameter("arg3", "string", nameof(OperationKind.Invocation))
+        ] },
+
+        // Conditional access
+        { "Test with nullable references properties {arg1}", ["this._strField?.Length"], [
+            new MessageParameter("arg1", "int?", nameof(OperationKind.ConditionalAccess))
+        ] },
+        { "Test with nullable references properties {arg1} and {arg2}", ["this._strField?.Length", "this._intField?.ToString()"], [
+            new MessageParameter("arg1", "int?", nameof(OperationKind.ConditionalAccess)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.ConditionalAccess))
+        ] },
+        { "Test with nullable references properties {arg1} and {arg2} and {arg3}", ["this._strField?.Length", "this._intField?.ToString()", "this._boolField?.ToString()"], [
+            new MessageParameter("arg1", "int?", nameof(OperationKind.ConditionalAccess)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.ConditionalAccess)),
+            new MessageParameter("arg3", "string", nameof(OperationKind.ConditionalAccess))
+        ] },
+
+        // Conditional access with null coalescing
+        { "Test with nullable references properties {arg1}", ["this._strField?.Length ?? 0"], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.Coalesce))
+        ] },
+        { "Test with nullable references properties {arg1} and {arg2}", ["this._strField?.Length ?? 0", "this._intField?.ToString() ?? \"default-value\""], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.Coalesce)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.Coalesce))
+        ] },
+        { "Test with nullable references properties {arg1} and {arg2} and {arg3}", ["this._strField?.Length ?? 0", "this._intField?.ToString() ?? \"default-value\"", "this._boolField?.ToString() ?? \"default-value\""], [
+            new MessageParameter("arg1", "int", nameof(OperationKind.Coalesce)),
+            new MessageParameter("arg2", "string", nameof(OperationKind.Coalesce)),
+            new MessageParameter("arg3", "string", nameof(OperationKind.Coalesce))
+        ] },
+
         // Constant references
         { "Test message {arg1}", ["constStr"], [
             new MessageParameter("arg1", "string", "Constant") // const is local in Roslyn
@@ -502,12 +558,16 @@ public class TestClass
         // Arrange
         var quotedMessage = '"' + template.Replace("\"", "\\\"") + '"';
         var methodArgs = quotedMessage + (argNames.Length > 0 ? ", " : "") + string.Join(", ", argNames);
-        var code = $@"using Microsoft.Extensions.Logging;
+        var code = $@"#nullable enable
+using Microsoft.Extensions.Logging;
 
 namespace TestNamespace;
 
 public class TestClass
 {{
+    private readonly string? _strField = ""strFieldValue"";
+    private readonly int? _intField = 42;
+    private readonly bool? _boolField = true;
     public void TestMethod(ILogger logger, string strArg, int intArg, bool boolArg)
     {{
         const string constStr = ""constStrValue"";
