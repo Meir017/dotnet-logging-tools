@@ -9,6 +9,7 @@ namespace LoggerUsage
         {
             ILogger = loggerInterface;
             LoggerMessageAttribute = compilation.GetTypeByMetadataName(typeof(LoggerMessageAttribute).FullName!)!;
+            LogPropertiesAttribute = compilation.GetTypeByMetadataName(typeof(LogPropertiesAttribute).FullName!)!;
             EventId = compilation.GetTypeByMetadataName(typeof(EventId).FullName!)!;
             LogLevel = compilation.GetTypeByMetadataName(typeof(LogLevel).FullName!)!;
             LoggerExtensions = compilation.GetTypeByMetadataName(typeof(LoggerExtensions).FullName!)!;
@@ -25,6 +26,7 @@ namespace LoggerUsage
         public INamedTypeSymbol LoggerExtensions { get; }
         public INamedTypeSymbol Exception { get; }
         public IArrayTypeSymbol ObjectNullableArray { get; }
+        public INamedTypeSymbol LogPropertiesAttribute { get; }
 
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
     }

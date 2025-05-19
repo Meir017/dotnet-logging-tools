@@ -12,6 +12,7 @@ internal static class TestUtils
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
         var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
         references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
+        references = references.Add(MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location));
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             [syntaxTree],

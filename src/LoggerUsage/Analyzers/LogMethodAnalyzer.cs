@@ -7,8 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace LoggerUsage.Analyzers
 {
 
-    internal class LogMethodAnalyzer : ILoggerUsageAnalyzer
+    internal class LogMethodAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
+        private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
+
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();

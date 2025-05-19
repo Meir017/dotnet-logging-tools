@@ -2,12 +2,13 @@ using Microsoft.CodeAnalysis;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
-using System.Text.RegularExpressions;
 
 namespace LoggerUsage.Analyzers
 {
-    internal partial class LoggerMessageAttributeAnalyzer : ILoggerUsageAnalyzer
+    internal partial class LoggerMessageAttributeAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
+        private readonly ILogger<LoggerMessageAttributeAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageAttributeAnalyzer>();
+
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var methodDeclarations = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
@@ -37,6 +38,8 @@ namespace LoggerUsage.Analyzers
                         },
                     };
 
+                    _logger.LogTrace("Found LoggerMessageAttribute on method {MethodName}", usage.MethodName);
+
                     if (TryExtractEventId(attributeData, methodSymbol, loggingTypes, out var eventId))
                     {
                         usage.EventId = eventId;
@@ -54,6 +57,7 @@ namespace LoggerUsage.Analyzers
                         }
                     }
 
+                    _logger.LogTrace("Extracted LoggerMessageAttribute usage {MethodName}", usage.MethodName);
                     yield return usage;
                 }
             }
@@ -180,9 +184,10 @@ namespace LoggerUsage.Analyzers
             // 2. Get method parameters, excluding ILogger, LogLevel, and Exception (by type)
             var parameters = methodSymbol.Parameters
                 .Where(p =>
-                    !loggingTypes.ILogger.Equals(p.Type, SymbolEqualityComparer.Default) &&
                     !loggingTypes.LogLevel.Equals(p.Type, SymbolEqualityComparer.Default) &&
-                    !loggingTypes.Exception.Equals(p.Type, SymbolEqualityComparer.Default))
+                    !p.Type.IsLoggerInterface(loggingTypes) &&
+                    !p.Type.IsException(loggingTypes) &&
+                    !p.GetAttributes().Any(attr => loggingTypes.LogPropertiesAttribute.Equals(attr.AttributeClass, SymbolEqualityComparer.Default)))
                 .ToList();
 
             for (int i = 0; i < parameters.Count; i++)
