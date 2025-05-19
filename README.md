@@ -32,3 +32,4 @@ and in dark mode:
 - [ ] Create a summary of the log messages
 - [ ] Integrate AI to suggest improvements and find inconsistencies
 - [ ] For LoggerMessageAttribute - find all invocations of method
+- [ ] Expose as a MCP
