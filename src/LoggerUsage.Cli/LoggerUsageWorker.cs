@@ -62,14 +62,14 @@ public partial class LoggerUsageWorker(
         }
 
         var extractionStart = Stopwatch.GetTimestamp();
-        var results = await _extractor.ExtractLoggerUsagesAsync(workspace);
-        _logger.LogInformation("Found {count} logger usages in {duration}ms", results.Count, Stopwatch.GetElapsedTime(extractionStart).TotalMilliseconds);
+        var loggerUsages = await _extractor.ExtractLoggerUsagesAsync(workspace);
+        _logger.LogInformation("Found {count} logger usages in {duration}ms", loggerUsages.Results.Count, Stopwatch.GetElapsedTime(extractionStart).TotalMilliseconds);
 
         if (!string.IsNullOrWhiteSpace(_options.OutputPath))
         {
             _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
             var generator = _reportGeneratorFactory.GetReportGenerator(_options.OutputPath);
-            await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(results));
+            await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(loggerUsages));
             _logger.LogInformation("Wrote results to '{outputPath}'", 
                 _options.OutputPath);
         }

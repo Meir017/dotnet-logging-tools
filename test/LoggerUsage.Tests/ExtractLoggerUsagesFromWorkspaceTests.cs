@@ -34,7 +34,7 @@ public class TestClass
 
         // Assert
         Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages);
+        Assert.Single(loggerUsages.Results);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class TestClass
 
         // Assert
         Assert.NotNull(loggerUsages);
-        Assert.Empty(loggerUsages);
+        Assert.Empty(loggerUsages.Results);
     }
 
     [Fact]
@@ -86,12 +86,12 @@ public class ProjectBClass
 
         var extractor = new LoggerUsageExtractor();
 
-
+        // Act
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
 
-
+        // Assert
         Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Count);
+        Assert.Equal(2, loggerUsages.Results.Count);
     }
 
     private static async Task<Workspace> CreateTestWorkspace(Dictionary<string, (string FileName, string SourceCode)[]> projectDocuments)

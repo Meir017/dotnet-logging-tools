@@ -34,11 +34,11 @@ partial class TestClass
         var extractor = new LoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(2, result.Count);
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count);
     }
 
 }
