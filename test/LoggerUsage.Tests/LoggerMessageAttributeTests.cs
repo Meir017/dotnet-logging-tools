@@ -236,21 +236,27 @@ partial class Log
     public static TheoryData<string, string, List<MessageParameter>> LoggerMessageParameterScenarios() => new()
     {
         // Single parameter
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", [new MessageParameter("UserId", "int", null)] },
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", [new("UserId", "int", null)] },
         // Multiple parameters
-        { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", [new MessageParameter("UserId", "int", null), new MessageParameter("Action", "string", null), new MessageParameter("Time", "System.DateTime", null)] },
+        { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", [new("UserId", "int", null), new("Action", "string", null), new("Time", "System.DateTime", null)] },
         // Case insensitivity
-        { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", [new MessageParameter("userid", "int", null), new MessageParameter("ACTION", "string", null)] },
+        { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", [new("userid", "int", null), new("ACTION", "string", null)] },
         // Exclude ILogger, LogLevel, Exception
-        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new MessageParameter("UserId", "int", null)] },
+        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new("UserId", "int", null)] },
+        // Exclude ILogger, LogLevel, custom Exception
+        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.ArgumentException ex", [new("UserId", "int", null)] },
         // Complex placeholder syntax
-        { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new MessageParameter("UserId", "int", null)] },
+        { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new("UserId", "int", null)] },
         // Fully qualified type
-        { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", [new MessageParameter("UserId", "int", null), new MessageParameter("Id", "string", null)] },
+        { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", [new("UserId", "int", null), new("Id", "string", null)] },
         // Nullable types
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", [new MessageParameter("UserId", "int?", null)] },
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", [new("UserId", "int?", null)] },
         // Generic types
-        { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", [new MessageParameter("Ids", "System.Collections.Generic.List<int>", null)] },
+        { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", [new("Ids", "System.Collections.Generic.List<int>", null)] },
+        // With [LogProperties]
+        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId, [LogProperties] LogData data", [new("UserId", "int", null)] },
+        // With [LogProperties] and multiple arguments
+        { "Message = \"User {UserId} logged in {Action}\",", "ILogger logger, int userId, [LogProperties] LogData data, string action", [new("UserId", "int", null), new("Action", "string", null)] },
     };
 
     [Theory]
@@ -273,9 +279,15 @@ public static partial class Log
 // mock generated code:
 partial class Log
 {{
-    public static partial void TestMethod({methodParameters}) {{ }}
+    public static partial void TestMethod({methodParameters.Replace("[LogProperties] ", "")}) {{ }}
 }}
-";
+    
+public class LogData
+{{
+    public int UserId {{ get; set; }}
+    public string Action {{ get; set; }}
+    public System.DateTime Time {{ get; set; }}
+}}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = new LoggerUsageExtractor();
 

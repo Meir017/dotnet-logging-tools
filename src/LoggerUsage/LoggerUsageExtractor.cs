@@ -9,19 +9,20 @@ namespace LoggerUsage;
 
 public class LoggerUsageExtractor
 {
-    private static readonly ILoggerUsageAnalyzer[] _analyzers =
-    {
-        new LogMethodAnalyzer(),
-        new LoggerMessageAttributeAnalyzer()
-    };
+    private readonly ILoggerUsageAnalyzer[] _analyzers;
     private readonly ILogger<LoggerUsageExtractor> _logger;
 
-    public LoggerUsageExtractor(ILogger<LoggerUsageExtractor> logger)
+    public LoggerUsageExtractor(ILoggerFactory loggerFactory)
     {
-        _logger = logger;
+        _logger = loggerFactory.CreateLogger<LoggerUsageExtractor>();
+        _analyzers =
+        [
+            new LogMethodAnalyzer(loggerFactory),
+            new LoggerMessageAttributeAnalyzer(loggerFactory)
+        ];
     }
 
-    public LoggerUsageExtractor() : this(NullLogger<LoggerUsageExtractor>.Instance)
+    public LoggerUsageExtractor() : this(NullLoggerFactory.Instance)
     {
     }
 
