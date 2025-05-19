@@ -243,7 +243,7 @@ namespace LoggerUsage.Analyzers
 
                     messageParameters.Add(new MessageParameter(
                         Name: formatter.ValueNames[messageParameters.Count],
-                        Type: paramValue.Type!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.UseSpecialTypes)),
+                        Type: paramValue.Type!.ToPrettyDisplayString(),
                         Kind: paramValue.ConstantValue.HasValue ? "Constant" : paramValue.Kind.ToString()
                     ));
                 }

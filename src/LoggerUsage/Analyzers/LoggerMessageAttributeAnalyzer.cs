@@ -195,7 +195,7 @@ namespace LoggerUsage.Analyzers
                 var param = parameters.FirstOrDefault(p => string.Equals(p.Name, placeholder, StringComparison.OrdinalIgnoreCase));
                 if (param != null)
                 {
-                    messageParameters.Add(new MessageParameter(param.Name, param.Type.ToDisplayString(), null));
+                    messageParameters.Add(new MessageParameter(param.Name, param.Type.ToPrettyDisplayString(), null));
                 }
             }
 
