@@ -105,7 +105,7 @@ public class LoggerUsageSummarizerTests
         Assert.Contains("int", extractionResult.Summary.ParameterTypesByName["orderId"]);
         Assert.Equal(3, extractionResult.Summary.TotalParameterUsageCount);
         Assert.Equal(2, extractionResult.Summary.UniqueParameterNameCount);
-        Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x => x.Names.Any(pair => pair.Name == "userId") && x.IssueType == "TypeMismatch");
+        Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x => x.Names.Any(pair => pair.Name == "userId") && x.IssueTypes.Contains("TypeMismatch"));
         Assert.Equal(2, extractionResult.Summary.CommonParameterNames.Count);
         var userIdCommon = extractionResult.Summary.CommonParameterNames.Find(x => x.Name == "userId");
         Assert.Equal(2, userIdCommon.Count);
@@ -214,14 +214,14 @@ public class LoggerUsageSummarizerTests
         // Assert
         // There should be a type mismatch for 'userId' (string and int)
         Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x =>
-            x.IssueType == "TypeMismatch"
+            x.IssueTypes.Contains("TypeMismatch")
             && x.Names.All(pair => pair.Name == "userId")
             && x.Names.Any(pair => pair.Type == "string")
             && x.Names.Any(pair => pair.Type == "int")
         );
         // There should be a casing difference group for userId/UserId/userid
         Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x =>
-            x.IssueType == "CasingDifference"
+            x.IssueTypes.Contains("CasingDifference")
             && x.Names.Select(pair => pair.Name).Distinct().Count() == 3
             && x.Names.Any(pair => pair.Name == "userId")
             && x.Names.Any(pair => pair.Name == "UserId")

@@ -18,6 +18,6 @@ public class LoggerUsageExtractionSummary
     public int TotalParameterUsageCount { get; set; }
 
     public record struct NameTypePair(string Name, string Type);
-    public record struct InconsistentParameterNameInfo(List<NameTypePair> Names, string IssueType);
+    public record struct InconsistentParameterNameInfo(List<NameTypePair> Names, List<string> IssueTypes);
     public record struct CommonParameterNameInfo(string Name, int Count, string MostCommonType);
 }

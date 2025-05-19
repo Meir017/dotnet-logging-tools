@@ -37,7 +37,7 @@ public class LoggerUsageSummarizer
         summary.UniqueParameterNameCount = parameterTypesByName.Count;
 
         // Improved: Collect all inconsistencies with details
-        var inconsistencies = new List<LoggerUsageExtractionSummary.InconsistentParameterNameInfo>();
+        var inconsistenciesRaw = new List<(List<LoggerUsageExtractionSummary.NameTypePair> Names, string IssueType)>();
 
         // Type mismatch: same parameter name (case-sensitive) used with multiple types
         foreach (var kvp in parameterTypesByName)
@@ -45,13 +45,9 @@ public class LoggerUsageSummarizer
             if (kvp.Value.Count > 1)
             {
                 var nameTypePairs = kvp.Value
-                    .Select(type => new LoggerUsage.Models.LoggerUsageExtractionSummary.NameTypePair(kvp.Key, type))
+                    .Select(type => new LoggerUsageExtractionSummary.NameTypePair(kvp.Key, type))
                     .ToList();
-                // Always add a TypeMismatch for the single name
-                inconsistencies.Add(new LoggerUsage.Models.LoggerUsageExtractionSummary.InconsistentParameterNameInfo(
-                    nameTypePairs,
-                    "TypeMismatch"
-                ));
+                inconsistenciesRaw.Add((nameTypePairs, "TypeMismatch"));
             }
         }
 
@@ -65,12 +61,9 @@ public class LoggerUsageSummarizer
         {
             // Add CasingDifference for the group
             var nameTypePairs = group
-                .SelectMany(name => parameterTypesByName[name].Select(type => new LoggerUsage.Models.LoggerUsageExtractionSummary.NameTypePair(name, type)))
+                .SelectMany(name => parameterTypesByName[name].Select(type => new LoggerUsageExtractionSummary.NameTypePair(name, type)))
                 .ToList();
-            inconsistencies.Add(new LoggerUsage.Models.LoggerUsageExtractionSummary.InconsistentParameterNameInfo(
-                nameTypePairs,
-                "CasingDifference"
-            ));
+            inconsistenciesRaw.Add((nameTypePairs, "CasingDifference"));
 
             // Only add a TypeMismatch for the group if there are multiple types across all names
             var allTypes = new HashSet<string>();
@@ -79,15 +72,20 @@ public class LoggerUsageSummarizer
                 foreach (var t in parameterTypesByName[name])
                     allTypes.Add(t);
             }
-            // Only add if there are at least two types and at least two distinct names in the group
             if (allTypes.Count > 1 && group.Count > 1)
             {
-                inconsistencies.Add(new LoggerUsage.Models.LoggerUsageExtractionSummary.InconsistentParameterNameInfo(
-                    nameTypePairs,
-                    "TypeMismatch"
-                ));
+                inconsistenciesRaw.Add((nameTypePairs, "TypeMismatch"));
             }
         }
+
+        // Group by Names (set equality) and aggregate IssueTypes
+        var inconsistencies = inconsistenciesRaw
+            .GroupBy(x => x.Names, new NameTypePairListComparer())
+            .Select(g => new LoggerUsageExtractionSummary.InconsistentParameterNameInfo(
+                g.Key,
+                g.Select(x => x.IssueType).Distinct().ToList()
+            ))
+            .ToList();
 
         summary.InconsistentParameterNames = inconsistencies;
 
@@ -111,5 +109,30 @@ public class LoggerUsageSummarizer
                 };
             })
             .ToList();
+    }
+
+    // Compares two lists of NameTypePair for set equality (order-insensitive, unique pairs)
+    private class NameTypePairListComparer : IEqualityComparer<List<LoggerUsageExtractionSummary.NameTypePair>>
+    {
+        public bool Equals(List<LoggerUsageExtractionSummary.NameTypePair>? x, List<LoggerUsageExtractionSummary.NameTypePair>? y)
+        {
+            if (ReferenceEquals(x, y)) return true;
+            if (x is null || y is null) return false;
+            if (x.Count != y.Count) return false;
+            var setX = new HashSet<LoggerUsageExtractionSummary.NameTypePair>(x);
+            var setY = new HashSet<LoggerUsageExtractionSummary.NameTypePair>(y);
+            return setX.SetEquals(setY);
+        }
+
+        public int GetHashCode(List<LoggerUsageExtractionSummary.NameTypePair> obj)
+        {
+            int hash = 19;
+            foreach (var pair in obj.OrderBy(p => p.Name).ThenBy(p => p.Type))
+            {
+                hash = hash * 31 + pair.Name.GetHashCode();
+                hash = hash * 31 + (pair.Type?.GetHashCode() ?? 0);
+            }
+            return hash;
+        }
     }
 }

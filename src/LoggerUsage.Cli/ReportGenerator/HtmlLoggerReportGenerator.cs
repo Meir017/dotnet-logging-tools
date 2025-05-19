@@ -100,6 +100,80 @@ public class HtmlLoggerReportGenerator : ILoggerReportGenerator
 <body>
     <button onclick='toggleTheme()' style='position:fixed;top:18px;right:32px;z-index:10;padding:6px 16px;border-radius:6px;border:none;background:#0078d4;color:#fff;font-weight:bold;cursor:pointer;'>Toggle Theme</button>
     <h1>Logger Usage Report</h1>
+    ";
+
+        // Build improved summary section using StringBuilder
+        var summaryBuilder = new System.Text.StringBuilder();
+        summaryBuilder.AppendLine("<div style='margin-bottom:2em;padding:1.5em 2em;background:#f1f3f6;border-radius:12px;box-shadow:0 2px 8px #0002;width:100%;max-width:none;'>");
+        summaryBuilder.AppendLine("  <h2 style='margin-top:0;margin-bottom:1em;font-size:1.5em;'>Summary</h2>");
+        summaryBuilder.AppendLine("  <div style='display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:2em 2em;margin-bottom:1.5em;'>");
+        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("      <span style='font-size:2em;color:#0078d4;'>📝</span>");
+        summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Results.Count}</div><div style='font-size:0.95em;color:#555;'>Total Log Usages</div></div>");
+        summaryBuilder.AppendLine("    </div>");
+        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("      <span style='font-size:2em;color:#43a047;'>🔑</span>");
+        summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.UniqueParameterNameCount}</div><div style='font-size:0.95em;color:#555;'>Unique Parameter Names</div></div>");
+        summaryBuilder.AppendLine("    </div>");
+        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("      <span style='font-size:2em;color:#f9a825;'>#️⃣</span>");
+        summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.TotalParameterUsageCount}</div><div style='font-size:0.95em;color:#555;'>Total Parameter Usages</div></div>");
+        summaryBuilder.AppendLine("    </div>");
+        summaryBuilder.AppendLine("    <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.2em;display:flex;align-items:center;gap:12px;'>");
+        summaryBuilder.AppendLine("      <span style='font-size:2em;color:#d32f2f;'>⚠️</span>");
+        summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.InconsistentParameterNames.Count}</div><div style='font-size:0.95em;color:#555;'>Parameter Name Inconsistencies</div></div>");
+        summaryBuilder.AppendLine("    </div>");
+        summaryBuilder.AppendLine("  </div>");
+        // Most Common Parameter Names
+        summaryBuilder.AppendLine("  <div style='font-size:1.1em;color:#555;'><div style='margin-bottom:0.5em;'><b>Most Common Parameter Names:</b></div><div style='display:flex;flex-wrap:wrap;gap:0.5em 1em;margin-top:0.5em;'>");
+        var topParams = loggerUsage.Summary.CommonParameterNames.Take(8).ToList();
+        foreach (var p in topParams)
+        {
+            summaryBuilder.Append($"<span style='background:#e3f2fd;color:#1565c0;border-radius:4px;padding:2px 10px 2px 8px;font-size:1em;display:inline-flex;align-items:center;gap:6px;margin-bottom:2px;'>");
+            summaryBuilder.Append($"<span style='font-weight:600;'>{WebUtility.HtmlEncode(p.Name)}</span>");
+            summaryBuilder.Append($"<span style='background:#fff;border-radius:3px;padding:1px 6px 1px 6px;margin-left:6px;font-size:0.97em;color:#0078d4;border:1px solid #b3d6f7;'>{WebUtility.HtmlEncode(p.MostCommonType)}</span>");
+            summaryBuilder.Append($"<span style='color:#888;font-size:0.97em;margin-left:4px;'>({p.Count})</span></span>");
+        }
+        if (loggerUsage.Summary.CommonParameterNames.Count > 8)
+        {
+            summaryBuilder.Append($"<span style='color:#888;font-size:0.95em;'>+{loggerUsage.Summary.CommonParameterNames.Count - 8} more</span>");
+        }
+        summaryBuilder.AppendLine("</div></div>");
+        // Parameter Name Inconsistencies (prettified, improved)
+        summaryBuilder.AppendLine("  <div style='margin-top:1.5em;background:#fff;border-radius:12px;box-shadow:0 2px 8px #0002;padding:1.5em 2em;max-width:1100px;transition:box-shadow 0.2s;'>");
+        summaryBuilder.AppendLine("    <div style='display:flex;align-items:center;gap:12px;margin-bottom:0.9em;'>");
+        summaryBuilder.AppendLine("      <span style='font-size:1.7em;color:#f9a825;'>⚠️</span>");
+        summaryBuilder.AppendLine("      <span style='font-size:1.18em;font-weight:600;color:#d18b00;'>Parameter Name Inconsistencies</span>");
+        summaryBuilder.AppendLine("      <span style='margin-left:auto;font-size:1em;color:#b26a00;background:#fff3cd;border-radius:7px;padding:3px 14px 3px 12px;font-weight:500;box-shadow:0 1px 2px #0001;'>" + loggerUsage.Summary.InconsistentParameterNames.Count + " found</span>");
+        summaryBuilder.AppendLine("    </div>");
+        summaryBuilder.AppendLine("    <ul style='margin:0 0 0 1.2em;padding:0;list-style:disc inside;display:flex;flex-direction:column;gap:0.7em;'>");
+        foreach (var inc in loggerUsage.Summary.InconsistentParameterNames)
+        {
+            summaryBuilder.Append("<li style='background:#f8fafc;border-radius:7px;padding:0.7em 1em;box-shadow:0 1px 2px #0001;transition:box-shadow 0.2s;display:flex;flex-wrap:wrap;align-items:center;gap:0.5em 1.2em;'>");
+            summaryBuilder.Append("<span style='font-weight:600;color:#0078d4;min-width:60px;'>Names:</span> ");
+            summaryBuilder.Append("<span style='display:flex;flex-wrap:wrap;gap:0.3em 0.5em;align-items:center;max-width:70vw;'>");
+            summaryBuilder.Append(string.Join("", inc.Names.Select(n =>
+                $"<span style='background:#e3f2fd;color:#1565c0;border-radius:4px;padding:2px 9px 2px 9px;margin:1px 2px 1px 0;font-size:0.97em;display:inline-block;white-space:nowrap;'>"
+                + WebUtility.HtmlEncode(n.Name) + "<span style='color:#b3d6f7;margin:0 0 0 4px;'>:</span>" +
+                $"<span style='background:#fff;border-radius:3px;padding:1px 6px 1px 6px;margin-left:4px;font-size:0.97em;color:#0078d4;border:1px solid #b3d6f7;'>" + WebUtility.HtmlEncode(n.Type) + "</span></span>"
+            )));
+            summaryBuilder.Append("</span>");
+            summaryBuilder.Append("<span style='font-weight:600;color:#d18b00;margin-left:10px;min-width:60px;'>Issues:</span> ");
+            summaryBuilder.Append("<span style='display:flex;flex-wrap:wrap;gap:0.3em 0.5em;align-items:center;'>");
+            summaryBuilder.Append(string.Join("", inc.IssueTypes.Select(issue =>
+                $"<span style='background:#fff3cd;color:#b26a00;border-radius:4px;padding:2px 10px 2px 10px;margin:1px 2px 1px 0;font-size:0.97em;display:inline-block;'>"
+                + WebUtility.HtmlEncode(issue) + "</span>"
+            )));
+            summaryBuilder.Append("</span>");
+            summaryBuilder.AppendLine("</li>");
+        }
+        summaryBuilder.AppendLine("    </ul>");
+        summaryBuilder.AppendLine("  </div>");
+        summaryBuilder.AppendLine("</div>");
+        // Insert summary into html
+        html += summaryBuilder.ToString();
+
+        html += @"
     <table>
         <tr>
             <th>Level</th>
