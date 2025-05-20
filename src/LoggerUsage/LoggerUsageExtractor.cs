@@ -39,7 +39,7 @@ public class LoggerUsageExtractor
             if (compilation == null)
                 continue;
 
-            _logger.LogDebug("Analyzing project compilation {Project}", compilation.AssemblyName);
+            _logger.LogInformation("Analyzing project compilation '{Project}' with {Count} references", compilation.AssemblyName, compilation.References.Count());
 
             var extractionResult = ExtractLoggerUsages(compilation);
             results.AddRange(extractionResult.Results);
@@ -59,7 +59,14 @@ public class LoggerUsageExtractor
     public LoggerUsageExtractionResult ExtractLoggerUsages(Compilation compilation)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
-        if (loggerInterface == null) return new LoggerUsageExtractionResult();
+        if (loggerInterface == null)
+        {
+            _logger.LogWarning("ILogger interface not found in compilation '{CompilationPath}'. Skipping analysis. Existing {Count} references [{References}]",
+                compilation.SourceModule.Name,
+                compilation.References.Count(),
+                string.Join(',', compilation.References.Select(r => r.Display)));
+            return new LoggerUsageExtractionResult();
+        }
 
         var loggingTypes = new LoggingTypes(compilation, loggerInterface);
         var results = new List<LoggerUsageInfo>();
