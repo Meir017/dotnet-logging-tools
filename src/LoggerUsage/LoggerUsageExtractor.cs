@@ -4,6 +4,7 @@ using LoggerUsage.Models;
 using LoggerUsage.Analyzers;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace LoggerUsage;
 
@@ -69,18 +70,18 @@ public class LoggerUsageExtractor
         }
 
         var loggingTypes = new LoggingTypes(compilation, loggerInterface);
-        var results = new List<LoggerUsageInfo>();
+        var results = new ConcurrentBag<LoggerUsageInfo>();
 
-        foreach (var syntaxTree in compilation.SyntaxTrees)
+        Parallel.ForEach(compilation.SyntaxTrees, syntaxTree =>
         {
-            if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs")) continue;
+            if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs")) return;
 
             _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
 
             var root = syntaxTree.GetRoot();
             var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
-            if (root == null || semanticModel == null) continue;
+            if (root == null || semanticModel == null) return;
 
             foreach (var analyzer in _analyzers)
             {
@@ -90,15 +91,19 @@ public class LoggerUsageExtractor
                 var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
                 var duration = Stopwatch.GetElapsedTime(start);
                 _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
-                results.AddRange(usages);
+
+                foreach (var usage in usages)
+                {
+                    results.Add(usage);
+                }
             }
-        }
+        });
 
         // TODO: Populate summary.ParameterTypesByName from results
 
         return new LoggerUsageExtractionResult
         {
-            Results = results,
+            Results = [.. results],
             Summary = new()
         };
     }
