@@ -25,6 +25,18 @@ and in dark mode:
 
 ![Logger Usage Report in dark mode, showing summary cards, most common parameter names, and parameter name inconsistencies, with a dark background and light text for accessibility.](assets/report-dark.png)
 
+## Running the MCP Server Locally
+
+To run the MCP server locally:
+
+```bash
+dotnet run --project src/LoggerUsage.Mcp
+```
+
+By default, the server will use the configuration in `src/LoggerUsage.Mcp/appsettings.json`. You can modify this file to adjust server settings as needed.
+
+![alt text](assets/mcp.png)
+
 ## Roadmap
 
 - [ ] Add support for `ILogger.Log` method
@@ -32,4 +44,4 @@ and in dark mode:
 - [ ] Create a summary of the log messages
 - [ ] Integrate AI to suggest improvements and find inconsistencies
 - [ ] For LoggerMessageAttribute - find all invocations of method
-- [ ] Expose as a MCP
+- [x] Expose as a MCP
