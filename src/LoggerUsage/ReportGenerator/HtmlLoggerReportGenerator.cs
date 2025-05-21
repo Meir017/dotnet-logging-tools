@@ -2,9 +2,9 @@ using LoggerUsage.Models;
 using System.Net;
 using System.Text.RegularExpressions;
 
-namespace LoggerUsage.Cli.ReportGenerator;
+namespace LoggerUsage.ReportGenerator;
 
-public class HtmlLoggerReportGenerator : ILoggerReportGenerator
+internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
 {
     public string GenerateReport(LoggerUsageExtractionResult loggerUsage)
     {

@@ -1,9 +1,9 @@
 using System.Text.Json;
 using LoggerUsage.Models;
 
-namespace LoggerUsage.Cli.ReportGenerator;
+namespace LoggerUsage.ReportGenerator;
 
-public class JsonLoggerReportGenerator : ILoggerReportGenerator
+internal class JsonLoggerReportGenerator : ILoggerReportGenerator
 {
     public string GenerateReport(LoggerUsageExtractionResult loggerUsage) => JsonSerializer.Serialize(loggerUsage);
 }

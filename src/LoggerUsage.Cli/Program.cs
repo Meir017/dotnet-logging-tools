@@ -1,5 +1,4 @@
-﻿using LoggerUsage.Cli.ReportGenerator;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -24,14 +23,15 @@ public class Program
         builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
         builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-        builder.Services.AddSingleton<LoggerUsageExtractor>();
+        builder.Services.AddLoggerUsageExtractor()
+            .AddMSBuild();
+
+        builder.Services.AddSingleton<LoggerUsageWorker>();
         builder.Services.Configure<LoggerUsageOptions>(options =>
         {
             options.Path = args.Length > 0 ? args[0] : null;
             options.OutputPath = args.Length > 1 ? args[1] : null;
         });
-        builder.Services.AddSingleton<LoggerUsageWorker>();
-        builder.Services.AddSingleton<ILoggerReportGeneratorFactory, LoggerReportGeneratorFactory>();
 
         configure?.Invoke(builder);
 
