@@ -1,27 +1,22 @@
 using System.Diagnostics;
-using Microsoft.Build.Locator;
-using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using LoggerUsage.Cli.ReportGenerator;
+using LoggerUsage.ReportGenerator;
 
 namespace LoggerUsage.Cli;
 
-public partial class LoggerUsageWorker(
+public class LoggerUsageWorker(
     LoggerUsageExtractor extractor,
     IOptions<LoggerUsageOptions> options,
     ILogger<LoggerUsageWorker> logger,
-    ILoggerReportGeneratorFactory reportGeneratorFactory)
+    ILoggerReportGeneratorFactory reportGeneratorFactory,
+    IWorkspaceFactory workspaceFactory)
 {
     private readonly LoggerUsageExtractor _extractor = extractor;
     private readonly LoggerUsageOptions _options = options.Value;
     private readonly ILogger<LoggerUsageWorker> _logger = logger;
     private readonly ILoggerReportGeneratorFactory _reportGeneratorFactory = reportGeneratorFactory;
-
-    static LoggerUsageWorker()
-    {
-        MSBuildLocator.RegisterDefaults();
-    }
+    private readonly IWorkspaceFactory _workspaceFactory = workspaceFactory;
 
     public async Task<int> RunAsync()
     {
@@ -45,21 +40,7 @@ public partial class LoggerUsageWorker(
             return -1;
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        if (fileInfo.Extension == ".sln" || fileInfo.Extension == ".slnx")
-        {
-            var start = Stopwatch.GetTimestamp();
-            LogInfoLoadingSolution(_logger, path);
-            var solution = await workspace.OpenSolutionAsync(path);
-            _logger.LogInformation("Loaded solution '{path}' with {count} projects in {duration}ms", solution.FilePath, solution.Projects.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
-        }
-        else if (fileInfo.Extension == ".csproj")
-        {
-            var start = Stopwatch.GetTimestamp();
-            LogInfoLoadingProject(_logger, path);
-            var project = await workspace.OpenProjectAsync(path);
-            _logger.LogInformation("Loaded project '{path}' with {count} documents in {duration}ms", project.FilePath, project.Documents.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
-        }
+        using var workspace = await _workspaceFactory.Create(fileInfo);
 
         var extractionStart = Stopwatch.GetTimestamp();
         var loggerUsages = await _extractor.ExtractLoggerUsagesAsync(workspace);
@@ -67,8 +48,10 @@ public partial class LoggerUsageWorker(
 
         if (!string.IsNullOrWhiteSpace(_options.OutputPath))
         {
+            var outputPathInfo = new FileInfo(_options.OutputPath);
+
             _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
-            var generator = _reportGeneratorFactory.GetReportGenerator(_options.OutputPath);
+            var generator = _reportGeneratorFactory.GetReportGenerator(outputPathInfo.Extension);
             await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(loggerUsages));
             _logger.LogInformation("Wrote results to '{outputPath}'", 
                 _options.OutputPath);
@@ -76,16 +59,4 @@ public partial class LoggerUsageWorker(
 
         return 0;
     }
-
-    [LoggerMessage(
-        Level = LogLevel.Information, 
-        Message = "Loading solution '{Path}'"
-    )]
-    private static partial void LogInfoLoadingSolution(ILogger logger, string path);
-
-    [LoggerMessage(
-        Level = LogLevel.Information, 
-        Message = "Loading project '{Path}'"
-    )]
-    private static partial void LogInfoLoadingProject(ILogger logger, string path);
 }

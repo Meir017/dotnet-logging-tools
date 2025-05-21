@@ -1,6 +1,6 @@
 using LoggerUsage.Models;
 
-namespace LoggerUsage.Cli.ReportGenerator;
+namespace LoggerUsage.ReportGenerator;
 
 public interface ILoggerReportGenerator
 {
