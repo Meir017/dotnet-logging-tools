@@ -158,7 +158,9 @@ public class TestClass
         Assert.NotNull(loggerUsages);
         Assert.Single(loggerUsages.Results);
         Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
-    }    public static TheoryData<string, string, List<MessageParameter>> LoggerMessageDefineParameterScenarios() => new()
+    }
+
+    public static TheoryData<string, string, List<MessageParameter>> LoggerMessageDefineParameterScenarios() => new()
     {
         // No parameters
         { "", "System startup completed", [] },
@@ -170,7 +172,9 @@ public class TestClass
         { "<int, System.DateTime>", "Order {OrderId} processed at {ProcessedTime}", [new("OrderId", "int", null), new("ProcessedTime", "System.DateTime", null)] },
         // Complex types
         { "<System.Guid, string, double>", "Transaction {Id} for {Customer} amount {Amount}", [new("Id", "System.Guid", null), new("Customer", "string", null), new("Amount", "double", null)] },
-    };    [Theory]
+    };
+
+    [Theory]
     [MemberData(nameof(LoggerMessageDefineParameterScenarios))]
     public async Task LoggerMessageDefine_Parameter_Scenarios(string genericTypes, string messageTemplate, List<MessageParameter> expectedParameters)
     {
