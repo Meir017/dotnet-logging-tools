@@ -29,14 +29,14 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
         {
             var start = Stopwatch.GetTimestamp();
             LogInfoLoadingSolution(_logger, fileInfo.FullName);
-            var solution = await workspace.OpenSolutionAsync(fileInfo.FullName);
+            var solution = await workspace.OpenSolutionAsync(fileInfo.FullName, new ProjectProgress(_logger));
             _logger.LogInformation("Loaded solution '{path}' with {count} projects in {duration}ms", solution.FilePath, solution.Projects.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
         else if (fileInfo.Extension == ".csproj")
         {
             var start = Stopwatch.GetTimestamp();
             LogInfoLoadingProject(_logger, fileInfo.FullName);
-            var project = await workspace.OpenProjectAsync(fileInfo.FullName);
+            var project = await workspace.OpenProjectAsync(fileInfo.FullName, new ProjectProgress(_logger));
             _logger.LogInformation("Loaded project '{path}' with {count} documents in {duration}ms", project.FilePath, project.Documents.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
         else
@@ -46,6 +46,14 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
         }
 
         return workspace;
+    }
+
+    private class ProjectProgress(ILogger logger) : IProgress<ProjectLoadProgress>
+    {
+        public void Report(ProjectLoadProgress value)
+        {
+            logger.LogInformation("Project '{ProjectName}' reached {Status} in {Duration}ms", value.FilePath, value.Operation, Math.Floor(value.ElapsedTime.TotalMilliseconds));
+        }
     }
 
     [LoggerMessage(
