@@ -6,5 +6,7 @@ public enum LoggerUsageMethodType
 
     LoggerExtensions,
 
-    LoggerMessageAttribute
+    LoggerMessageAttribute,
+
+    LoggerMessageDefine
 }
