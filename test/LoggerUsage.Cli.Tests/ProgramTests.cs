@@ -23,11 +23,13 @@ public class ProgramTests
         Assert.Equal(-1, result);
     }
 
-    [Fact]
-    public async Task RunProgramWithPath()
+    [Theory]
+    [InlineData("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj")]
+    [InlineData("logging-usage.sln")]
+    public async Task RunProgramWithPath(params string[] paths)
     {
         // Arrange
-        var csprojPath = GetCliCsprojPath();
+        var csprojPath = FindPathFromGitRoot(paths);
         var worker = Program.CreateWorker([csprojPath]);
 
         // Act
@@ -43,10 +45,18 @@ public class ProgramTests
     public async Task RunProgramWithPathAndOutputPath(string outputFileName)
     {
         // Arrange
+        var csprojPath = FindPathFromGitRoot("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj");
+
+        // Act & Assert
+        await RunProgramWithFileAndOutputPath(csprojPath, outputFileName);
+    }
+
+    private static async Task RunProgramWithFileAndOutputPath(string inputPath, string outputFileName)
+    {
+        // Arrange
         using var tempDirectory = new TempDirectory();
         var outputPath = Path.Combine(tempDirectory.Path, outputFileName);
-        var csprojPath = GetCliCsprojPath();
-        var worker = Program.CreateWorker([csprojPath, outputPath]);
+        var worker = Program.CreateWorker([inputPath, outputPath]);
 
         // Act
         var result = await worker.RunAsync();
@@ -56,20 +66,16 @@ public class ProgramTests
         Assert.True(File.Exists(outputPath));
     }
 
-    private static string GetCliCsprojPath()
+    private static string FindPathFromGitRoot(params string[] paths)
     {
-        var gitRoot = FindGitRoot();
-        return Path.Combine(gitRoot, "src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj");
-
-        static string FindGitRoot()
+        var currentDirectory = Directory.GetCurrentDirectory();
+        while (currentDirectory != null && !Directory.Exists(Path.Combine(currentDirectory, ".git")))
         {
-            var currentDirectory = Directory.GetCurrentDirectory();
-            while (currentDirectory != null && !Directory.Exists(Path.Combine(currentDirectory, ".git")))
-            {
-                currentDirectory = Directory.GetParent(currentDirectory)?.FullName;
-            }
-            return currentDirectory ?? throw new InvalidOperationException("Git root not found");
+            currentDirectory = Directory.GetParent(currentDirectory)?.FullName;
         }
+
+        var gitRoot = currentDirectory ?? throw new InvalidOperationException("Git root not found");
+        return Path.Combine([gitRoot, .. paths]);
     }
 
     private class TempDirectory : IDisposable
