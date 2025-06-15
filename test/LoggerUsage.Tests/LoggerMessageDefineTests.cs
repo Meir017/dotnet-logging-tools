@@ -172,6 +172,12 @@ public class TestClass
         { "<int, System.DateTime>", "Order {OrderId} processed at {ProcessedTime}", [new("OrderId", "int", null), new("ProcessedTime", "System.DateTime", null)] },
         // Complex types
         { "<System.Guid, string, double>", "Transaction {Id} for {Customer} amount {Amount}", [new("Id", "System.Guid", null), new("Customer", "string", null), new("Amount", "double", null)] },
+        // 4 parameters
+        { "<string, int, System.DateTime, bool>", "User {UserName} with ID {UserId} logged in at {LoginTime} with success {IsSuccessful}", [new("UserName", "string", null), new("UserId", "int", null), new("LoginTime", "System.DateTime", null), new("IsSuccessful", "bool", null)] },
+        // 5 parameters
+        { "<System.Guid, string, decimal, int, System.TimeSpan>", "Order {OrderId} for customer {CustomerName} with total {Total} containing {ItemCount} items processed in {Duration}", [new("OrderId", "System.Guid", null), new("CustomerName", "string", null), new("Total", "decimal", null), new("ItemCount", "int", null), new("Duration", "System.TimeSpan", null)] },
+        // 6 parameters
+        { "<string, int, string, System.DateTime, double, long>", "API call {Endpoint} by user {UserId} from {IpAddress} at {Timestamp} took {ResponseTime} ms with size {ResponseSize} bytes", [new("Endpoint", "string", null), new("UserId", "int", null), new("IpAddress", "string", null), new("Timestamp", "System.DateTime", null), new("ResponseTime", "double", null), new("ResponseSize", "long", null)] },
     };
 
     [Theory]
@@ -180,7 +186,6 @@ public class TestClass
     {
         // Generate the correct Action delegate type based on generic parameters
         var actionType = GenerateActionType(genericTypes);
-        
         // Arrange
         var code = $@"#nullable enable
 using Microsoft.Extensions.Logging;
