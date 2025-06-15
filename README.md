@@ -1,6 +1,24 @@
 # dotnet-logging-usage
-Create a summary of which log messages a project writes and the paramters to improve consistency
 
+Create a summary of which log messages a project writes and the parameters to improve consistency
+
+## Background
+
+This tool analyzes .NET projects to extract and summarize logging usage patterns. It supports the following logging APIs:
+
+### Supported Logging APIs
+
+- **ILogger Extension Methods**: Analyzes usage of `LogInformation`, `LogWarning`, `LogError`, `LogDebug`, `LogTrace`, and `LogCritical` extension methods
+- **[LoggerMessage Attribute](https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator)**: Detects and analyzes methods decorated with `[LoggerMessage]` attribute for high-performance logging
+- **[LoggerMessage.Define](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.loggermessage)**: Analyzes usage of `LoggerMessage.Define` methods for compile-time log message generation
+- **Structured Logging**: Captures parameter names and templates used in structured logging scenarios
+
+The tool helps identify:
+
+- Inconsistent parameter naming across log messages
+- Most commonly used log parameters
+- Log level distribution across your codebase
+- Template patterns and message structures
 
 ## Usage
 
