@@ -23,11 +23,13 @@ public class ProgramTests
         Assert.Equal(-1, result);
     }
 
-    [Fact]
-    public async Task RunProgramWithPath()
+    [Theory]
+    [InlineData("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj")]
+    [InlineData("logging-usage.sln")]
+    public async Task RunProgramWithPath(params string[] paths)
     {
         // Arrange
-        var csprojPath = FindPathFromGitRoot("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj");
+        var csprojPath = FindPathFromGitRoot(paths);
         var worker = Program.CreateWorker([csprojPath]);
 
         // Act
@@ -47,18 +49,6 @@ public class ProgramTests
 
         // Act & Assert
         await RunProgramWithFileAndOutputPath(csprojPath, outputFileName);
-    }
-
-    [Theory]
-    [InlineData("output.json")]
-    [InlineData("output.html")]
-    public async Task RunProgramWithSolutionAndOutputPath(string outputFileName)
-    {
-        // Arrange
-        var solutionPath = FindPathFromGitRoot("src", "LoggerUsage.Cli", "dotnet-logging-usage.sln");
-
-        // Act & Assert
-        await RunProgramWithFileAndOutputPath(solutionPath, outputFileName);
     }
 
     private static async Task RunProgramWithFileAndOutputPath(string inputPath, string outputFileName)
