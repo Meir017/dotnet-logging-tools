@@ -8,5 +8,7 @@ public enum LoggerUsageMethodType
 
     LoggerMessageAttribute,
 
-    LoggerMessageDefine
+    LoggerMessageDefine,
+
+    BeginScope
 }

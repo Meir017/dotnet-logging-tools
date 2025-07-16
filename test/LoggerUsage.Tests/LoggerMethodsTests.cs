@@ -593,4 +593,68 @@ public class TestClass
         Assert.Equal(expectedParameters.Count, parameters.Count);
         Assert.Equal(expectedParameters, parameters);
     }
+
+    [Fact]
+    public async Task BeginScope_ExtensionMethod_DetectedCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(""Processing request {RequestId}"", 123))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count);
+        
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Equal("Processing request {RequestId}", beginScopeUsage.MessageTemplate);
+    }
+
+    [Fact]
+    public async Task BeginScope_CoreMethod_DetectedCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger<TestClass> logger)
+    {
+        using (logger.BeginScope(new { RequestId = 123, UserId = ""user1"" }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = new LoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count);
+        
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.NotNull(beginScopeUsage.MessageTemplate);
+    }
 }

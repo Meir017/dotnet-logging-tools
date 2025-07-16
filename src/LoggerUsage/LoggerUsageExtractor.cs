@@ -15,11 +15,13 @@ public class LoggerUsageExtractor
 
     public LoggerUsageExtractor(ILoggerFactory loggerFactory)
     {
-        _logger = loggerFactory.CreateLogger<LoggerUsageExtractor>();        _analyzers =
+        _logger = loggerFactory.CreateLogger<LoggerUsageExtractor>();
+        _analyzers =
         [
             new LogMethodAnalyzer(loggerFactory),
             new LoggerMessageAttributeAnalyzer(loggerFactory),
-            new LoggerMessageDefineAnalyzer(loggerFactory)
+            new LoggerMessageDefineAnalyzer(loggerFactory),
+            new BeginScopeAnalyzer(loggerFactory),
         ];
     }
 
