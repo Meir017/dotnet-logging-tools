@@ -56,8 +56,7 @@ namespace LoggerUsage.Analyzers
 
             var stateArgument = operation.Arguments[argumentIndex];
 
-            // For now, just capture the argument as a string representation
-            // We'll enhance this to detect different scope types later
+            // Extract message template from the state argument
             if (stateArgument.Value is ILiteralOperation literal && literal.ConstantValue.HasValue)
             {
                 usage.MessageTemplate = literal.ConstantValue.Value?.ToString();
@@ -68,6 +67,62 @@ namespace LoggerUsage.Analyzers
                 var syntaxNode = stateArgument.Syntax;
                 usage.MessageTemplate = syntaxNode.ToString();
             }
+
+            // Extract message parameters if this is an extension method with a message template and args
+            if (operation.TargetMethod.IsExtensionMethod && usage.MessageTemplate != null)
+            {
+                ExtractMessageParameters(operation, usage);
+            }
+        }
+
+        private static void ExtractMessageParameters(IInvocationOperation operation, LoggerUsageInfo usage)
+        {
+            var messageTemplate = usage.MessageTemplate;
+            if (string.IsNullOrEmpty(messageTemplate))
+                return;
+
+            var formatter = new LogValuesFormatter(messageTemplate);
+            if (formatter.ValueNames.Count == 0)
+                return;
+
+            var messageParameters = new List<MessageParameter>();
+
+            // For extension methods, the params array is in argument index 2 (after 'this' and messageFormat)
+            if (operation.Arguments.Length > 2)
+            {
+                var paramsArgument = operation.Arguments[2].Value.UnwrapConversion();
+                
+                // Check if this is an array creation with elements
+                if (paramsArgument is IArrayCreationOperation arrayCreation && arrayCreation.Initializer != null)
+                {
+                    // Extract individual elements from the params array
+                    for (int i = 0; i < arrayCreation.Initializer.ElementValues.Length && i < formatter.ValueNames.Count; i++)
+                    {
+                        var element = arrayCreation.Initializer.ElementValues[i].UnwrapConversion();
+                        var parameterName = formatter.ValueNames[i];
+
+                        messageParameters.Add(new MessageParameter(
+                            Name: parameterName,
+                            Type: element.Type?.ToPrettyDisplayString() ?? "object",
+                            Kind: element.ConstantValue.HasValue ? "Constant" : element.Kind.ToString()
+                        ));
+                    }
+                }
+                else
+                {
+                    // Fallback: if not an array creation, treat as single parameter
+                    if (formatter.ValueNames.Count > 0)
+                    {
+                        messageParameters.Add(new MessageParameter(
+                            Name: formatter.ValueNames[0],
+                            Type: paramsArgument.Type?.ToPrettyDisplayString() ?? "object",
+                            Kind: paramsArgument.ConstantValue.HasValue ? "Constant" : paramsArgument.Kind.ToString()
+                        ));
+                    }
+                }
+            }
+
+            usage.MessageParameters = messageParameters;
         }
     }
 }
