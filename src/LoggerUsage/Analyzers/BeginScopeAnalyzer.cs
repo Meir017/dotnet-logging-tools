@@ -6,9 +6,13 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage.Analyzers
 {
-    internal class BeginScopeAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
+    internal class BeginScopeAnalyzer : ILoggerUsageAnalyzer
     {
-        private readonly ILogger<BeginScopeAnalyzer> _logger = loggerFactory.CreateLogger<BeginScopeAnalyzer>();
+        public BeginScopeAnalyzer(ILoggerFactory loggerFactory)
+        {
+            // Logger factory is accepted for consistency with other analyzers but not currently used
+            _ = loggerFactory;
+        }
 
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
@@ -40,89 +44,75 @@ namespace LoggerUsage.Analyzers
             };
 
             // Extract scope state information
-            ExtractScopeState(operation, usage);
+            ExtractScopeState(operation, usage, loggingTypes);
 
             return usage;
         }
 
-        private static void ExtractScopeState(IInvocationOperation operation, LoggerUsageInfo usage)
+        private static void ExtractScopeState(IInvocationOperation operation, LoggerUsageInfo usage, LoggingTypes loggingTypes)
         {
-            // For extension methods, skip the first argument (this parameter)
-            // For core methods, use the first argument
-            int argumentIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
-            
+            var argumentIndex = ScopeParameterExtractor.GetArgumentIndex(operation);
+
             if (operation.Arguments.Length <= argumentIndex)
                 return;
 
             var stateArgument = operation.Arguments[argumentIndex];
 
             // Extract message template from the state argument
+            ExtractMessageTemplate(stateArgument, usage);
+
+            // Extract message parameters based on the argument type and method type
+            ExtractParameters(operation, stateArgument, usage, loggingTypes);
+        }
+
+        #region State Extraction Strategy
+
+        /// <summary>
+        /// Extracts the message template from the state argument if it's a literal value.
+        /// </summary>
+        private static void ExtractMessageTemplate(IArgumentOperation stateArgument, LoggerUsageInfo usage)
+        {
             if (stateArgument.Value is ILiteralOperation literal && literal.ConstantValue.HasValue)
             {
                 usage.MessageTemplate = literal.ConstantValue.Value?.ToString();
             }
-            else
-            {
-                // For complex expressions, store the syntax representation
-                var syntaxNode = stateArgument.Syntax;
-                usage.MessageTemplate = syntaxNode.ToString();
-            }
+        }
 
-            // Extract message parameters if this is an extension method with a message template and args
+        /// <summary>
+        /// Determines the parameter extraction strategy based on method type and argument content.
+        /// </summary>
+        private static void ExtractParameters(IInvocationOperation operation, IArgumentOperation stateArgument, LoggerUsageInfo usage, LoggingTypes loggingTypes)
+        {
             if (operation.TargetMethod.IsExtensionMethod && usage.MessageTemplate != null)
             {
-                ExtractMessageParameters(operation, usage);
+                // Handle extension methods with message templates
+                ScopeParameterExtractor.ExtractMessageParameters(operation, usage);
             }
-        }
-
-        private static void ExtractMessageParameters(IInvocationOperation operation, LoggerUsageInfo usage)
-        {
-            var messageTemplate = usage.MessageTemplate;
-            if (string.IsNullOrEmpty(messageTemplate))
-                return;
-
-            var formatter = new LogValuesFormatter(messageTemplate);
-            if (formatter.ValueNames.Count == 0)
-                return;
-
-            var messageParameters = new List<MessageParameter>();
-
-            // For extension methods, the params array is in argument index 2 (after 'this' and messageFormat)
-            if (operation.Arguments.Length > 2)
+            else if (!operation.TargetMethod.IsExtensionMethod)
             {
-                var paramsArgument = operation.Arguments[2].Value.UnwrapConversion();
-                
-                // Check if this is an array creation with elements
-                if (paramsArgument is IArrayCreationOperation arrayCreation && arrayCreation.Initializer != null)
-                {
-                    // Extract individual elements from the params array
-                    for (int i = 0; i < arrayCreation.Initializer.ElementValues.Length && i < formatter.ValueNames.Count; i++)
-                    {
-                        var element = arrayCreation.Initializer.ElementValues[i].UnwrapConversion();
-                        var parameterName = formatter.ValueNames[i];
+                // Handle core ILogger.BeginScope method
+                ExtractCoreMethodParameters(stateArgument, usage, loggingTypes);
+            }
+        }
 
-                        messageParameters.Add(new MessageParameter(
-                            Name: parameterName,
-                            Type: element.Type?.ToPrettyDisplayString() ?? "object",
-                            Kind: element.ConstantValue.HasValue ? "Constant" : element.Kind.ToString()
-                        ));
-                    }
-                }
-                else
-                {
-                    // Fallback: if not an array creation, treat as single parameter
-                    if (formatter.ValueNames.Count > 0)
-                    {
-                        messageParameters.Add(new MessageParameter(
-                            Name: formatter.ValueNames[0],
-                            Type: paramsArgument.Type?.ToPrettyDisplayString() ?? "object",
-                            Kind: paramsArgument.ConstantValue.HasValue ? "Constant" : paramsArgument.Kind.ToString()
-                        ));
-                    }
-                }
+        /// <summary>
+        /// Extracts parameters from core ILogger.BeginScope method calls.
+        /// </summary>
+        private static void ExtractCoreMethodParameters(IArgumentOperation stateArgument, LoggerUsageInfo usage, LoggingTypes loggingTypes)
+        {
+            // Try to extract key-value pairs first
+            if (KeyValuePairHandler.TryExtractKeyValuePairParameters(stateArgument, usage, loggingTypes))
+            {
+                return; // Successfully extracted key-value pairs
             }
 
-            usage.MessageParameters = messageParameters;
+            // Fallback to anonymous object extraction
+            if (stateArgument.Value is IAnonymousObjectCreationOperation objectCreation)
+            {
+                ScopeParameterExtractor.ExtractAnonymousObjectProperties(objectCreation, usage);
+            }
         }
+
+        #endregion
     }
 }

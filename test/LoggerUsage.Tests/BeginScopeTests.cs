@@ -66,7 +66,7 @@ public class TestClass
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         Assert.NotNull(beginScopeUsage);
         Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.NotNull(beginScopeUsage.MessageTemplate);
+        Assert.Null(beginScopeUsage.MessageTemplate);
     }
 
     [Theory]
@@ -228,32 +228,126 @@ public class TestClass
         Assert.Equal("Constant", beginScopeUsage.MessageParameters[2].Kind);
     }
 
-    [Fact]
-    public async Task BeginScope_CoreMethod_NoParameters()
+    [Theory]
+    [MemberData(nameof(KeyValuePairBeginScopeTestCases))]
+    public async Task BeginScope_KeyValuePairCollections_DetectedCorrectly(string testCode, int expectedParameterCount, List<MessageParameter> expectedParameters)
     {
         // Arrange
-        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
-namespace TestNamespace;
-
-public class TestClass
-{
-    public void TestMethod(ILogger logger)
-    {
-        using (logger.BeginScope(new { RequestId = 123, UserId = ""user1"" }))
-        {
-            // scope content
-        }
-    }
-}");
+        var compilation = await TestUtils.CreateCompilationAsync(testCode);
         var extractor = new LoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
 
         // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count);
+        
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         Assert.NotNull(beginScopeUsage);
-        Assert.Equal("new { RequestId = 123, UserId = \"user1\" }", beginScopeUsage.MessageTemplate);
-        Assert.Empty(beginScopeUsage.MessageParameters); // Core method doesn't extract parameters like extension method
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Null(beginScopeUsage.MessageTemplate);
+
+        // Assert.Skip("TODO: parse KeyValuePair collections correctly");
+        Assert.Equal(expectedParameterCount, beginScopeUsage.MessageParameters.Count);
+        
+        for (int i = 0; i < expectedParameters.Count; i++)
+        {
+            Assert.Equal(expectedParameters[i].Name, beginScopeUsage.MessageParameters[i].Name);
+            Assert.Equal(expectedParameters[i].Type, beginScopeUsage.MessageParameters[i].Type);
+            Assert.Equal(expectedParameters[i].Kind, beginScopeUsage.MessageParameters[i].Kind);
+        }
     }
+
+    public static TheoryData<string, int, List<MessageParameter>> KeyValuePairBeginScopeTestCases() => new()
+    {
+        {
+            @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(new List<KeyValuePair<string, object?>>
+        {
+            new(""RequestId"", 123),
+            new(""UserId"", ""user1""),
+            new(""Operation"", ""Create"")
+        }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}",
+            3,
+            new List<MessageParameter>
+            {
+                new("RequestId", "int", "Constant"),
+                new("UserId", "string", "Constant"),
+                new("Operation", "string", "Constant")
+            }
+        },
+        {
+            @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(new KeyValuePair<string, object?>[]
+        {
+            new(""RequestId"", 123),
+            new(""UserId"", ""user1"")
+        }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}",
+            2,
+            new List<MessageParameter>
+            {
+                new("RequestId", "int", "Constant"),
+                new("UserId", "string", "Constant")
+            }
+        },
+        {
+            @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(new Dictionary<string, object?>
+        {
+            [""RequestId""] = 123,
+            [""UserId""] = ""user1"",
+            [""IsActive""] = true
+        }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}",
+            3,
+            new List<MessageParameter>
+            {
+                new("RequestId", "int", "Constant"),
+                new("UserId", "string", "Constant"),
+                new("IsActive", "bool", "Constant")
+            }
+        }
+    };
 }
