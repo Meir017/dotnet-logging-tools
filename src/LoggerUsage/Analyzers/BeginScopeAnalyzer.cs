@@ -40,17 +40,17 @@ namespace LoggerUsage.Analyzers
             };
 
             // Extract scope state information
-            ExtractScopeState(operation, usage);
+            ExtractScopeState(operation, usage, loggingTypes);
 
             return usage;
         }
 
-        private static void ExtractScopeState(IInvocationOperation operation, LoggerUsageInfo usage)
+        private static void ExtractScopeState(IInvocationOperation operation, LoggerUsageInfo usage, LoggingTypes loggingTypes)
         {
             // For extension methods, skip the first argument (this parameter)
             // For core methods, use the first argument
             int argumentIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
-            
+
             if (operation.Arguments.Length <= argumentIndex)
                 return;
 
@@ -61,17 +61,48 @@ namespace LoggerUsage.Analyzers
             {
                 usage.MessageTemplate = literal.ConstantValue.Value?.ToString();
             }
-            else
-            {
-                // For complex expressions, store the syntax representation
-                var syntaxNode = stateArgument.Syntax;
-                usage.MessageTemplate = syntaxNode.ToString();
-            }
 
-            // Extract message parameters if this is an extension method with a message template and args
+            // Extract message parameters based on the argument type
             if (operation.TargetMethod.IsExtensionMethod && usage.MessageTemplate != null)
             {
                 ExtractMessageParameters(operation, usage);
+            }
+            else if (!operation.TargetMethod.IsExtensionMethod)
+            {
+                // For core ILogger.BeginScope method, try to extract key-value pairs if the argument is a KeyValuePair collection
+                if (TryExtractKeyValuePairParameters(stateArgument, usage, loggingTypes))
+                {
+                    // Key-value pairs were extracted successfully
+                }
+                else if (stateArgument.Value is IAnonymousObjectCreationOperation objectCreation)
+                {
+                    ExtractAnonymousObjectProperties(objectCreation, usage, loggingTypes);
+                }
+            }
+        }
+
+        private static void ExtractAnonymousObjectProperties(IAnonymousObjectCreationOperation objectCreation, LoggerUsageInfo usage, LoggingTypes loggingTypes)
+        {
+            foreach (var property in objectCreation.Initializers)
+            {
+                if (property is not ISimpleAssignmentOperation assignment)
+                    continue;
+
+                var propertyName = assignment.Target.Syntax switch
+                {
+                    IdentifierNameSyntax identifier => identifier.Identifier.Text,
+                    _ => null
+                };
+                if (propertyName == null)
+                    continue;
+
+                var value = assignment.Value.ConstantValue;
+                usage.MessageParameters ??= new List<MessageParameter>();
+                usage.MessageParameters.Add(new MessageParameter(
+                    Name: propertyName,
+                    Type: assignment.Value.Type?.ToPrettyDisplayString() ?? "object",
+                    Kind: value.HasValue ? "Constant" : assignment.Value.Kind.ToString()
+                ));
             }
         }
 
@@ -91,7 +122,7 @@ namespace LoggerUsage.Analyzers
             if (operation.Arguments.Length > 2)
             {
                 var paramsArgument = operation.Arguments[2].Value.UnwrapConversion();
-                
+
                 // Check if this is an array creation with elements
                 if (paramsArgument is IArrayCreationOperation arrayCreation && arrayCreation.Initializer != null)
                 {
@@ -123,6 +154,272 @@ namespace LoggerUsage.Analyzers
             }
 
             usage.MessageParameters = messageParameters;
+        }
+
+        private static bool TryExtractKeyValuePairParameters(IArgumentOperation stateArgument, LoggerUsageInfo usage, LoggingTypes loggingTypes)
+        {
+            var messageParameters = new List<MessageParameter>();
+
+            // Handle different types of collections that implement IEnumerable<KeyValuePair<string, object?>>
+            if (stateArgument.Value is IObjectCreationOperation objectCreation)
+            {
+                // Check if this is a KeyValuePair collection before extracting
+                if (objectCreation.Type != null && IsKeyValuePairEnumerable(objectCreation.Type, loggingTypes))
+                {
+                    // Handle new List<KeyValuePair<string, object?>> { ... }
+                    // Handle new Dictionary<string, object?> { ... }
+                    if (objectCreation.Initializer != null)
+                    {
+                        ExtractFromCollectionInitializer(objectCreation.Initializer, messageParameters, loggingTypes);
+                    }
+                    usage.MessageParameters = messageParameters;
+                    return true;
+                }
+            }
+            else if (stateArgument.Value is IArrayCreationOperation arrayCreation)
+            {
+                // Check if this is a KeyValuePair array before extracting
+                if (arrayCreation.Type is IArrayTypeSymbol arrayType && IsKeyValuePairType(arrayType.ElementType, loggingTypes))
+                {
+                    // Handle new KeyValuePair<string, object?>[] { ... }
+                    if (arrayCreation.Initializer != null)
+                    {
+                        ExtractFromArrayInitializer(arrayCreation.Initializer, messageParameters, loggingTypes);
+                    }
+                    usage.MessageParameters = messageParameters;
+                    return true;
+                }
+            }
+            else if (stateArgument.Value is ILocalReferenceOperation localRef)
+            {
+                // Check if this is a KeyValuePair collection before extracting
+                if (localRef.Local.Type != null && IsKeyValuePairEnumerable(localRef.Local.Type, loggingTypes))
+                {
+                    // Handle variables that hold collections
+                    ExtractFromLocalReference(localRef, messageParameters, loggingTypes);
+                    usage.MessageParameters = messageParameters;
+                    return true;
+                }
+            }
+            else if (stateArgument.Value is IFieldReferenceOperation fieldRef)
+            {
+                // Check if this is a KeyValuePair collection before extracting
+                if (fieldRef.Field.Type != null && IsKeyValuePairEnumerable(fieldRef.Field.Type, loggingTypes))
+                {
+                    // Handle field references that hold collections
+                    ExtractFromFieldReference(fieldRef, messageParameters, loggingTypes);
+                    usage.MessageParameters = messageParameters;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void ExtractFromCollectionInitializer(IObjectOrCollectionInitializerOperation initializer, List<MessageParameter> messageParameters, LoggingTypes loggingTypes)
+        {
+            foreach (var elementInitializer in initializer.Initializers)
+            {
+                if (elementInitializer is IObjectCreationOperation keyValuePairCreation)
+                {
+                    // Handle new KeyValuePair<string, object?>("key", value) syntax
+                    // Also handles new("key", value) target-typed syntax
+                    ExtractKeyValuePairFromObjectCreation(keyValuePairCreation, messageParameters, loggingTypes);
+                }
+                else if (elementInitializer is IInvocationOperation invocation)
+                {
+                    // Handle Add() method calls or other invocation patterns
+                    if (invocation.Arguments.Length >= 2)
+                    {
+                        var keyArg = invocation.Arguments[0].Value;
+                        var valueArg = invocation.Arguments[1].Value;
+
+                        if (keyArg is ILiteralOperation keyLiteral &&
+                            keyLiteral.ConstantValue.HasValue &&
+                            keyLiteral.ConstantValue.Value is string key)
+                        {
+                            var parameter = new MessageParameter(
+                                Name: key,
+                                Type: valueArg.Type?.ToPrettyDisplayString() ?? "object",
+                                Kind: valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
+                            );
+                            messageParameters.Add(parameter);
+                        }
+                    }
+                    else if (invocation.Arguments.Length == 1)
+                    {
+                        // Handle single argument invocations, e.g., Add("key")
+                        if (invocation.Arguments[0].Value is ILiteralOperation keyLiteral &&
+                            keyLiteral.ConstantValue.HasValue &&
+                            keyLiteral.ConstantValue.Value is string key)
+                        {
+                            var parameter = new MessageParameter(
+                                Name: key,
+                                Type: "object",
+                                Kind: "Constant"
+                            );
+                            messageParameters.Add(parameter);
+                        }
+                        else if (loggingTypes.KeyValuePairOfStringNullableObject.Equals(invocation.Arguments[0].Value.Type, SymbolEqualityComparer.Default))
+                        {
+                            // Handle new KeyValuePair<string, object?>("key", value) syntax
+                            if (invocation.Arguments[0].Value.UnwrapConversion() is IObjectCreationOperation kvpCreation)
+                            {
+                                ExtractKeyValuePairFromObjectCreation(kvpCreation, messageParameters, loggingTypes);
+                            }
+                        }
+                    }
+                }
+                else if (elementInitializer is ISimpleAssignmentOperation assignment)
+                {
+                    // Handle ["key"] = value syntax for Dictionary
+                    if (assignment.Target is IPropertyReferenceOperation propertyReference &&
+                        propertyReference.Arguments.Length == 1 &&
+                        propertyReference.Arguments[0].Value is ILiteralOperation keyLiteral &&
+                        keyLiteral.ConstantValue.HasValue &&
+                        keyLiteral.ConstantValue.Value is string key)
+                    {
+                        var valueArg = assignment.Value.UnwrapConversion();
+                        var parameter = new MessageParameter(
+                            Name: key,
+                            Type: valueArg.Type?.ToPrettyDisplayString() ?? "object",
+                            Kind: valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
+                        );
+                        messageParameters.Add(parameter);
+                    }
+                }
+            }
+        }
+
+        private static void ExtractKeyValuePairFromObjectCreation(IObjectCreationOperation keyValuePairCreation, List<MessageParameter> messageParameters, LoggingTypes loggingTypes)
+        {
+            if (keyValuePairCreation.Arguments.Length >= 2)
+            {
+                var keyArg = keyValuePairCreation.Arguments[0].Value;
+                var valueArg = keyValuePairCreation.Arguments[1].Value.UnwrapConversion();
+
+                if (keyArg is ILiteralOperation keyLiteral &&
+                    keyLiteral.ConstantValue.HasValue &&
+                    keyLiteral.ConstantValue.Value is string key)
+                {
+                    var parameter = new MessageParameter(
+                        Name: key,
+                        Type: valueArg.Type?.ToPrettyDisplayString() ?? "object",
+                        Kind: valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
+                    );
+                    messageParameters.Add(parameter);
+                }
+            }
+            else if (keyValuePairCreation.Initializer is not null)
+            {
+                // Handle cases where the KeyValuePair is initialized with an initializer
+                ExtractFromCollectionInitializer(keyValuePairCreation.Initializer, messageParameters, loggingTypes);
+            }
+        }
+
+        private static void ExtractFromArrayInitializer(IArrayInitializerOperation initializer, List<MessageParameter> messageParameters, LoggingTypes loggingTypes)
+        {
+            foreach (var element in initializer.ElementValues)
+            {
+                var unwrappedElement = element.UnwrapConversion();
+                if (unwrappedElement is IInvocationOperation invocation)
+                {
+                    // Handle new("key", value) syntax for KeyValuePair in array
+                    if (invocation.Arguments.Length >= 2)
+                    {
+                        var keyArg = invocation.Arguments[0].Value;
+                        var valueArg = invocation.Arguments[1].Value.UnwrapConversion();
+
+                        if (keyArg is ILiteralOperation keyLiteral &&
+                            keyLiteral.ConstantValue.HasValue &&
+                            keyLiteral.ConstantValue.Value is string key)
+                        {
+                            var parameter = new MessageParameter(
+                                Name: key,
+                                Type: valueArg.Type?.ToPrettyDisplayString() ?? "object",
+                                Kind: valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
+                            );
+                            messageParameters.Add(parameter);
+                        }
+                    }
+                }
+                else if (unwrappedElement is IObjectCreationOperation keyValuePairCreation)
+                {
+                    // Handle new KeyValuePair<string, object?>("key", value) syntax in array
+                    ExtractKeyValuePairFromObjectCreation(keyValuePairCreation, messageParameters, loggingTypes);
+                }
+            }
+        }
+
+        private static void ExtractFromLocalReference(ILocalReferenceOperation localRef, List<MessageParameter> messageParameters, LoggingTypes loggingTypes)
+        {
+            // For local variables, we'd need to track the variable assignment to extract the key-value pairs
+            // This is a more complex scenario that would require dataflow analysis
+            // For now, we'll add a placeholder indicating we found a local reference
+            if (localRef.Local.Type != null && IsKeyValuePairEnumerable(localRef.Local.Type, loggingTypes))
+            {
+                // Add a generic parameter to indicate we found a key-value collection but couldn't extract details
+                messageParameters.Add(new MessageParameter(
+                    Name: $"<{localRef.Local.Name}>",
+                    Type: localRef.Local.Type.ToPrettyDisplayString(),
+                    Kind: localRef.Kind.ToString()
+                ));
+            }
+        }
+
+        private static void ExtractFromFieldReference(IFieldReferenceOperation fieldRef, List<MessageParameter> messageParameters, LoggingTypes loggingTypes)
+        {
+            // Similar to local reference, field analysis would require more complex tracking
+            if (fieldRef.Field.Type != null && IsKeyValuePairEnumerable(fieldRef.Field.Type, loggingTypes))
+            {
+                messageParameters.Add(new MessageParameter(
+                    Name: $"<{fieldRef.Field.Name}>",
+                    Type: fieldRef.Field.Type.ToPrettyDisplayString(),
+                    Kind: fieldRef.Kind.ToString()
+                ));
+            }
+        }
+
+        private static bool IsKeyValuePairEnumerable(ITypeSymbol type, LoggingTypes loggingTypes)
+        {
+            // Debug: Show what type we're checking
+            var typeDisplay = type?.ToDisplayString() ?? "null";
+
+            // Check if the type implements IEnumerable<KeyValuePair<string, object?>>
+            if (type is INamedTypeSymbol namedType)
+            {
+                // Direct check for IEnumerable<KeyValuePair<string, object?>>
+                if (namedType.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+                {
+                    var typeArg = namedType.TypeArguments.FirstOrDefault();
+                    var result = IsKeyValuePairType(typeArg, loggingTypes);
+                    return result;
+                }
+
+                // Check implemented interfaces
+                foreach (var interfaceType in namedType.AllInterfaces)
+                {
+                    if (interfaceType.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+                    {
+                        var typeArg = interfaceType.TypeArguments.FirstOrDefault();
+                        if (IsKeyValuePairType(typeArg, loggingTypes))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsKeyValuePairType(ITypeSymbol? type, LoggingTypes loggingTypes)
+        {
+            if (type is not INamedTypeSymbol namedType)
+                return false;
+
+            // Use the pre-resolved KeyValuePair<string, object?> symbol for cleaner comparison
+            return SymbolEqualityComparer.Default.Equals(namedType, loggingTypes.KeyValuePairOfStringNullableObject);
         }
     }
 }

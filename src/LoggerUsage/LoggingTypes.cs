@@ -14,10 +14,14 @@ namespace LoggerUsage
             LogLevel = compilation.GetTypeByMetadataName(typeof(LogLevel).FullName!)!;
             LoggerExtensions = compilation.GetTypeByMetadataName(typeof(LoggerExtensions).FullName!)!;
             LoggerMessage = compilation.GetTypeByMetadataName(typeof(LoggerMessage).FullName!)!;
-            Exception = compilation.GetTypeByMetadataName(typeof(System.Exception).FullName!)!;
+            Exception = compilation.GetTypeByMetadataName(typeof(Exception).FullName!)!;
             LoggerExtensionModeler = new(this);
-            ObjectNullableArray = compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Object), 
+            ObjectNullableArray = compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Object),
                 elementNullableAnnotation: NullableAnnotation.Annotated);
+
+            KeyValuePairOfStringNullableObject = compilation.GetTypeByMetadataName(typeof(KeyValuePair<,>).FullName!)!.Construct(
+                compilation.GetSpecialType(SpecialType.System_String),
+                compilation.GetSpecialType(SpecialType.System_Object).WithNullableAnnotation(NullableAnnotation.Annotated));
         }
 
         public INamedTypeSymbol ILogger { get; }
@@ -29,6 +33,8 @@ namespace LoggerUsage
         public INamedTypeSymbol Exception { get; }
         public IArrayTypeSymbol ObjectNullableArray { get; }
         public INamedTypeSymbol LogPropertiesAttribute { get; }
+
+        public INamedTypeSymbol KeyValuePairOfStringNullableObject { get; }
 
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
     }
