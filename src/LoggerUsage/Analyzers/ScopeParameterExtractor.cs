@@ -45,24 +45,12 @@ namespace LoggerUsage.Analyzers
         /// </summary>
         public static void ExtractAnonymousObjectProperties(IAnonymousObjectCreationOperation objectCreation, LoggerUsageInfo usage)
         {
-            usage.MessageParameters ??= new List<MessageParameter>();
-
-            foreach (var property in objectCreation.Initializers)
+            // Use AnonymousObjectParameterExtractor from the strategy pattern
+            var extractor = new LoggerUsage.ParameterExtraction.AnonymousObjectParameterExtractor();
+            if (extractor.TryExtractParameters(objectCreation, null!, null, out var parameters))
             {
-                if (property is not ISimpleAssignmentOperation assignment)
-                    continue;
-
-                var propertyName = GetPropertyName(assignment.Target.Syntax);
-                if (propertyName == null)
-                    continue;
-
-                var parameter = CreateMessageParameter(
-                    propertyName,
-                    assignment.Value.Type?.ToPrettyDisplayString() ?? "object",
-                    assignment.Value.ConstantValue.HasValue ? "Constant" : assignment.Value.Kind.ToString()
-                );
-
-                usage.MessageParameters.Add(parameter);
+                usage.MessageParameters ??= new List<MessageParameter>();
+                usage.MessageParameters.AddRange(parameters);
             }
         }
 

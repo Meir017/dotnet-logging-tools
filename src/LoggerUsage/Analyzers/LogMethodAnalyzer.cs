@@ -219,39 +219,9 @@ namespace LoggerUsage.Analyzers
 
         private static bool TryExtractMessageParameters(IInvocationOperation operation, LoggingTypes loggingTypes, string messageTemplate, out List<MessageParameter> messageParameters)
         {
-            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
-            messageParameters = new List<MessageParameter>();
-
-            for (int i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length && i < operation.Arguments.Length; i++)
-            {
-                var param = operation.TargetMethod.Parameters[i];
-                var arg = operation.Arguments[i].Value;
-
-                if (!loggingTypes.ObjectNullableArray.Equals(param.Type, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                if (arg is not IArrayCreationOperation arrayCreation)
-                {
-                    continue;
-                }
-
-                var formatter = new LogValuesFormatter(messageTemplate);
-
-                foreach (var element in arrayCreation.Initializer?.ElementValues ?? [])
-                {
-                    var paramValue = element.UnwrapConversion();
-
-                    messageParameters.Add(new MessageParameter(
-                        Name: formatter.ValueNames[messageParameters.Count],
-                        Type: paramValue.Type!.ToPrettyDisplayString(),
-                        Kind: paramValue.ConstantValue.HasValue ? "Constant" : paramValue.Kind.ToString()
-                    ));
-                }
-            }
-
-            return messageParameters.Count > 0;
+            // Use ArrayParameterExtractor from the strategy pattern
+            var extractor = new LoggerUsage.ParameterExtraction.ArrayParameterExtractor();
+            return extractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out messageParameters);
         }
     }
 }

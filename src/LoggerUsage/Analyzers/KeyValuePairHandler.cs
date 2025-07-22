@@ -14,23 +14,14 @@ namespace LoggerUsage.Analyzers
         /// </summary>
         public static bool TryExtractKeyValuePairParameters(IArgumentOperation stateArgument, LoggerUsageInfo usage, LoggingTypes loggingTypes)
         {
-            var messageParameters = new List<MessageParameter>();
-
-            bool extracted = stateArgument.Value switch
-            {
-                IObjectCreationOperation objectCreation => TryExtractFromObjectCreation(objectCreation, messageParameters, loggingTypes),
-                IArrayCreationOperation arrayCreation => TryExtractFromArrayCreation(arrayCreation, messageParameters, loggingTypes),
-                ILocalReferenceOperation localRef => TryExtractFromLocalReference(localRef, messageParameters, loggingTypes),
-                IFieldReferenceOperation fieldRef => TryExtractFromFieldReference(fieldRef, messageParameters, loggingTypes),
-                _ => false
-            };
-
-            if (extracted)
+            // Use KeyValuePairParameterExtractor from the strategy pattern
+            var extractor = new LoggerUsage.ParameterExtraction.KeyValuePairParameterExtractor();
+            if (extractor.TryExtractParameters(stateArgument.Value, loggingTypes, null, out var messageParameters))
             {
                 usage.MessageParameters = messageParameters;
+                return true;
             }
-
-            return extracted;
+            return false;
         }
 
         /// <summary>
