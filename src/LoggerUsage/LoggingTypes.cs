@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage
 {
-    internal class LoggingTypes
+    public class LoggingTypes
     {
         public LoggingTypes(Compilation compilation, INamedTypeSymbol loggerInterface)
         {

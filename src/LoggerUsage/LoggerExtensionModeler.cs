@@ -6,7 +6,7 @@ namespace LoggerUsage
     /// <summary>
     /// Models all extension methods from LoggerExtensions and provides mapping to IMethodSymbol.
     /// </summary>
-    internal class LoggerExtensionModeler
+    public class LoggerExtensionModeler
     {
         private readonly Dictionary<string, List<IMethodSymbol>> _extensionMethodsByName = new();
         private readonly IMethodSymbol _loggerIsEnabledMethod;

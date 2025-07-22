@@ -1,6 +1,7 @@
 
 
 using LoggerUsage;
+using LoggerUsage.Services;
 using LoggerUsage.ReportGenerator;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure
@@ -16,6 +17,12 @@ public static class LoggerUsageBuilderExtensions
 {
     public static ILoggerUsageBuilder AddLoggerUsageExtractor(this IServiceCollection services)
     {
+        // Core services
+        services.AddSingleton<IScopeAnalysisService, ScopeAnalysisService>();
+        services.AddSingleton<IParameterExtractionService, ParameterExtractionService>();
+        services.AddSingleton<IKeyValuePairExtractionService, KeyValuePairExtractionService>();
+        
+        // Main extractor and report generator
         services.AddSingleton<LoggerUsageExtractor>();
         services.AddSingleton<ILoggerReportGeneratorFactory, LoggerReportGeneratorFactory>();
 

@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
 using LoggerUsage.Analyzers;
+using LoggerUsage.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 using System.Collections.Concurrent;
@@ -13,7 +14,7 @@ public class LoggerUsageExtractor
     private readonly ILoggerUsageAnalyzer[] _analyzers;
     private readonly ILogger<LoggerUsageExtractor> _logger;
 
-    public LoggerUsageExtractor(ILoggerFactory loggerFactory)
+    public LoggerUsageExtractor(ILoggerFactory loggerFactory, IScopeAnalysisService scopeAnalysisService)
     {
         _logger = loggerFactory.CreateLogger<LoggerUsageExtractor>();
         _analyzers =
@@ -21,11 +22,16 @@ public class LoggerUsageExtractor
             new LogMethodAnalyzer(loggerFactory),
             new LoggerMessageAttributeAnalyzer(loggerFactory),
             new LoggerMessageDefineAnalyzer(loggerFactory),
-            new BeginScopeAnalyzer(loggerFactory),
+            new BeginScopeAnalyzer(scopeAnalysisService, loggerFactory),
         ];
     }
 
-    public LoggerUsageExtractor() : this(NullLoggerFactory.Instance)
+    public LoggerUsageExtractor() : this(
+        NullLoggerFactory.Instance, 
+        new ScopeAnalysisService(
+            new ParameterExtractionService(NullLoggerFactory.Instance),
+            new KeyValuePairExtractionService(NullLoggerFactory.Instance),
+            NullLoggerFactory.Instance))
     {
     }
 
