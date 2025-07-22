@@ -20,7 +20,7 @@ public class TestClass
         LoggerMessage.Define<string>(LogLevel.Information, new EventId(1, ""UserCreated""), ""User {Name} was created"");
 }";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -62,7 +62,7 @@ public class TestClass
 }}";
 
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -112,7 +112,7 @@ public class TestClass
         LoggerMessage.Define({logLevelArg}, new EventId(1), ""Test message"");
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -149,7 +149,7 @@ public class TestClass
         LoggerMessage.Define(LogLevel.Information, new EventId(1), {messageArg});
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -198,7 +198,7 @@ public class TestClass
         LoggerMessage.Define{genericTypes}(LogLevel.Information, new EventId(1), ""{messageTemplate}"");
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);

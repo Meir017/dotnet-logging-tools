@@ -3,7 +3,7 @@ using LoggerUsage.Models;
 
 namespace LoggerUsage.Analyzers
 {
-    internal interface ILoggerUsageAnalyzer
+    public interface ILoggerUsageAnalyzer
     {
         IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel);
     }

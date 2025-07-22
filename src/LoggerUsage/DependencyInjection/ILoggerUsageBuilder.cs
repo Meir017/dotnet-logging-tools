@@ -7,6 +7,7 @@ using LoggerUsage.MessageTemplate;
 using LoggerUsage.ParameterExtraction;
 using LoggerUsage.Configuration;
 using LoggerUsage.Factories;
+using LoggerUsage.Analyzers;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,12 @@ public static class LoggerUsageBuilderExtensions
         // Message template and parameter factories
         services.AddSingleton<IMessageTemplateExtractor, MessageTemplateExtractor>();
         services.AddSingleton<IMessageParameterFactory, MessageParameterFactory>();
+        
+        // Analyzers
+        services.AddSingleton<ILoggerUsageAnalyzer, LogMethodAnalyzer>();
+        services.AddSingleton<ILoggerUsageAnalyzer, LoggerMessageAttributeAnalyzer>();
+        services.AddSingleton<ILoggerUsageAnalyzer, LoggerMessageDefineAnalyzer>();
+        services.AddSingleton<ILoggerUsageAnalyzer, BeginScopeAnalyzer>();
         
         // Main extractor and report generator
         services.AddSingleton<LoggerUsageExtractor>();
@@ -75,6 +82,12 @@ public static class LoggerUsageBuilderExtensions
         // Message template and parameter factories
         services.AddSingleton<IMessageTemplateExtractor, MessageTemplateExtractor>();
         services.AddSingleton<IMessageParameterFactory, MessageParameterFactory>();
+        
+        // Analyzers
+        services.AddSingleton<ILoggerUsageAnalyzer, LogMethodAnalyzer>();
+        services.AddSingleton<ILoggerUsageAnalyzer, LoggerMessageAttributeAnalyzer>();
+        services.AddSingleton<ILoggerUsageAnalyzer, LoggerMessageDefineAnalyzer>();
+        services.AddSingleton<ILoggerUsageAnalyzer, BeginScopeAnalyzer>();
         
         // Main extractor and report generator
         services.AddSingleton<LoggerUsageExtractor>();

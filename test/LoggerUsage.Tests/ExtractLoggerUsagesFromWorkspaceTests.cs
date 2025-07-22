@@ -27,7 +27,7 @@ public class TestClass
     }
 }") ] });
 
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
@@ -42,7 +42,7 @@ public class TestClass
     {
         // Arrange
         var workspace = await CreateTestWorkspace([]);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
@@ -84,7 +84,7 @@ public class ProjectBClass
             ]
         });
 
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
