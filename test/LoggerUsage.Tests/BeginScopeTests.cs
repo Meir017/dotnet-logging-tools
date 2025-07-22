@@ -22,7 +22,7 @@ public class TestClass
         }
     }
 }");
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -54,7 +54,7 @@ public class TestClass
         }
     }
 }");
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -102,7 +102,7 @@ public class TestClass
     }}
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -172,7 +172,7 @@ public class TestClass
         }
     }
 }");
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -204,7 +204,7 @@ public class TestClass
         }
     }
 }");
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -234,7 +234,7 @@ public class TestClass
     {
         // Arrange
         var compilation = await TestUtils.CreateCompilationAsync(testCode);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);

@@ -31,7 +31,7 @@ partial class TestClass
 {
     private static partial void TestLogMethod(ILogger logger) {}
 }");
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);

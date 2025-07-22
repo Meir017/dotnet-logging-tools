@@ -29,7 +29,7 @@ partial class Log
 }
 ";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -92,7 +92,7 @@ partial class Log
 ";
 
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -171,7 +171,7 @@ partial class Log
 }}
 ";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -219,7 +219,7 @@ partial class Log
 }}
 ";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);
@@ -289,7 +289,7 @@ public class LogData
     public System.DateTime Time {{ get; set; }}
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
-        var extractor = new LoggerUsageExtractor();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
         var loggerUsages = extractor.ExtractLoggerUsages(compilation);

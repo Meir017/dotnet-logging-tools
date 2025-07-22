@@ -1,7 +1,9 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LoggerUsage.Tests;
 
@@ -30,5 +32,15 @@ internal static class TestUtils
         );
         Assert.Empty(compilation.GetDiagnostics());
         return compilation;
+    }
+
+    public static LoggerUsageExtractor CreateLoggerUsageExtractor()
+    {
+        var services = new ServiceCollection();
+        services.AddLoggerUsageExtractor();
+        services.AddLogging();
+
+        return services.BuildServiceProvider()
+            .GetRequiredService<LoggerUsageExtractor>();
     }
 }
