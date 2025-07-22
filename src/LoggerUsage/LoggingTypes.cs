@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage
 {
-    internal class LoggingTypes
+    public class LoggingTypes
     {
         public LoggingTypes(Compilation compilation, INamedTypeSymbol loggerInterface)
         {
@@ -16,12 +16,14 @@ namespace LoggerUsage
             LoggerMessage = compilation.GetTypeByMetadataName(typeof(LoggerMessage).FullName!)!;
             Exception = compilation.GetTypeByMetadataName(typeof(Exception).FullName!)!;
             LoggerExtensionModeler = new(this);
-            ObjectNullableArray = compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Object),
-                elementNullableAnnotation: NullableAnnotation.Annotated);
 
-            KeyValuePairOfStringNullableObject = compilation.GetTypeByMetadataName(typeof(KeyValuePair<,>).FullName!)!.Construct(
-                compilation.GetSpecialType(SpecialType.System_String),
-                compilation.GetSpecialType(SpecialType.System_Object).WithNullableAnnotation(NullableAnnotation.Annotated));
+            var nullableObjectType = compilation.GetSpecialType(SpecialType.System_Object).WithNullableAnnotation(NullableAnnotation.Annotated);
+
+            ObjectNullableArray = compilation.CreateArrayTypeSymbol(nullableObjectType);
+            KeyValuePairGeneric = compilation.GetTypeByMetadataName(typeof(KeyValuePair<,>).FullName!)!;
+            KeyValuePairOfStringNullableObject = KeyValuePairGeneric.Construct(compilation.GetSpecialType(SpecialType.System_String), nullableObjectType);
+            IEnumerableOfKeyValuePair = compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T).Construct(KeyValuePairOfStringNullableObject);
+
         }
 
         public INamedTypeSymbol ILogger { get; }
@@ -35,6 +37,8 @@ namespace LoggerUsage
         public INamedTypeSymbol LogPropertiesAttribute { get; }
 
         public INamedTypeSymbol KeyValuePairOfStringNullableObject { get; }
+        public INamedTypeSymbol KeyValuePairGeneric { get; }
+        public INamedTypeSymbol IEnumerableOfKeyValuePair { get; }
 
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
     }
