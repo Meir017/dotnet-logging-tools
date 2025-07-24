@@ -173,7 +173,7 @@ namespace LoggerUsage.Analyzers
         private static bool TryExtractMessageParameters(AttributeData attribute, LoggingTypes loggingTypes, IMethodSymbol methodSymbol, string messageTemplate, out List<MessageParameter> messageParameters)
         {
             // Use MethodSignatureParameterExtractor from the strategy pattern
-            return LoggerUsage.ParameterExtraction.MethodSignatureParameterExtractor.TryExtractFromMethodSignature(
+            return ParameterExtraction.MethodSignatureParameterExtractor.TryExtractFromMethodSignature(
                 methodSymbol, messageTemplate, loggingTypes, out messageParameters);
         }
     }
