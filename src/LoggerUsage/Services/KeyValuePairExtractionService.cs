@@ -110,10 +110,10 @@ namespace LoggerUsage.Services
         {
             if (localRef.Local.Type != null && IsKeyValuePairEnumerable(localRef.Local.Type, loggingTypes))
             {
-                var parameter = MessageParameterFactory.CreateMessageParameter(
-                    $"<{localRef.Local.Name}>",
-                    localRef.Local.Type.ToPrettyDisplayString(),
-                    localRef.Kind.ToString()
+                var parameter = MessageParameterFactory.CreateFromReference(
+                    localRef.Local.Name,
+                    localRef.Local.Type,
+                    localRef.Kind
                 );
                 messageParameters.Add(parameter);
                 return true;
@@ -125,10 +125,10 @@ namespace LoggerUsage.Services
         {
             if (fieldRef.Field.Type != null && IsKeyValuePairEnumerable(fieldRef.Field.Type, loggingTypes))
             {
-                var parameter = MessageParameterFactory.CreateMessageParameter(
-                    $"<{fieldRef.Field.Name}>",
-                    fieldRef.Field.Type.ToPrettyDisplayString(),
-                    fieldRef.Kind.ToString()
+                var parameter = MessageParameterFactory.CreateFromReference(
+                    fieldRef.Field.Name,
+                    fieldRef.Field.Type,
+                    fieldRef.Kind
                 );
                 messageParameters.Add(parameter);
                 return true;
@@ -248,17 +248,11 @@ namespace LoggerUsage.Services
 
         private void ExtractFromKeyValueArguments(IOperation keyArg, IOperation valueArg, List<MessageParameter> messageParameters)
         {
-            var value = valueArg.UnwrapConversion();
-
             if (keyArg is ILiteralOperation keyLiteral &&
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                var parameter = MessageParameterFactory.CreateMessageParameter(
-                    key,
-                    value.Type?.ToPrettyDisplayString() ?? "object",
-                    value.ConstantValue.HasValue ? "Constant" : value.Kind.ToString()
-                );
+                var parameter = MessageParameterFactory.CreateFromKeyValue(key, valueArg);
                 messageParameters.Add(parameter);
             }
         }
