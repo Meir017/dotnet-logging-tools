@@ -39,6 +39,7 @@ public static class LoggerUsageBuilderExtensions
 
         // Parameter extraction
         services.AddSingleton<ArrayParameterExtractor>();
+        services.AddSingleton<AnonymousObjectParameterExtractor>();
 
         return new LoggerUsageBuilder(services);
     }

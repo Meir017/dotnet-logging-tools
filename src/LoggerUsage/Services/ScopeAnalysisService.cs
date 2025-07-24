@@ -132,7 +132,7 @@ namespace LoggerUsage.Services
             // Fallback to anonymous object extraction
             if (stateArgument.Value is IAnonymousObjectCreationOperation objectCreation)
             {
-                return _parameterExtractionService.ExtractFromAnonymousObject(objectCreation);
+                return _parameterExtractionService.ExtractFromAnonymousObject(objectCreation, loggingTypes);
             }
 
             return new List<MessageParameter>();

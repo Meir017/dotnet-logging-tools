@@ -8,7 +8,7 @@ namespace LoggerUsage.ParameterExtraction;
 /// <summary>
 /// Extracts parameters from anonymous object creation operations.
 /// </summary>
-internal class AnonymousObjectParameterExtractor : IParameterExtractor
+public class AnonymousObjectParameterExtractor : IParameterExtractor
 {
     public bool TryExtractParameters(
         IOperation operation, 

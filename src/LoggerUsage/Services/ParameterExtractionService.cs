@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
+using LoggerUsage.ParameterExtraction;
 
 namespace LoggerUsage.Services
 {
@@ -16,9 +17,13 @@ namespace LoggerUsage.Services
         private const int PARAMS_ARGUMENT_INDEX = 2;
 
         private readonly ILogger<ParameterExtractionService> _logger;
+        private readonly AnonymousObjectParameterExtractor _anonymousObjectParameterExtractor;
 
-        public ParameterExtractionService(ILoggerFactory loggerFactory)
+        public ParameterExtractionService(
+            AnonymousObjectParameterExtractor anonymousObjectParameterExtractor,
+            ILoggerFactory loggerFactory)
         {
+            _anonymousObjectParameterExtractor = anonymousObjectParameterExtractor;
             _logger = loggerFactory.CreateLogger<ParameterExtractionService>();
         }
 
@@ -56,34 +61,20 @@ namespace LoggerUsage.Services
             }
         }
 
-        public List<MessageParameter> ExtractFromAnonymousObject(IAnonymousObjectCreationOperation operation)
+        public List<MessageParameter> ExtractFromAnonymousObject(IAnonymousObjectCreationOperation operation, LoggingTypes loggingTypes)
         {
             try
             {
                 _logger.LogDebug("Extracting parameters from anonymous object");
 
-                var messageParameters = new List<MessageParameter>();
-
-                foreach (var property in operation.Initializers)
+                if (_anonymousObjectParameterExtractor.TryExtractParameters(operation, loggingTypes, null, out var parameters))
                 {
-                    if (property is not ISimpleAssignmentOperation assignment)
-                        continue;
-
-                    var propertyName = GetPropertyName(assignment.Target.Syntax);
-                    if (propertyName == null)
-                        continue;
-
-                    var parameter = CreateMessageParameter(
-                        propertyName,
-                        assignment.Value.Type?.ToPrettyDisplayString() ?? "object",
-                        assignment.Value.ConstantValue.HasValue ? "Constant" : assignment.Value.Kind.ToString()
-                    );
-
-                    messageParameters.Add(parameter);
+                    _logger.LogDebug("Successfully extracted {Count} parameters from anonymous object", parameters.Count);
+                    return parameters;
                 }
 
-                _logger.LogDebug("Successfully extracted {Count} parameters from anonymous object", messageParameters.Count);
-                return messageParameters;
+                _logger.LogDebug("No parameters extracted from anonymous object");
+                return new List<MessageParameter>();
             }
             catch (Exception ex)
             {
