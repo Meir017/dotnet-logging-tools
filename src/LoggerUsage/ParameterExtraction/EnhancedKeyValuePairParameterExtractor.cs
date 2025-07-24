@@ -6,27 +6,9 @@ using LoggerUsage.Models;
 namespace LoggerUsage.ParameterExtraction;
 
 /// <summary>
-/// Enhanced parameter extractor interface with comprehensive error handling.
-/// </summary>
-internal interface IEnhancedParameterExtractor : IParameterExtractor
-{
-    /// <summary>
-    /// Extracts parameters with detailed error reporting.
-    /// </summary>
-    /// <param name="operation">The operation to extract parameters from</param>
-    /// <param name="loggingTypes">The logging types context</param>
-    /// <param name="messageTemplate">Optional message template for context</param>
-    /// <returns>Extraction result containing parameters or error information</returns>
-    ExtractionResult<List<MessageParameter>> ExtractWithResult(
-        IOperation operation, 
-        LoggingTypes loggingTypes, 
-        string? messageTemplate = null);
-}
-
-/// <summary>
 /// Enhanced KeyValuePair parameter extractor with comprehensive error handling and diagnostics.
 /// </summary>
-internal class EnhancedKeyValuePairParameterExtractor : IEnhancedParameterExtractor
+internal class EnhancedKeyValuePairParameterExtractor : IParameterExtractor
 {
     private readonly ILogger<EnhancedKeyValuePairParameterExtractor> _logger;
 

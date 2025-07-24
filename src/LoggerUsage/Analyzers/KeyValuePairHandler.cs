@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.Analyzers
 {
@@ -128,7 +129,7 @@ namespace LoggerUsage.Analyzers
         {
             if (localRef.Local.Type != null && IsKeyValuePairEnumerable(localRef.Local.Type, loggingTypes))
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     $"<{localRef.Local.Name}>",
                     localRef.Local.Type.ToPrettyDisplayString(),
                     localRef.Kind.ToString()
@@ -143,7 +144,7 @@ namespace LoggerUsage.Analyzers
         {
             if (fieldRef.Field.Type != null && IsKeyValuePairEnumerable(fieldRef.Field.Type, loggingTypes))
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     $"<{fieldRef.Field.Name}>",
                     fieldRef.Field.Type.ToPrettyDisplayString(),
                     fieldRef.Kind.ToString()
@@ -179,7 +180,7 @@ namespace LoggerUsage.Analyzers
                     keyLiteral.ConstantValue.HasValue &&
                     keyLiteral.ConstantValue.Value is string key)
                 {
-                    var parameter = ScopeParameterExtractor.CreateMessageParameter(key, "object", "Constant");
+                    var parameter = MessageParameterFactory.CreateMessageParameter(key, "object", "Constant");
                     messageParameters.Add(parameter);
                 }
                 else if (loggingTypes.KeyValuePairOfStringNullableObject.Equals(argument.Value.Type, SymbolEqualityComparer.Default))
@@ -202,7 +203,7 @@ namespace LoggerUsage.Analyzers
                 keyLiteral.ConstantValue.Value is string key)
             {
                 var valueArg = assignment.Value.UnwrapConversion();
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     key,
                     valueArg.Type?.ToPrettyDisplayString() ?? "object",
                     valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
@@ -220,7 +221,7 @@ namespace LoggerUsage.Analyzers
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     key,
                     valueArg.Type?.ToPrettyDisplayString() ?? "object",
                     valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
@@ -237,7 +238,7 @@ namespace LoggerUsage.Analyzers
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     key,
                     unwrappedValueArg.Type?.ToPrettyDisplayString() ?? "object",
                     unwrappedValueArg.ConstantValue.HasValue ? "Constant" : unwrappedValueArg.Kind.ToString()

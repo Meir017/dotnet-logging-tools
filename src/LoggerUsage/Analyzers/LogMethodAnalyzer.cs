@@ -3,14 +3,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.ParameterExtraction;
 
 namespace LoggerUsage.Analyzers
 {
 
-    internal class LogMethodAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
+    internal class LogMethodAnalyzer(ArrayParameterExtractor arrayParameterExtractor) : ILoggerUsageAnalyzer
     {
-        private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
-
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
@@ -26,7 +25,7 @@ namespace LoggerUsage.Analyzers
             }
         }
 
-        private static LoggerUsageInfo ExtractLoggerMethodUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
+        private LoggerUsageInfo ExtractLoggerMethodUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
         {
             var usage = new LoggerUsageInfo
             {
@@ -51,7 +50,7 @@ namespace LoggerUsage.Analyzers
             if (TryExtractMessageTemplate(operation, loggingTypes, out var messageTemplate))
             {
                 usage.MessageTemplate = messageTemplate;
-                if (TryExtractMessageParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
+                if (arrayParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
                 {
                     usage.MessageParameters = messageParameters;
                 }
@@ -215,13 +214,6 @@ namespace LoggerUsage.Analyzers
 
             messageTemplate = string.Empty;
             return false;
-        }
-
-        private static bool TryExtractMessageParameters(IInvocationOperation operation, LoggingTypes loggingTypes, string messageTemplate, out List<MessageParameter> messageParameters)
-        {
-            // Use ArrayParameterExtractor from the strategy pattern
-            var extractor = new LoggerUsage.ParameterExtraction.ArrayParameterExtractor();
-            return extractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out messageParameters);
         }
     }
 }

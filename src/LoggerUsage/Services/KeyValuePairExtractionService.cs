@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
 using LoggerUsage.Analyzers;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.Services
 {
@@ -109,7 +110,7 @@ namespace LoggerUsage.Services
         {
             if (localRef.Local.Type != null && IsKeyValuePairEnumerable(localRef.Local.Type, loggingTypes))
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     $"<{localRef.Local.Name}>",
                     localRef.Local.Type.ToPrettyDisplayString(),
                     localRef.Kind.ToString()
@@ -124,7 +125,7 @@ namespace LoggerUsage.Services
         {
             if (fieldRef.Field.Type != null && IsKeyValuePairEnumerable(fieldRef.Field.Type, loggingTypes))
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     $"<{fieldRef.Field.Name}>",
                     fieldRef.Field.Type.ToPrettyDisplayString(),
                     fieldRef.Kind.ToString()
@@ -253,7 +254,7 @@ namespace LoggerUsage.Services
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     key,
                     value.Type?.ToPrettyDisplayString() ?? "object",
                     value.ConstantValue.HasValue ? "Constant" : value.Kind.ToString()
