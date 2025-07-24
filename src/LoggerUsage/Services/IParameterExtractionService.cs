@@ -20,8 +20,9 @@ namespace LoggerUsage.Services
         /// Extracts parameters from anonymous object creation operations.
         /// </summary>
         /// <param name="operation">The anonymous object creation operation</param>
+        /// <param name="loggingTypes">Type information for logging-related types</param>
         /// <returns>A list of extracted message parameters</returns>
-        List<MessageParameter> ExtractFromAnonymousObject(IAnonymousObjectCreationOperation operation);
+        List<MessageParameter> ExtractFromAnonymousObject(IAnonymousObjectCreationOperation operation, LoggingTypes loggingTypes);
 
         /// <summary>
         /// Gets the correct argument index based on whether the method is an extension method.

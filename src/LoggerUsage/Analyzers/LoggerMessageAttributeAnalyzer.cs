@@ -172,31 +172,9 @@ namespace LoggerUsage.Analyzers
 
         private static bool TryExtractMessageParameters(AttributeData attribute, LoggingTypes loggingTypes, IMethodSymbol methodSymbol, string messageTemplate, out List<MessageParameter> messageParameters)
         {
-            messageParameters = new List<MessageParameter>();
-            if (string.IsNullOrEmpty(messageTemplate))
-                return false;
-
-            // 1. Extract placeholders from the message template
-            var formatter = new LogValuesFormatter(messageTemplate);
-            if (formatter.ValueNames.Count == 0)
-                return false;
-            
-            // 2. Get method parameters, excluding ILogger, LogLevel, and Exception (by type)
-            var parameters = methodSymbol.Parameters
-                .Where(p =>
-                    !loggingTypes.LogLevel.Equals(p.Type, SymbolEqualityComparer.Default) &&
-                    !p.Type.IsLoggerInterface(loggingTypes) &&
-                    !p.Type.IsException(loggingTypes) &&
-                    !p.GetAttributes().Any(attr => loggingTypes.LogPropertiesAttribute.Equals(attr.AttributeClass, SymbolEqualityComparer.Default)))
-                .ToList();
-
-            for (int i = 0; i < parameters.Count; i++)
-            {
-                var parameterName = formatter.ValueNames[i];
-                messageParameters.Add(new MessageParameter(parameterName, parameters[i].Type.ToPrettyDisplayString(), null));
-            }
-
-            return messageParameters.Count > 0;
+            // Use MethodSignatureParameterExtractor from the strategy pattern
+            return ParameterExtraction.MethodSignatureParameterExtractor.TryExtractFromMethodSignature(
+                methodSymbol, messageTemplate, loggingTypes, out messageParameters);
         }
     }
 }

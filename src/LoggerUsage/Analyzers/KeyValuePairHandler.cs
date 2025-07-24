@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.Analyzers
 {
@@ -14,23 +15,14 @@ namespace LoggerUsage.Analyzers
         /// </summary>
         public static bool TryExtractKeyValuePairParameters(IArgumentOperation stateArgument, LoggerUsageInfo usage, LoggingTypes loggingTypes)
         {
-            var messageParameters = new List<MessageParameter>();
-
-            bool extracted = stateArgument.Value switch
-            {
-                IObjectCreationOperation objectCreation => TryExtractFromObjectCreation(objectCreation, messageParameters, loggingTypes),
-                IArrayCreationOperation arrayCreation => TryExtractFromArrayCreation(arrayCreation, messageParameters, loggingTypes),
-                ILocalReferenceOperation localRef => TryExtractFromLocalReference(localRef, messageParameters, loggingTypes),
-                IFieldReferenceOperation fieldRef => TryExtractFromFieldReference(fieldRef, messageParameters, loggingTypes),
-                _ => false
-            };
-
-            if (extracted)
+            // Use KeyValuePairParameterExtractor from the strategy pattern
+            var extractor = new LoggerUsage.ParameterExtraction.KeyValuePairParameterExtractor();
+            if (extractor.TryExtractParameters(stateArgument.Value, loggingTypes, null, out var messageParameters))
             {
                 usage.MessageParameters = messageParameters;
+                return true;
             }
-
-            return extracted;
+            return false;
         }
 
         /// <summary>
@@ -137,10 +129,10 @@ namespace LoggerUsage.Analyzers
         {
             if (localRef.Local.Type != null && IsKeyValuePairEnumerable(localRef.Local.Type, loggingTypes))
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
-                    $"<{localRef.Local.Name}>",
-                    localRef.Local.Type.ToPrettyDisplayString(),
-                    localRef.Kind.ToString()
+                var parameter = MessageParameterFactory.CreateFromReference(
+                    localRef.Local.Name,
+                    localRef.Local.Type,
+                    localRef.Kind
                 );
                 messageParameters.Add(parameter);
                 return true;
@@ -152,10 +144,10 @@ namespace LoggerUsage.Analyzers
         {
             if (fieldRef.Field.Type != null && IsKeyValuePairEnumerable(fieldRef.Field.Type, loggingTypes))
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
-                    $"<{fieldRef.Field.Name}>",
-                    fieldRef.Field.Type.ToPrettyDisplayString(),
-                    fieldRef.Kind.ToString()
+                var parameter = MessageParameterFactory.CreateFromReference(
+                    fieldRef.Field.Name,
+                    fieldRef.Field.Type,
+                    fieldRef.Kind
                 );
                 messageParameters.Add(parameter);
                 return true;
@@ -188,7 +180,7 @@ namespace LoggerUsage.Analyzers
                     keyLiteral.ConstantValue.HasValue &&
                     keyLiteral.ConstantValue.Value is string key)
                 {
-                    var parameter = ScopeParameterExtractor.CreateMessageParameter(key, "object", "Constant");
+                    var parameter = MessageParameterFactory.CreateMessageParameter(key, "object", "Constant");
                     messageParameters.Add(parameter);
                 }
                 else if (loggingTypes.KeyValuePairOfStringNullableObject.Equals(argument.Value.Type, SymbolEqualityComparer.Default))
@@ -211,7 +203,7 @@ namespace LoggerUsage.Analyzers
                 keyLiteral.ConstantValue.Value is string key)
             {
                 var valueArg = assignment.Value.UnwrapConversion();
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateMessageParameter(
                     key,
                     valueArg.Type?.ToPrettyDisplayString() ?? "object",
                     valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
@@ -223,34 +215,24 @@ namespace LoggerUsage.Analyzers
         private static void ExtractFromInvocationArguments(IInvocationOperation invocation, List<MessageParameter> messageParameters)
         {
             var keyArg = invocation.Arguments[0].Value;
-            var valueArg = invocation.Arguments[1].Value.UnwrapConversion();
+            var valueArg = invocation.Arguments[1].Value;
 
             if (keyArg is ILiteralOperation keyLiteral &&
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
-                    key,
-                    valueArg.Type?.ToPrettyDisplayString() ?? "object",
-                    valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
-                );
+                var parameter = MessageParameterFactory.CreateFromKeyValue(key, valueArg);
                 messageParameters.Add(parameter);
             }
         }
 
         private static void ExtractFromKeyValueArguments(IOperation keyArg, IOperation valueArg, List<MessageParameter> messageParameters)
         {
-            var unwrappedValueArg = valueArg.UnwrapConversion();
-
             if (keyArg is ILiteralOperation keyLiteral &&
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                var parameter = ScopeParameterExtractor.CreateMessageParameter(
-                    key,
-                    unwrappedValueArg.Type?.ToPrettyDisplayString() ?? "object",
-                    unwrappedValueArg.ConstantValue.HasValue ? "Constant" : unwrappedValueArg.Kind.ToString()
-                );
+                var parameter = MessageParameterFactory.CreateFromKeyValue(key, valueArg);
                 messageParameters.Add(parameter);
             }
         }

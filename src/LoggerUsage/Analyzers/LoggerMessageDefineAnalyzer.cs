@@ -185,24 +185,13 @@ namespace LoggerUsage.Analyzers
 
         private static List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, string messageTemplate)
         {
-            var messageParameters = new List<MessageParameter>();
-
-            // LoggerMessage.Define<T1, T2, ...> - extract generic type arguments
-            if (operation.TargetMethod.IsGenericMethod)
+            // Use GenericTypeParameterExtractor from the strategy pattern
+            var extractor = new LoggerUsage.ParameterExtraction.GenericTypeParameterExtractor();
+            if (extractor.TryExtractParameters(operation, null!, messageTemplate, out var parameters))
             {
-                var formatter = new LogValuesFormatter(messageTemplate);
-                var typeArguments = operation.TargetMethod.TypeArguments;
-                for (int i = 0; i < typeArguments.Length && i < formatter.ValueNames.Count; i++)
-                {
-                    messageParameters.Add(new MessageParameter(
-                        Name: formatter.ValueNames[i],
-                        Type: typeArguments[i].ToPrettyDisplayString(),
-                        Kind: null
-                    ));
-                }
+                return parameters;
             }
-
-            return messageParameters;
+            return new List<MessageParameter>();
         }
     }
 }
