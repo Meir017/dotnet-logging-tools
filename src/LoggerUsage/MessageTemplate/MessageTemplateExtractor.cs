@@ -23,7 +23,7 @@ internal class MessageTemplateExtractor : IMessageTemplateExtractor
             literal.ConstantValue.HasValue)
         {
             template = literal.ConstantValue.Value?.ToString() ?? string.Empty;
-            return !string.IsNullOrEmpty(template);
+            return true;
         }
 
         // Handle other constant string operations
@@ -31,7 +31,7 @@ internal class MessageTemplateExtractor : IMessageTemplateExtractor
             operation.ConstantValue.HasValue)
         {
             template = operation.ConstantValue.Value?.ToString() ?? string.Empty;
-            return !string.IsNullOrEmpty(template);
+            return true;
         }
 
         return false;

@@ -3,10 +3,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.MessageTemplate;
 
 namespace LoggerUsage.Analyzers
 {
-    internal class LoggerMessageDefineAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
+    internal class LoggerMessageDefineAnalyzer(
+        ILoggerFactory loggerFactory, 
+        IMessageTemplateExtractor messageTemplateExtractor) : ILoggerUsageAnalyzer
     {
         private readonly ILogger<LoggerMessageDefineAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageDefineAnalyzer>();
 
@@ -26,7 +29,7 @@ namespace LoggerUsage.Analyzers
             }
         }
 
-        private static LoggerUsageInfo ExtractLoggerMessageDefineUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
+        private LoggerUsageInfo ExtractLoggerMessageDefineUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
         {
             var usage = new LoggerUsageInfo
             {
@@ -50,7 +53,7 @@ namespace LoggerUsage.Analyzers
                 usage.EventId = eventId;
             }
 
-            if (TryExtractMessageTemplate(operation, out var messageTemplate))
+            if (TryExtractMessageTemplateFromLoggerMessageDefine(operation, out var messageTemplate))
             {
                 usage.MessageTemplate = messageTemplate;
                 usage.MessageParameters = ExtractMessageParametersFromGenericTypes(operation, messageTemplate);
@@ -166,15 +169,13 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private static bool TryExtractMessageTemplate(IInvocationOperation operation, out string messageTemplate)
+        private bool TryExtractMessageTemplateFromLoggerMessageDefine(IInvocationOperation operation, out string messageTemplate)
         {
             // Message template is typically the third parameter in LoggerMessage.Define
             if (operation.Arguments.Length > 2)
             {
-                var messageArg = operation.Arguments[2].Value;
-                if (messageArg.ConstantValue.HasValue)
+                if (messageTemplateExtractor.TryExtract(operation.Arguments[2], out messageTemplate))
                 {
-                    messageTemplate = messageArg.ConstantValue.Value?.ToString() ?? string.Empty;
                     return true;
                 }
             }
