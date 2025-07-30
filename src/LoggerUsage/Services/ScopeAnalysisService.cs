@@ -1,9 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
-using LoggerUsage.Analyzers;
+using LoggerUsage.ParameterExtraction;
 
 namespace LoggerUsage.Services
 {
@@ -12,17 +11,17 @@ namespace LoggerUsage.Services
     /// </summary>
     public class ScopeAnalysisService : IScopeAnalysisService
     {
-        private readonly IParameterExtractionService _parameterExtractionService;
         private readonly IKeyValuePairExtractionService _keyValuePairExtractionService;
+        private readonly AnonymousObjectParameterExtractor _anonymousObjectParameterExtractor;
         private readonly ILogger<ScopeAnalysisService> _logger;
 
         public ScopeAnalysisService(
-            IParameterExtractionService parameterExtractionService,
             IKeyValuePairExtractionService keyValuePairExtractionService,
+            AnonymousObjectParameterExtractor anonymousObjectParameterExtractor,
             ILoggerFactory loggerFactory)
         {
-            _parameterExtractionService = parameterExtractionService;
             _keyValuePairExtractionService = keyValuePairExtractionService;
+            _anonymousObjectParameterExtractor = anonymousObjectParameterExtractor;
             _logger = loggerFactory.CreateLogger<ScopeAnalysisService>();
         }
 
@@ -65,7 +64,7 @@ namespace LoggerUsage.Services
         /// </summary>
         private int GetArgumentIndex(IInvocationOperation operation)
         {
-            return _parameterExtractionService.GetArgumentIndex(operation);
+            return operation.TargetMethod.IsExtensionMethod ? 1 : 0;
         }
 
         /// <summary>
@@ -105,7 +104,37 @@ namespace LoggerUsage.Services
         /// </summary>
         private List<MessageParameter> ExtractExtensionMethodParameters(IInvocationOperation operation, string messageTemplate)
         {
-            return _parameterExtractionService.ExtractFromMessageTemplate(operation, messageTemplate);
+            try
+            {
+                _logger.LogDebug("Extracting parameters from template: {Template} in {Method}", 
+                    messageTemplate, operation.TargetMethod.Name);
+
+                if (string.IsNullOrEmpty(messageTemplate))
+                    return new List<MessageParameter>();
+
+                var formatter = new LogValuesFormatter(messageTemplate);
+                if (formatter.ValueNames.Count == 0)
+                    return new List<MessageParameter>();
+
+                var messageParameters = new List<MessageParameter>();
+
+                // For extension methods, the params array is in argument index 2 (after 'this' and messageFormat)
+                const int PARAMS_ARGUMENT_INDEX = 2;
+                if (operation.Arguments.Length > PARAMS_ARGUMENT_INDEX)
+                {
+                    var paramsArgument = operation.Arguments[PARAMS_ARGUMENT_INDEX].Value.UnwrapConversion();
+                    ExtractFromParamsArgument(paramsArgument, formatter, messageParameters);
+                }
+
+                _logger.LogDebug("Successfully extracted {Count} parameters from template", messageParameters.Count);
+                return messageParameters;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract parameters from template: {Template} in {Method}", 
+                    messageTemplate, operation.TargetMethod.Name);
+                return new List<MessageParameter>();
+            }
         }
 
         /// <summary>
@@ -132,10 +161,84 @@ namespace LoggerUsage.Services
             // Fallback to anonymous object extraction
             if (stateArgument.Value is IAnonymousObjectCreationOperation objectCreation)
             {
-                return _parameterExtractionService.ExtractFromAnonymousObject(objectCreation, loggingTypes);
+                try
+                {
+                    _logger.LogDebug("Extracting parameters from anonymous object");
+
+                    if (_anonymousObjectParameterExtractor.TryExtractParameters(objectCreation, loggingTypes, null, out var parameters))
+                    {
+                        _logger.LogDebug("Successfully extracted {Count} parameters from anonymous object", parameters.Count);
+                        return parameters;
+                    }
+
+                    _logger.LogDebug("No parameters extracted from anonymous object");
+                    return new List<MessageParameter>();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to extract parameters from anonymous object");
+                    return new List<MessageParameter>();
+                }
             }
 
             return new List<MessageParameter>();
+        }
+
+        /// <summary>
+        /// Extracts parameters from params argument array.
+        /// </summary>
+        private void ExtractFromParamsArgument(IOperation paramsArgument, LogValuesFormatter formatter, List<MessageParameter> messageParameters)
+        {
+            // Check if this is an array creation with elements
+            if (paramsArgument is IArrayCreationOperation arrayCreation && arrayCreation.Initializer != null)
+            {
+                ExtractFromArrayElements(arrayCreation.Initializer.ElementValues, formatter, messageParameters);
+            }
+            else
+            {
+                // Fallback: if not an array creation, treat as single parameter
+                if (formatter.ValueNames.Count > 0)
+                {
+                    var parameter = CreateMessageParameter(
+                        formatter.ValueNames[0],
+                        paramsArgument.Type?.ToPrettyDisplayString() ?? "object",
+                        paramsArgument.ConstantValue.HasValue ? "Constant" : paramsArgument.Kind.ToString()
+                    );
+                    messageParameters.Add(parameter);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Extracts parameters from array elements.
+        /// </summary>
+        private void ExtractFromArrayElements(System.Collections.Immutable.ImmutableArray<IOperation> elementValues, LogValuesFormatter formatter, List<MessageParameter> messageParameters)
+        {
+            for (int i = 0; i < elementValues.Length && i < formatter.ValueNames.Count; i++)
+            {
+                var element = elementValues[i].UnwrapConversion();
+                var parameterName = formatter.ValueNames[i];
+
+                var parameter = CreateMessageParameter(
+                    parameterName,
+                    element.Type?.ToPrettyDisplayString() ?? "object",
+                    element.ConstantValue.HasValue ? "Constant" : element.Kind.ToString()
+                );
+
+                messageParameters.Add(parameter);
+            }
+        }
+
+        /// <summary>
+        /// Creates a MessageParameter with consistent formatting.
+        /// </summary>
+        private MessageParameter CreateMessageParameter(string name, string type, string kind)
+        {
+            return new MessageParameter(
+                Name: name,
+                Type: type ?? "object",
+                Kind: kind
+            );
         }
     }
 }

@@ -49,7 +49,6 @@ namespace LoggerUsage.Analyzers
                 },
             };
 
-            // Use the scope analysis service to extract scope state information
             var analysisResult = _scopeAnalysisService.AnalyzeScopeState(operation, loggingTypes);
 
             if (analysisResult.IsSuccess)

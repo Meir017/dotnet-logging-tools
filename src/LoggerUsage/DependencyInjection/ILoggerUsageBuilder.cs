@@ -22,7 +22,6 @@ public static class LoggerUsageBuilderExtensions
     {
         // Core services
         services.AddSingleton<IScopeAnalysisService, ScopeAnalysisService>();
-        services.AddSingleton<IParameterExtractionService, ParameterExtractionService>();
         services.AddSingleton<IKeyValuePairExtractionService, KeyValuePairExtractionService>();
 
         services.AddSingleton<IMessageTemplateExtractor, MessageTemplateExtractor>();
