@@ -37,12 +37,7 @@ namespace LoggerUsage.Analyzers
             {
                 MethodName = operation.TargetMethod.Name,
                 MethodType = LoggerUsageMethodType.LoggerMessageDefine,
-                Location = new MethodCallLocation
-                {
-                    StartLineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
-                    EndLineNumber = invocation.GetLocation().GetLineSpan().EndLinePosition.Line,
-                    FilePath = invocation.GetLocation().SourceTree!.FilePath
-                },
+                Location = LocationHelper.CreateFromInvocation(invocation),
             };
 
             if (TryExtractLogLevel(operation, loggingTypes, out var logLevel))

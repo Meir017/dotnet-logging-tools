@@ -30,12 +30,7 @@ namespace LoggerUsage.Analyzers
                     {
                         MethodName = methodSymbol.Name,
                         MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
-                        Location = new MethodCallLocation
-                        {
-                            StartLineNumber = methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Line,
-                            EndLineNumber = methodDeclaration.GetLocation().GetLineSpan().EndLinePosition.Line,
-                            FilePath = root.SyntaxTree.FilePath,
-                        },
+                        Location = LocationHelper.CreateFromMethodDeclaration(methodDeclaration, root),
                     };
 
                     _logger.LogTrace("Found LoggerMessageAttribute on method {MethodName}", usage.MethodName);

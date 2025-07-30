@@ -34,12 +34,7 @@ namespace LoggerUsage.Analyzers
             {
                 MethodName = operation.TargetMethod.Name,
                 MethodType = LoggerUsageMethodType.LoggerExtensions,
-                Location = new MethodCallLocation
-                {
-                    StartLineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
-                    EndLineNumber = invocation.GetLocation().GetLineSpan().EndLinePosition.Line,
-                    FilePath = invocation.GetLocation().SourceTree!.FilePath
-                },
+                Location = LocationHelper.CreateFromInvocation(invocation),
             };
 
             if (TryExtractEventId(operation, loggingTypes, out var eventId))
