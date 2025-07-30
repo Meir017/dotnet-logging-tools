@@ -5,10 +5,8 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage.Analyzers
 {
-    internal partial class LoggerMessageAttributeAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
+    internal partial class LoggerMessageAttributeAnalyzer(ILogger<LoggerMessageAttributeAnalyzer> logger) : ILoggerUsageAnalyzer
     {
-        private readonly ILogger<LoggerMessageAttributeAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageAttributeAnalyzer>();
-
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var methodDeclarations = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
@@ -33,7 +31,7 @@ namespace LoggerUsage.Analyzers
                         Location = LocationHelper.CreateFromMethodDeclaration(methodDeclaration, root),
                     };
 
-                    _logger.LogTrace("Found LoggerMessageAttribute on method {MethodName}", usage.MethodName);
+                    logger.LogTrace("Found LoggerMessageAttribute on method {MethodName}", usage.MethodName);
 
                     if (TryExtractEventId(attributeData, methodSymbol, loggingTypes, out var eventId))
                     {
@@ -52,7 +50,7 @@ namespace LoggerUsage.Analyzers
                         }
                     }
 
-                    _logger.LogTrace("Extracted LoggerMessageAttribute usage {MethodName}", usage.MethodName);
+                    logger.LogTrace("Extracted LoggerMessageAttribute usage {MethodName}", usage.MethodName);
                     yield return usage;
                 }
             }

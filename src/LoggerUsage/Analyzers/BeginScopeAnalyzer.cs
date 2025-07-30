@@ -7,19 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage.Analyzers
 {
-    internal class BeginScopeAnalyzer : ILoggerUsageAnalyzer
+    internal class BeginScopeAnalyzer(
+        IScopeAnalysisService scopeAnalysisService,
+        ILogger<BeginScopeAnalyzer> logger) : ILoggerUsageAnalyzer
     {
-        private readonly IScopeAnalysisService _scopeAnalysisService;
-        private readonly ILogger<BeginScopeAnalyzer> _logger;
-
-        public BeginScopeAnalyzer(
-            IScopeAnalysisService scopeAnalysisService,
-            ILoggerFactory loggerFactory)
-        {
-            _scopeAnalysisService = scopeAnalysisService;
-            _logger = loggerFactory.CreateLogger<BeginScopeAnalyzer>();
-        }
-
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
@@ -44,19 +35,19 @@ namespace LoggerUsage.Analyzers
                 Location = LocationHelper.CreateFromInvocation(invocation),
             };
 
-            var analysisResult = _scopeAnalysisService.AnalyzeScopeState(operation, loggingTypes);
+            var analysisResult = scopeAnalysisService.AnalyzeScopeState(operation, loggingTypes);
 
             if (analysisResult.IsSuccess)
             {
                 usage.MessageTemplate = analysisResult.MessageTemplate;
                 usage.MessageParameters = analysisResult.Parameters;
                 
-                _logger.LogDebug("Successfully analyzed BeginScope usage with {Count} parameters", 
+                logger.LogDebug("Successfully analyzed BeginScope usage with {Count} parameters", 
                     analysisResult.Parameters.Count);
             }
             else
             {
-                _logger.LogWarning("Failed to analyze BeginScope usage: {Error}", analysisResult.ErrorMessage);
+                logger.LogWarning("Failed to analyze BeginScope usage: {Error}", analysisResult.ErrorMessage);
                 usage.MessageParameters = new List<MessageParameter>();
             }
 

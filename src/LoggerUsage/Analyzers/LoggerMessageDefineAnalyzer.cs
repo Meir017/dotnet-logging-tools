@@ -9,12 +9,9 @@ using LoggerUsage.ParameterExtraction;
 namespace LoggerUsage.Analyzers
 {
     internal class LoggerMessageDefineAnalyzer(
-        ILoggerFactory loggerFactory, 
         IMessageTemplateExtractor messageTemplateExtractor,
         GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
-        private readonly ILogger<LoggerMessageDefineAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageDefineAnalyzer>();
-
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();

@@ -11,8 +11,10 @@ namespace LoggerUsage.Analyzers
 
     internal class LogMethodAnalyzer(
         ArrayParameterExtractor arrayParameterExtractor,
-        IMessageTemplateExtractor messageTemplateExtractor) : ILoggerUsageAnalyzer
+        IMessageTemplateExtractor messageTemplateExtractor,
+        ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
+        private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
@@ -51,6 +53,8 @@ namespace LoggerUsage.Analyzers
                 if (arrayParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
                 {
                     usage.MessageParameters = messageParameters;
+                    _logger.LogDebug("Successfully analyzed logger method usage {MethodName} with {Count} parameters", 
+                        usage.MethodName, messageParameters.Count);
                 }
             }
 
