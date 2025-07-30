@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.ParameterExtraction;
 
@@ -45,10 +46,9 @@ internal class ArrayParameterExtractor : IParameterExtractor
             {
                 var paramValue = element.UnwrapConversion();
 
-                parameters.Add(new MessageParameter(
-                    Name: formatter.ValueNames[parameters.Count],
-                    Type: paramValue.Type!.ToPrettyDisplayString(),
-                    Kind: paramValue.ConstantValue.HasValue ? "Constant" : paramValue.Kind.ToString()
+                parameters.Add(MessageParameterFactory.CreateFromOperation(
+                    formatter.ValueNames[parameters.Count],
+                    paramValue
                 ));
             }
         }

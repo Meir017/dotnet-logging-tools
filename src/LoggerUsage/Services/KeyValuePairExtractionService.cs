@@ -208,11 +208,7 @@ namespace LoggerUsage.Services
 
             if (keyArg.ConstantValue.HasValue && keyArg.ConstantValue.Value is string key)
             {
-                messageParameters.Add(new MessageParameter(
-                    Name: key,
-                    Type: valueArg.Type?.ToPrettyDisplayString() ?? "object",
-                    Kind: valueArg.ConstantValue.HasValue ? "Constant" : valueArg.Kind.ToString()
-                ));
+                messageParameters.Add(MessageParameterFactory.CreateFromKeyValue(key, valueArg));
             }
         }
 
@@ -227,22 +223,14 @@ namespace LoggerUsage.Services
                 keyLiteral.ConstantValue.HasValue &&
                 keyLiteral.ConstantValue.Value is string key)
             {
-                messageParameters.Add(new MessageParameter(
-                    Name: key,
-                    Type: value.Type?.ToPrettyDisplayString(),
-                    Kind: value.ConstantValue.HasValue ? "Constant" : value.Kind.ToString()
-                ));
+                messageParameters.Add(MessageParameterFactory.CreateFromKeyValue(key, value));
             }
             // Handle other direct literal assignments (if any)
             else if (assignment.Target is ILiteralOperation literal &&
                 literal.ConstantValue.HasValue &&
                 literal.ConstantValue.Value is string directKey)
             {
-                messageParameters.Add(new MessageParameter(
-                    Name: directKey,
-                    Type: value.Type?.ToPrettyDisplayString(),
-                    Kind: value.ConstantValue.HasValue ? "Constant" : value.Kind.ToString()
-                ));
+                messageParameters.Add(MessageParameterFactory.CreateFromKeyValue(directKey, value));
             }
         }
 

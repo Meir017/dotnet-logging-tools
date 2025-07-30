@@ -9,12 +9,9 @@ using LoggerUsage.ParameterExtraction;
 namespace LoggerUsage.Analyzers
 {
     internal class LoggerMessageDefineAnalyzer(
-        ILoggerFactory loggerFactory, 
         IMessageTemplateExtractor messageTemplateExtractor,
         GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
-        private readonly ILogger<LoggerMessageDefineAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageDefineAnalyzer>();
-
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
@@ -37,12 +34,7 @@ namespace LoggerUsage.Analyzers
             {
                 MethodName = operation.TargetMethod.Name,
                 MethodType = LoggerUsageMethodType.LoggerMessageDefine,
-                Location = new MethodCallLocation
-                {
-                    StartLineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
-                    EndLineNumber = invocation.GetLocation().GetLineSpan().EndLinePosition.Line,
-                    FilePath = invocation.GetLocation().SourceTree!.FilePath
-                },
+                Location = LocationHelper.CreateFromInvocation(invocation),
             };
 
             if (TryExtractLogLevel(operation, loggingTypes, out var logLevel))
@@ -50,7 +42,8 @@ namespace LoggerUsage.Analyzers
                 usage.LogLevel = logLevel;
             }
 
-            if (TryExtractEventId(operation, loggingTypes, out var eventId))
+            if (operation.Arguments.Length > 1 && 
+                EventIdExtractor.TryExtractFromArgument(operation.Arguments[1].Value, out var eventId))
             {
                 usage.EventId = eventId;
             }
@@ -80,97 +73,6 @@ namespace LoggerUsage.Analyzers
             logLevel = default;
             return false;
         }
-        private static bool TryExtractEventId(IInvocationOperation operation, LoggingTypes loggingTypes, out EventIdBase eventId)
-        {
-            // EventId is typically the second parameter in LoggerMessage.Define
-            if (operation.Arguments.Length > 1)
-            {
-                var eventIdArg = operation.Arguments[1].Value.UnwrapConversion();
-
-                // Handle EventId constructor
-                if (eventIdArg is IObjectCreationOperation objectCreation &&
-                    objectCreation.Type?.Name == nameof(EventId))
-                {
-                    ConstantOrReference id = ConstantOrReference.Missing;
-                    ConstantOrReference name = ConstantOrReference.Missing;
-
-                    if (objectCreation.Arguments.Length > 0)
-                    {
-                        if (objectCreation.Arguments[0].Value.ConstantValue.Value is int idValue)
-                        {
-                            id = ConstantOrReference.Constant(idValue);
-                        }
-                        else
-                        {
-                            id = new ConstantOrReference(
-                                objectCreation.Arguments[0].Value.Kind.ToString(),
-                                objectCreation.Arguments[0].Value.Syntax.ToString()
-                            );
-                        }
-                    }
-                    if (objectCreation.Arguments.Length > 1)
-                    {
-                        if (objectCreation.Arguments[1].Value.ConstantValue.HasValue)
-                        {
-                            var nameValue = objectCreation.Arguments[1].Value.ConstantValue.Value;
-                            if (nameValue != null)
-                            {
-                                name = ConstantOrReference.Constant(nameValue);
-                            }
-                        }
-                        else
-                        {
-                            name = new ConstantOrReference(
-                                objectCreation.Arguments[1].Value.Kind.ToString(),
-                                objectCreation.Arguments[1].Value.Syntax.ToString()
-                            );
-                        }
-                    }
-
-                    eventId = new EventIdDetails(id, name);
-                    return true;
-                }
-                else if (eventIdArg.Kind is OperationKind.DefaultValue)
-                {
-                    eventId = default!;
-                    return false;
-                }
-                else if (eventIdArg is ILiteralOperation literalOperation)
-                {
-                    if (literalOperation.ConstantValue.HasValue)
-                    {
-                        eventId = new EventIdDetails(ConstantOrReference.Constant(literalOperation.ConstantValue.Value!), ConstantOrReference.Missing);
-                        return true;
-                    }
-                    else
-                    {
-                        eventId = new EventIdRef(
-                            literalOperation.Kind.ToString(),
-                            literalOperation.Syntax.ToString()
-                        );
-                        return true;
-                    }
-                }
-                // Handle direct EventId value or reference
-                else if (eventIdArg.ConstantValue.HasValue)
-                {
-                    eventId = new EventIdDetails(ConstantOrReference.Constant(eventIdArg.ConstantValue.Value!), ConstantOrReference.Missing);
-                    return true;
-                }
-                else
-                {
-                    eventId = new EventIdRef(
-                        eventIdArg.Kind.ToString(),
-                        eventIdArg.Syntax.ToString()
-                    );
-                    return true;
-                }
-            }
-
-            eventId = default!;
-            return false;
-        }
-
         private bool TryExtractMessageTemplateFromLoggerMessageDefine(IInvocationOperation operation, out string messageTemplate)
         {
             // Message template is typically the third parameter in LoggerMessage.Define

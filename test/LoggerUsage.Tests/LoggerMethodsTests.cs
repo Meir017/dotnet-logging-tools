@@ -266,7 +266,7 @@ public class TestClass
     public static TheoryData<string, string, ConstantOrReference, ConstantOrReference> LoggerEventIdScenariosValues() => new()
     {
         { "LogWarning", "6", ConstantOrReference.Constant(6), ConstantOrReference.Missing },
-        { "LogWarning", "new EventId(1)", ConstantOrReference.Constant(1), ConstantOrReference.Constant(null!) },
+        { "LogWarning", "new EventId(1)", ConstantOrReference.Constant(1), ConstantOrReference.Missing },
         { "LogError", "new EventId(1, \"EventName\")", ConstantOrReference.Constant(1), ConstantOrReference.Constant("EventName") },
         { "LogCritical", "new EventId(int.MaxValue, \"MaxValueEvent\")", ConstantOrReference.Constant(int.MaxValue), ConstantOrReference.Constant("MaxValueEvent") },
         { "LogDebug", "new EventId(42, \"CustomEvent\")", ConstantOrReference.Constant(42), ConstantOrReference.Constant("CustomEvent") },

@@ -11,8 +11,10 @@ namespace LoggerUsage.Analyzers
 
     internal class LogMethodAnalyzer(
         ArrayParameterExtractor arrayParameterExtractor,
-        IMessageTemplateExtractor messageTemplateExtractor) : ILoggerUsageAnalyzer
+        IMessageTemplateExtractor messageTemplateExtractor,
+        ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
+        private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
             var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
@@ -34,15 +36,10 @@ namespace LoggerUsage.Analyzers
             {
                 MethodName = operation.TargetMethod.Name,
                 MethodType = LoggerUsageMethodType.LoggerExtensions,
-                Location = new MethodCallLocation
-                {
-                    StartLineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
-                    EndLineNumber = invocation.GetLocation().GetLineSpan().EndLinePosition.Line,
-                    FilePath = invocation.GetLocation().SourceTree!.FilePath
-                },
+                Location = LocationHelper.CreateFromInvocation(invocation),
             };
 
-            if (TryExtractEventId(operation, loggingTypes, out var eventId))
+            if (EventIdExtractor.TryExtractFromInvocation(operation, loggingTypes, out var eventId))
             {
                 usage.EventId = eventId;
             }
@@ -56,6 +53,8 @@ namespace LoggerUsage.Analyzers
                 if (arrayParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
                 {
                     usage.MessageParameters = messageParameters;
+                    _logger.LogDebug("Successfully analyzed logger method usage {MethodName} with {Count} parameters", 
+                        usage.MethodName, messageParameters.Count);
                 }
             }
 
@@ -74,94 +73,6 @@ namespace LoggerUsage.Analyzers
             }
 
             messageTemplate = string.Empty;
-            return false;
-        }
-
-        private static bool TryExtractEventId(IInvocationOperation operation, LoggingTypes loggingTypes, out EventIdBase eventId)
-        {
-            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
-            for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
-            {
-                if (!loggingTypes.EventId.Equals(operation.Arguments[i].Value.Type, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                var argumentOperation = operation.Arguments[i].Value.UnwrapConversion();
-
-                // Attempt to create EventId from constructor arguments
-                if (argumentOperation is IObjectCreationOperation objectCreationOperation &&
-                    objectCreationOperation.Type?.Name == nameof(EventId))
-                {
-                    if (objectCreationOperation.Arguments.Length is 0) continue;
-
-                    ConstantOrReference id = ConstantOrReference.Missing;
-                    ConstantOrReference name = ConstantOrReference.Missing;
-
-                    if (objectCreationOperation.Arguments.Length > 0)
-                    {
-                        if (objectCreationOperation.Arguments[0].Value.ConstantValue.Value is int idValue)
-                        {
-                            id = ConstantOrReference.Constant(idValue);
-                        }
-                        else
-                        {
-                            id = new ConstantOrReference(
-                                objectCreationOperation.Arguments[0].Value.Kind.ToString(),
-                                objectCreationOperation.Arguments[0].Value.Syntax.ToString()
-                            );
-                        }
-                    }
-
-                    if (objectCreationOperation.Arguments.Length > 1)
-                    {
-                        if (objectCreationOperation.Arguments[1].Value.ConstantValue.HasValue)
-                        {
-                            name = ConstantOrReference.Constant(objectCreationOperation.Arguments[1].Value.ConstantValue.Value!);
-                        }
-                        else
-                        {
-                            name = new ConstantOrReference(
-                                objectCreationOperation.Arguments[1].Value.Kind.ToString(),
-                                objectCreationOperation.Arguments[1].Value.Syntax.ToString()
-                            );
-                        }
-                    }
-
-                    eventId = new EventIdDetails(id, name);
-                    return true;
-                }
-                else if (argumentOperation.Kind is OperationKind.DefaultValue)
-                {
-                    continue;
-                }
-                else if (argumentOperation is ILiteralOperation literalOperation)
-                {
-                    if (literalOperation.ConstantValue.HasValue)
-                    {
-                        eventId = new EventIdDetails(ConstantOrReference.Constant(literalOperation.ConstantValue.Value!), ConstantOrReference.Missing);
-                        return true;
-                    }
-                    else
-                    {
-                        eventId = new EventIdRef(
-                            literalOperation.Kind.ToString(),
-                            literalOperation.Syntax.ToString()
-                        );
-                        return true;
-                    }
-                }
-                else
-                {
-                    eventId = new EventIdRef(
-                        argumentOperation.Kind.ToString(),
-                        argumentOperation.Syntax.ToString()
-                    );
-                    return true;
-                }
-            }
-
-            eventId = default!;
             return false;
         }
 
