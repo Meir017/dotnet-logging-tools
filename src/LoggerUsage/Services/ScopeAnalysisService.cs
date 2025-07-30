@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
 using LoggerUsage.ParameterExtraction;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.Services
 {
@@ -199,10 +200,9 @@ namespace LoggerUsage.Services
                 // Fallback: if not an array creation, treat as single parameter
                 if (formatter.ValueNames.Count > 0)
                 {
-                    var parameter = CreateMessageParameter(
+                    var parameter = MessageParameterFactory.CreateFromOperation(
                         formatter.ValueNames[0],
-                        paramsArgument.Type?.ToPrettyDisplayString() ?? "object",
-                        paramsArgument.ConstantValue.HasValue ? "Constant" : paramsArgument.Kind.ToString()
+                        paramsArgument
                     );
                     messageParameters.Add(parameter);
                 }
@@ -219,26 +219,13 @@ namespace LoggerUsage.Services
                 var element = elementValues[i].UnwrapConversion();
                 var parameterName = formatter.ValueNames[i];
 
-                var parameter = CreateMessageParameter(
+                var parameter = MessageParameterFactory.CreateFromOperation(
                     parameterName,
-                    element.Type?.ToPrettyDisplayString() ?? "object",
-                    element.ConstantValue.HasValue ? "Constant" : element.Kind.ToString()
+                    element
                 );
 
                 messageParameters.Add(parameter);
             }
-        }
-
-        /// <summary>
-        /// Creates a MessageParameter with consistent formatting.
-        /// </summary>
-        private MessageParameter CreateMessageParameter(string name, string type, string kind)
-        {
-            return new MessageParameter(
-                Name: name,
-                Type: type ?? "object",
-                Kind: kind
-            );
         }
     }
 }

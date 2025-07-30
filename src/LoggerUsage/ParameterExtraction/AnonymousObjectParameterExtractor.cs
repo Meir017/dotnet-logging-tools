@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.ParameterExtraction;
 
@@ -32,10 +33,9 @@ public class AnonymousObjectParameterExtractor : IParameterExtractor
             if (propertyName == null)
                 continue;
 
-            var parameter = new MessageParameter(
-                Name: propertyName,
-                Type: assignment.Value.Type?.ToPrettyDisplayString() ?? "object",
-                Kind: assignment.Value.ConstantValue.HasValue ? "Constant" : assignment.Value.Kind.ToString()
+            var parameter = MessageParameterFactory.CreateFromOperation(
+                propertyName,
+                assignment.Value
             );
 
             parameters.Add(parameter);

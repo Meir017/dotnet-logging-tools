@@ -36,8 +36,8 @@ namespace LoggerUsage.Utilities
             var unwrapped = operation.UnwrapConversion();
             return new MessageParameter(
                 Name: name,
-                Type: unwrapped.Type?.ToPrettyDisplayString() ?? "object",
-                Kind: unwrapped.ConstantValue.HasValue ? "Constant" : unwrapped.Kind.ToString()
+                Type: GetDisplayString(unwrapped.Type),
+                Kind: GetKindString(unwrapped)
             );
         }
 
@@ -52,7 +52,7 @@ namespace LoggerUsage.Utilities
         {
             return new MessageParameter(
                 Name: $"<{name}>",
-                Type: type.ToPrettyDisplayString(),
+                Type: GetDisplayString(type),
                 Kind: kind.ToString()
             );
         }
@@ -68,9 +68,29 @@ namespace LoggerUsage.Utilities
             var unwrapped = valueOperation.UnwrapConversion();
             return new MessageParameter(
                 Name: key,
-                Type: unwrapped.Type?.ToPrettyDisplayString() ?? "object",
-                Kind: unwrapped.ConstantValue.HasValue ? "Constant" : unwrapped.Kind.ToString()
+                Type: GetDisplayString(unwrapped.Type),
+                Kind: GetKindString(unwrapped)
             );
+        }
+
+        /// <summary>
+        /// Gets a consistent display string for a type, returning "object" if the type is null.
+        /// </summary>
+        /// <param name="type">The type symbol to get the display string for</param>
+        /// <returns>The pretty display string or "object" if null</returns>
+        public static string GetDisplayString(ITypeSymbol? type)
+        {
+            return type?.ToPrettyDisplayString() ?? "object";
+        }
+
+        /// <summary>
+        /// Gets a consistent kind string for an operation, returning "Constant" for constant values.
+        /// </summary>
+        /// <param name="operation">The operation to get the kind string for</param>
+        /// <returns>"Constant" if the operation has a constant value, otherwise the operation kind as string</returns>
+        public static string GetKindString(IOperation operation)
+        {
+            return operation.ConstantValue.HasValue ? "Constant" : operation.Kind.ToString();
         }
     }
 }
