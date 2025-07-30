@@ -4,12 +4,14 @@ using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
 using LoggerUsage.MessageTemplate;
+using LoggerUsage.ParameterExtraction;
 
 namespace LoggerUsage.Analyzers
 {
     internal class LoggerMessageDefineAnalyzer(
         ILoggerFactory loggerFactory, 
-        IMessageTemplateExtractor messageTemplateExtractor) : ILoggerUsageAnalyzer
+        IMessageTemplateExtractor messageTemplateExtractor,
+        GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
         private readonly ILogger<LoggerMessageDefineAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageDefineAnalyzer>();
 
@@ -56,7 +58,7 @@ namespace LoggerUsage.Analyzers
             if (TryExtractMessageTemplateFromLoggerMessageDefine(operation, out var messageTemplate))
             {
                 usage.MessageTemplate = messageTemplate;
-                usage.MessageParameters = ExtractMessageParametersFromGenericTypes(operation, messageTemplate);
+                usage.MessageParameters = ExtractMessageParametersFromGenericTypes(operation, loggingTypes, messageTemplate);
             }
 
             return usage;
@@ -184,11 +186,10 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private static List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, string messageTemplate)
+        private List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, LoggingTypes loggingTypes, string messageTemplate)
         {
-            // Use GenericTypeParameterExtractor from the strategy pattern
-            var extractor = new LoggerUsage.ParameterExtraction.GenericTypeParameterExtractor();
-            if (extractor.TryExtractParameters(operation, null!, messageTemplate, out var parameters))
+            // Use injected GenericTypeParameterExtractor from the strategy pattern
+            if (genericTypeParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var parameters))
             {
                 return parameters;
             }
