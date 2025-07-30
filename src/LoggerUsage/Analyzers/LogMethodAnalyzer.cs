@@ -1,14 +1,17 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
-using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.Models;
 using LoggerUsage.ParameterExtraction;
+using LoggerUsage.MessageTemplate;
 
 namespace LoggerUsage.Analyzers
 {
 
-    internal class LogMethodAnalyzer(ArrayParameterExtractor arrayParameterExtractor) : ILoggerUsageAnalyzer
+    internal class LogMethodAnalyzer(
+        ArrayParameterExtractor arrayParameterExtractor,
+        IMessageTemplateExtractor messageTemplateExtractor) : ILoggerUsageAnalyzer
     {
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
@@ -47,7 +50,7 @@ namespace LoggerUsage.Analyzers
             {
                 usage.LogLevel = logLevel;
             }
-            if (TryExtractMessageTemplate(operation, loggingTypes, out var messageTemplate))
+            if (TryExtractMessageTemplateFromArguments(operation, loggingTypes, out var messageTemplate))
             {
                 usage.MessageTemplate = messageTemplate;
                 if (arrayParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
@@ -57,6 +60,21 @@ namespace LoggerUsage.Analyzers
             }
 
             return usage;
+        }
+
+        private bool TryExtractMessageTemplateFromArguments(IInvocationOperation operation, LoggingTypes loggingTypes, out string messageTemplate)
+        {
+            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
+            for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
+            {
+                if (messageTemplateExtractor.TryExtract(operation.Arguments[i], out messageTemplate))
+                {
+                    return true;
+                }
+            }
+
+            messageTemplate = string.Empty;
+            return false;
         }
 
         private static bool TryExtractEventId(IInvocationOperation operation, LoggingTypes loggingTypes, out EventIdBase eventId)
@@ -194,26 +212,6 @@ namespace LoggerUsage.Analyzers
                 logLevel = default;
                 return false;
             }
-        }
-
-        private static bool TryExtractMessageTemplate(IInvocationOperation operation, LoggingTypes loggingTypes, out string messageTemplate)
-        {
-            int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
-            for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
-            {
-                if (operation.Arguments[i].Value.Type?.SpecialType is SpecialType.System_String)
-                {
-                    var argumentOperation = operation.Arguments[i].Value;
-                    if (argumentOperation.ConstantValue.HasValue)
-                    {
-                        messageTemplate = argumentOperation.ConstantValue.Value?.ToString() ?? string.Empty;
-                        return true;
-                    }
-                }
-            }
-
-            messageTemplate = string.Empty;
-            return false;
         }
     }
 }

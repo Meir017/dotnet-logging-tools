@@ -3,10 +3,15 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.MessageTemplate;
+using LoggerUsage.ParameterExtraction;
 
 namespace LoggerUsage.Analyzers
 {
-    internal class LoggerMessageDefineAnalyzer(ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
+    internal class LoggerMessageDefineAnalyzer(
+        ILoggerFactory loggerFactory, 
+        IMessageTemplateExtractor messageTemplateExtractor,
+        GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
         private readonly ILogger<LoggerMessageDefineAnalyzer> _logger = loggerFactory.CreateLogger<LoggerMessageDefineAnalyzer>();
 
@@ -26,7 +31,7 @@ namespace LoggerUsage.Analyzers
             }
         }
 
-        private static LoggerUsageInfo ExtractLoggerMessageDefineUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
+        private LoggerUsageInfo ExtractLoggerMessageDefineUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
         {
             var usage = new LoggerUsageInfo
             {
@@ -50,10 +55,10 @@ namespace LoggerUsage.Analyzers
                 usage.EventId = eventId;
             }
 
-            if (TryExtractMessageTemplate(operation, out var messageTemplate))
+            if (TryExtractMessageTemplateFromLoggerMessageDefine(operation, out var messageTemplate))
             {
                 usage.MessageTemplate = messageTemplate;
-                usage.MessageParameters = ExtractMessageParametersFromGenericTypes(operation, messageTemplate);
+                usage.MessageParameters = ExtractMessageParametersFromGenericTypes(operation, loggingTypes, messageTemplate);
             }
 
             return usage;
@@ -166,15 +171,13 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private static bool TryExtractMessageTemplate(IInvocationOperation operation, out string messageTemplate)
+        private bool TryExtractMessageTemplateFromLoggerMessageDefine(IInvocationOperation operation, out string messageTemplate)
         {
             // Message template is typically the third parameter in LoggerMessage.Define
             if (operation.Arguments.Length > 2)
             {
-                var messageArg = operation.Arguments[2].Value;
-                if (messageArg.ConstantValue.HasValue)
+                if (messageTemplateExtractor.TryExtract(operation.Arguments[2], out messageTemplate))
                 {
-                    messageTemplate = messageArg.ConstantValue.Value?.ToString() ?? string.Empty;
                     return true;
                 }
             }
@@ -183,11 +186,10 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private static List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, string messageTemplate)
+        private List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, LoggingTypes loggingTypes, string messageTemplate)
         {
-            // Use GenericTypeParameterExtractor from the strategy pattern
-            var extractor = new LoggerUsage.ParameterExtraction.GenericTypeParameterExtractor();
-            if (extractor.TryExtractParameters(operation, null!, messageTemplate, out var parameters))
+            // Use injected GenericTypeParameterExtractor from the strategy pattern
+            if (genericTypeParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var parameters))
             {
                 return parameters;
             }
