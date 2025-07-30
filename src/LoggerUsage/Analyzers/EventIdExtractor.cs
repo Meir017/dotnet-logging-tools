@@ -35,14 +35,14 @@ namespace LoggerUsage.Analyzers
         public static bool TryExtractFromArgument(IOperation argumentOperation, out EventIdBase eventId)
         {
             var unwrapped = argumentOperation.UnwrapConversion();
-            
+
             // Handle default value - return false instead of continuing
             if (unwrapped.Kind is OperationKind.DefaultValue)
             {
                 eventId = default!;
                 return false;
             }
-            
+
             return TryExtractFromOperation(unwrapped, out eventId);
         }
 
@@ -112,14 +112,15 @@ namespace LoggerUsage.Analyzers
                     id = new ConstantOrReference(idArg.Kind.ToString(), idArg.Syntax.ToString());
                 }
 
-                // If there's only one argument, set name to Constant(null) to match expected behavior
+                // If there's only one argument, leave name as Missing
                 if (objectCreation.Arguments.Length == 1)
                 {
-                    name = ConstantOrReference.Constant(null!);
+                    name = ConstantOrReference.Missing;
                 }
             }
 
-            if (objectCreation.Arguments.Length > 1)
+            if (objectCreation.Arguments.Length > 1
+                && !objectCreation.Arguments[1].Value.IsImplicit)
             {
                 var nameArg = objectCreation.Arguments[1].Value;
                 if (nameArg.ConstantValue.HasValue)
