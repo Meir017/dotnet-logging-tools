@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using LoggerUsage.Models;
 using LoggerUsage.Utilities;
@@ -12,9 +11,9 @@ namespace LoggerUsage.ParameterExtraction;
 public class AnonymousObjectParameterExtractor : IParameterExtractor
 {
     public bool TryExtractParameters(
-        IOperation operation, 
-        LoggingTypes loggingTypes, 
-        string? messageTemplate, 
+        IOperation operation,
+        LoggingTypes loggingTypes,
+        string? messageTemplate,
         out List<MessageParameter> parameters)
     {
         parameters = new List<MessageParameter>();
@@ -26,15 +25,12 @@ public class AnonymousObjectParameterExtractor : IParameterExtractor
 
         foreach (var property in objectCreation.Initializers)
         {
-            if (property is not ISimpleAssignmentOperation assignment)
-                continue;
-
-            var propertyName = GetPropertyName(assignment.Target.Syntax);
-            if (propertyName == null)
+            if (property is not ISimpleAssignmentOperation assignment
+            || assignment.Target is not IPropertyReferenceOperation propertyRef)
                 continue;
 
             var parameter = MessageParameterFactory.CreateFromOperation(
-                propertyName,
+                propertyRef.Member.Name,
                 assignment.Value
             );
 
@@ -42,14 +38,5 @@ public class AnonymousObjectParameterExtractor : IParameterExtractor
         }
 
         return parameters.Count > 0;
-    }
-
-    private static string? GetPropertyName(SyntaxNode syntax)
-    {
-        return syntax switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-            _ => null
-        };
     }
 }
