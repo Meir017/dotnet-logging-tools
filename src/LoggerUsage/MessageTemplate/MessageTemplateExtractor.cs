@@ -8,21 +8,14 @@ namespace LoggerUsage.MessageTemplate;
 /// </summary>
 internal class MessageTemplateExtractor : IMessageTemplateExtractor
 {
-    public bool TryExtract(IArgumentOperation argument, out string template)
+    public bool TryExtract(IOperation operation, out string? template)
     {
-        return TryExtract(argument.Value, out template);
-    }
-
-    public bool TryExtract(IOperation operation, out string template)
-    {
-        template = string.Empty;
-
         // Handle literal string values
         if (operation is ILiteralOperation literal && 
             literal.Type?.SpecialType == SpecialType.System_String &&
             literal.ConstantValue.HasValue)
         {
-            template = literal.ConstantValue.Value?.ToString() ?? string.Empty;
+            template = literal.ConstantValue.Value?.ToString();
             return true;
         }
 
@@ -30,10 +23,11 @@ internal class MessageTemplateExtractor : IMessageTemplateExtractor
         if (operation.Type?.SpecialType == SpecialType.System_String && 
             operation.ConstantValue.HasValue)
         {
-            template = operation.ConstantValue.Value?.ToString() ?? string.Empty;
+            template = operation.ConstantValue.Value?.ToString();
             return true;
         }
 
+        template = null;
         return false;
     }
 }
