@@ -266,7 +266,7 @@ public class TestClass
         var usage = loggerUsages.Results[0];
         Assert.Equal("Define", usage.MethodName);
         Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
-        Assert.Null(MessageTemplate);
+        Assert.Null(usage.MessageTemplate);
     }
 
     [Fact]
