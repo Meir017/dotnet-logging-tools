@@ -61,7 +61,7 @@ namespace LoggerUsage.Analyzers
             return usage;
         }
 
-        private bool TryExtractMessageTemplateFromArguments(IInvocationOperation operation, LoggingTypes loggingTypes, out string messageTemplate)
+        private bool TryExtractMessageTemplateFromArguments(IInvocationOperation operation, LoggingTypes loggingTypes, out string? messageTemplate)
         {
             int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
             for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
@@ -72,7 +72,7 @@ namespace LoggerUsage.Analyzers
                 }
             }
 
-            messageTemplate = string.Empty;
+            messageTemplate = null;
             return false;
         }
 

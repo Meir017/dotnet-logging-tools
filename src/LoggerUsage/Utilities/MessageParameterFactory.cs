@@ -1,6 +1,5 @@
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Operations;
 
 namespace LoggerUsage.Utilities
 {
@@ -9,21 +8,6 @@ namespace LoggerUsage.Utilities
     /// </summary>
     internal static class MessageParameterFactory
     {
-        /// <summary>
-        /// Creates a MessageParameter with consistent formatting.
-        /// </summary>
-        /// <param name="name">The parameter name</param>
-        /// <param name="type">The parameter type</param>
-        /// <param name="kind">The parameter kind</param>
-        /// <returns>A new MessageParameter instance</returns>
-        public static MessageParameter CreateMessageParameter(string name, string type, string kind)
-        {
-            return new MessageParameter(
-                Name: name,
-                Type: type ?? "object",
-                Kind: kind
-            );
-        }
 
         /// <summary>
         /// Creates a MessageParameter from an IOperation with automatic type and kind resolution.
@@ -73,22 +57,12 @@ namespace LoggerUsage.Utilities
             );
         }
 
-        /// <summary>
-        /// Gets a consistent display string for a type, returning "object" if the type is null.
-        /// </summary>
-        /// <param name="type">The type symbol to get the display string for</param>
-        /// <returns>The pretty display string or "object" if null</returns>
-        public static string GetDisplayString(ITypeSymbol? type)
+        private static string GetDisplayString(ITypeSymbol? type)
         {
             return type?.ToPrettyDisplayString() ?? "object";
         }
 
-        /// <summary>
-        /// Gets a consistent kind string for an operation, returning "Constant" for constant values.
-        /// </summary>
-        /// <param name="operation">The operation to get the kind string for</param>
-        /// <returns>"Constant" if the operation has a constant value, otherwise the operation kind as string</returns>
-        public static string GetKindString(IOperation operation)
+        private static string GetKindString(IOperation operation)
         {
             return operation.ConstantValue.HasValue ? "Constant" : operation.Kind.ToString();
         }

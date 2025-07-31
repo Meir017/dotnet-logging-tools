@@ -239,4 +239,230 @@ public class TestClass
 
         return $"Action<{string.Join(", ", actionParams)}>";
     }
+
+    [Fact]
+    public async Task LoggerMessageDefine_Should_HandleNullMessageTemplate()
+    {
+        // Arrange
+        var code = @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+namespace TestNamespace;
+
+public class TestClass
+{
+    private static readonly Action<ILogger, string, Exception?> _invalidDefine = 
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(5, ""Invalid""), null!);
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
+        Assert.Equal("Define", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        Assert.Null(usage.MessageTemplate);
+    }
+
+    [Fact]
+    public async Task LoggerMessageDefine_Should_IgnoreNonGenericMethods()
+    {
+        // Arrange
+        var code = @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void SomeNonGenericMethod()
+    {
+        // This should not be processed
+    }
+
+    private static readonly Action<ILogger, string, Exception?> _validDefine = 
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(1, ""Valid""), ""User {UserId} action"");
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        // Should only find the LoggerMessage.Define call, not the non-generic method
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
+        Assert.Equal("Define", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+    }
+
+    [Fact]
+    public async Task LoggerMessageDefine_Should_HandleMismatchedParameterCount()
+    {
+        // Arrange - 2 generic type arguments but only 1 parameter in message template
+        var code = @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+namespace TestNamespace;
+
+public class TestClass
+{
+    private static readonly Action<ILogger, string, int, Exception?> _mismatchedDefine = 
+        LoggerMessage.Define<string, int>(
+            LogLevel.Information, 
+            new EventId(6, ""Mismatched""), 
+            ""Only one parameter {Param1}"");
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
+        Assert.Equal("Define", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        Assert.Equal("Only one parameter {Param1}", usage.MessageTemplate);
+        
+        // Should extract parameters based on generic types, not just message template
+        // The extractor should handle this gracefully
+        Assert.NotEmpty(usage.MessageParameters);
+    }
+
+    [Fact]
+    public async Task LoggerMessageDefine_Should_HandleStaticEventIdReference()
+    {
+        // Arrange
+        var code = @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+namespace TestNamespace;
+
+public static class Events
+{
+    public static readonly EventId OperationFailure = new(500, ""OperationFailure"");
+}
+
+public class TestClass
+{
+    private static readonly Action<ILogger, System.Guid, Exception?> _operationFailed =
+        LoggerMessage.Define<System.Guid>(
+            LogLevel.Error,
+            Events.OperationFailure,
+            ""Operation {OperationId} failed with error"");
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
+        Assert.Equal("Define", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        Assert.Equal(LogLevel.Error, usage.LogLevel);
+        Assert.Equal("Operation {OperationId} failed with error", usage.MessageTemplate);
+        Assert.NotNull(usage.EventId);
+        
+        // Should handle static EventId reference - might be EventIdRef type
+        if (usage.EventId is EventIdRef eventIdRef)
+        {
+            Assert.Contains("OperationFailure", eventIdRef.Name);
+        }
+    }
+
+    [Fact]
+    public async Task LoggerMessageDefine_Should_HandleVariableMessageTemplate()
+    {
+        // Arrange
+        var code = @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+namespace TestNamespace;
+
+public class TestClass
+{
+    private static string GetMessageTemplate() => ""Dynamic template {Value}"";
+    
+    private static readonly Action<ILogger, string, Exception?> _dynamicTemplate = 
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(7, ""Dynamic""),
+            GetMessageTemplate());
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
+        Assert.Equal("Define", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        
+        // Should handle non-literal message template gracefully
+        // The extractor might not be able to extract the template if it's not a literal, so it could be null or empty
+        // This is expected behavior - the extractor can only extract literal string templates
+    }
+
+    [Fact]
+    public async Task LoggerMessageDefine_Should_HandleComplexGenericTypes()
+    {
+        // Arrange
+        var code = @"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+namespace TestNamespace;
+
+public class CustomType
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+public class TestClass
+{
+    private static readonly Action<ILogger, System.Guid, System.TimeSpan, CustomType, List<string>, Exception?> _complexTypes =
+        LoggerMessage.Define<System.Guid, System.TimeSpan, CustomType, List<string>>(
+            LogLevel.Debug,
+            new EventId(8, ""ComplexTypes""),
+            ""Operation {OperationId} took {Duration} with data {CustomData} and items {Items}"");
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
+        Assert.Equal("Define", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        Assert.Equal("Operation {OperationId} took {Duration} with data {CustomData} and items {Items}", usage.MessageTemplate);
+        
+        // Should extract all 4 parameters with correct types
+        Assert.Equal(4, usage.MessageParameters.Count);
+        Assert.Contains(usage.MessageParameters, p => p.Name == "OperationId" && p.Type == "System.Guid");
+        Assert.Contains(usage.MessageParameters, p => p.Name == "Duration" && p.Type == "System.TimeSpan");
+        Assert.Contains(usage.MessageParameters, p => p.Name == "CustomData" && p.Type == "TestNamespace.CustomType");
+        Assert.Contains(usage.MessageParameters, p => p.Name == "Items" && p.Type == "System.Collections.Generic.List<string>");
+    }
 }

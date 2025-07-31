@@ -3,6 +3,15 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage.Tests;
 
+/// <summary>
+/// Tests for BeginScope logger usage analysis.
+/// 
+/// Note: Some tests reflect current implementation limitations:
+/// - Dictionary variable references extract the variable, not dictionary contents
+/// - Method invocation parameter extraction is not implemented
+/// - Extension methods require literal message templates
+/// These limitations are documented in the test coverage improvement plan.
+/// </summary>
 public class BeginScopeTests
 {
     [Fact]
@@ -350,4 +359,574 @@ public class TestClass
             }
         }
     };
+
+    [Fact]
+    public async Task BeginScope_AnonymousObject_ExtractsParametersCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, string userId, int requestId)
+    {
+        using (logger.BeginScope(new { UserId = userId, RequestId = requestId, Timestamp = DateTime.UtcNow }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        
+        // Should extract parameters from anonymous object properties
+        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        
+        var userIdParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "UserId");
+        Assert.NotNull(userIdParam);
+        Assert.Equal("string", userIdParam.Type);
+        Assert.Equal("ParameterReference", userIdParam.Kind);
+        
+        var requestIdParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "RequestId");
+        Assert.NotNull(requestIdParam);
+        Assert.Equal("int", requestIdParam.Type);
+        Assert.Equal("ParameterReference", requestIdParam.Kind);
+        
+        var timestampParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "Timestamp");
+        Assert.NotNull(timestampParam);
+        Assert.Equal("System.DateTime", timestampParam.Type);
+        Assert.Equal("PropertyReference", timestampParam.Kind);
+    }
+
+    [Fact]
+    public async Task BeginScope_AnonymousObjectWithComplexTypes_HandledCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, Guid operationId)
+    {
+        using (logger.BeginScope(new 
+        { 
+            OperationId = operationId,
+            Data = new { Count = 42, Items = new[] { ""a"", ""b"" } },
+            Flags = new List<string> { ""important"", ""urgent"" },
+            Timestamp = DateTimeOffset.UtcNow
+        }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(4, beginScopeUsage.MessageParameters.Count);
+        
+        var operationIdParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "OperationId");
+        Assert.NotNull(operationIdParam);
+        Assert.Equal("System.Guid", operationIdParam.Type);
+        
+        var dataParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "Data");
+        Assert.NotNull(dataParam);
+        
+        var flagsParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "Flags");
+        Assert.NotNull(flagsParam);
+        Assert.Equal("System.Collections.Generic.List<string>", flagsParam.Type);
+    }
+
+    [Fact]
+    public async Task BeginScope_AnonymousObjectWithNullValues_HandledGracefully()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(new 
+        { 
+            OptionalData = (string?)null,
+            RequiredData = ""value"",
+            NullableInt = (int?)null
+        }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        
+        var optionalParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "OptionalData");
+        Assert.NotNull(optionalParam);
+        Assert.Equal("object", optionalParam.Type);
+        
+        var requiredParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "RequiredData");
+        Assert.NotNull(requiredParam);
+        Assert.Equal("string", requiredParam.Type);
+        
+        var nullableParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "NullableInt");
+        Assert.NotNull(nullableParam);
+        Assert.Equal("object", nullableParam.Type);
+    }
+
+    [Fact]
+    public async Task BeginScope_ExtensionMethodWithParamsArray_ExtractsParametersCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+using System;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, string operation, string userId)
+    {
+        using (logger.BeginScope(""Processing {Operation} for user {UserId} at {Timestamp}"", 
+            operation, userId, DateTime.UtcNow))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal("Processing {Operation} for user {UserId} at {Timestamp}", beginScopeUsage.MessageTemplate);
+        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        
+        Assert.Equal("Operation", beginScopeUsage.MessageParameters[0].Name);
+        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
+        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[0].Kind);
+        
+        Assert.Equal("UserId", beginScopeUsage.MessageParameters[1].Name);
+        Assert.Equal("string", beginScopeUsage.MessageParameters[1].Type);
+        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[1].Kind);
+        
+        Assert.Equal("Timestamp", beginScopeUsage.MessageParameters[2].Name);
+        Assert.Equal("System.DateTime", beginScopeUsage.MessageParameters[2].Type);
+        Assert.Equal("PropertyReference", beginScopeUsage.MessageParameters[2].Kind);
+    }
+
+    [Fact]
+    public async Task BeginScope_ExtensionMethodWithArrayArgument_HandledCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, string requestId, string sourceSystem)
+    {
+        using (logger.BeginScope(""Request {RequestId} from {Source}"", 
+            new object[] { requestId, sourceSystem }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal("Request {RequestId} from {Source}", beginScopeUsage.MessageTemplate);
+        Assert.Equal(2, beginScopeUsage.MessageParameters.Count);
+        
+        Assert.Equal("RequestId", beginScopeUsage.MessageParameters[0].Name);
+        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
+        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[0].Kind);
+        
+        Assert.Equal("Source", beginScopeUsage.MessageParameters[1].Name);
+        Assert.Equal("string", beginScopeUsage.MessageParameters[1].Type);
+        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[1].Kind);
+    }
+
+    [Fact]
+    public async Task BeginScope_ComplexParamsArgumentHandling_ProcessedCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, string operation, int dataId, string dataName)
+    {
+        using (logger.BeginScope(""Complex operation {Op} with data {Data} and flags {Flags}"",
+            operation,
+            new { Id = dataId, Name = dataName },
+            new[] { ""flag1"", ""flag2"" }))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal("Complex operation {Op} with data {Data} and flags {Flags}", beginScopeUsage.MessageTemplate);
+        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        
+        Assert.Equal("Op", beginScopeUsage.MessageParameters[0].Name);
+        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
+        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[0].Kind);
+        
+        Assert.Equal("Data", beginScopeUsage.MessageParameters[1].Name);
+        Assert.Equal("Flags", beginScopeUsage.MessageParameters[2].Name);
+    }
+
+    [Fact]
+    public async Task BeginScope_MessageTemplateFromVariable_HandledCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    private string GetMessageTemplate() => ""Processing {Operation} at {Timestamp}"";
+    
+    public void TestMethod(ILogger logger, string operation, System.DateTime timestamp)
+    {
+        var template = GetMessageTemplate();
+        using (logger.BeginScope(template, operation, timestamp))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        // Message template should be null when not a literal string
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        // Extension methods with non-literal templates don't extract parameters
+        Assert.Empty(beginScopeUsage.MessageParameters);
+    }
+
+    [Fact]
+    public async Task BeginScope_LocalVariableReference_ExtractedCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    private List<KeyValuePair<string, object?>> GetScopeKeyValuePairs() => 
+        new List<KeyValuePair<string, object?>> { new(""key"", ""value"") };
+
+    public void TestMethod(ILogger logger)
+    {
+        var scopeData = GetScopeKeyValuePairs();
+        using (logger.BeginScope(scopeData))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        // Parameter extraction from local variable reference
+        Assert.Single(beginScopeUsage.MessageParameters);
+        Assert.Equal("<scopeData>", beginScopeUsage.MessageParameters[0].Name);
+        Assert.Equal("LocalReference", beginScopeUsage.MessageParameters[0].Kind);
+    }
+
+    [Fact]
+    public async Task BeginScope_FieldReference_ExtractedCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    private readonly List<KeyValuePair<string, object?>> _defaultScope = new();
+
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(_defaultScope))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        // Parameter extraction from field reference
+        Assert.Single(beginScopeUsage.MessageParameters);
+        Assert.Equal("<_defaultScope>", beginScopeUsage.MessageParameters[0].Name);
+        Assert.Equal("FieldReference", beginScopeUsage.MessageParameters[0].Kind);
+    }
+
+    [Fact]
+    public async Task BeginScope_MethodInvocationCreatingKeyValuePairs_HandledCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    private List<KeyValuePair<string, object?>> CreateKeyValuePairs(string key, object value) =>
+        new() { new(key, value) };
+
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(CreateKeyValuePairs(""operation"", ""save"")))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        // Method invocation parameter extraction is not currently implemented
+        Assert.Empty(beginScopeUsage.MessageParameters);
+    }
+
+    [Fact]
+    public async Task BeginScope_DictionaryWithAssignmentOperations_ExtractedCorrectly()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, string entityId, string operation)
+    {
+        var scope = new Dictionary<string, object?>
+        {
+            [""operation""] = operation,
+            [""entityId""] = entityId
+        };
+        
+        using (logger.BeginScope(scope))
+        {
+            logger.LogInformation(""Inside scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        // Currently extracts the local variable reference, not dictionary contents
+        Assert.Single(beginScopeUsage.MessageParameters);
+        
+        var firstParam = beginScopeUsage.MessageParameters[0];
+        Assert.Equal("<scope>", firstParam.Name);
+        Assert.Equal("LocalReference", firstParam.Kind);
+    }
+
+    [Fact]
+    public async Task BeginScope_EmptyScope_HandledGracefully()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        using (logger.BeginScope(""""))
+        {
+            logger.LogInformation(""Inside empty scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        Assert.Equal("", beginScopeUsage.MessageTemplate);
+        Assert.Empty(beginScopeUsage.MessageParameters);
+    }
+
+    [Fact]
+    public async Task BeginScope_NullArgument_HandledGracefully()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"#nullable enable
+using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        string? nullTemplate = null;
+        using (logger.BeginScope(nullTemplate!))
+        {
+            logger.LogInformation(""Inside null scope"");
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
+        Assert.NotNull(beginScopeUsage);
+        // Should handle null template gracefully
+        Assert.Null(beginScopeUsage.MessageTemplate);
+        // Core methods don't extract simple variable references
+        Assert.Empty(beginScopeUsage.MessageParameters);
+    }
+
+    [Fact]
+    public async Task BeginScope_NestedScopes_BothDetected()
+    {
+        // Arrange
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, string userId, string requestId)
+    {
+        using (logger.BeginScope(""User {UserId}"", userId))
+        {
+            using (logger.BeginScope(""Request {RequestId}"", requestId))
+            {
+                logger.LogInformation(""Inside nested scopes"");
+            }
+        }
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        var beginScopeUsages = loggerUsages.Results.Where(r => r.MethodType == LoggerUsageMethodType.BeginScope).ToList();
+        Assert.Equal(2, beginScopeUsages.Count);
+        
+        var userScope = beginScopeUsages.FirstOrDefault(s => s.MessageTemplate?.Contains("UserId") == true);
+        Assert.NotNull(userScope);
+        Assert.Equal("User {UserId}", userScope.MessageTemplate);
+        Assert.Single(userScope.MessageParameters);
+        Assert.Equal("UserId", userScope.MessageParameters[0].Name);
+        
+        var requestScope = beginScopeUsages.FirstOrDefault(s => s.MessageTemplate?.Contains("RequestId") == true);
+        Assert.NotNull(requestScope);
+        Assert.Equal("Request {RequestId}", requestScope.MessageTemplate);
+        Assert.Single(requestScope.MessageParameters);
+        Assert.Equal("RequestId", requestScope.MessageParameters[0].Name);
+    }
 }

@@ -14,13 +14,13 @@ internal interface IMessageTemplateExtractor
     /// <param name="argument">The argument operation to extract the template from</param>
     /// <param name="template">The extracted template if successful</param>
     /// <returns>True if a template was successfully extracted, false otherwise</returns>
-    bool TryExtract(IArgumentOperation argument, out string template);
-    
+    bool TryExtract(IArgumentOperation argument, out string? template) => TryExtract(argument.Value, out template);
+
     /// <summary>
     /// Attempts to extract a message template from any operation.
     /// </summary>
     /// <param name="operation">The operation to extract the template from</param>
     /// <param name="template">The extracted template if successful</param>
     /// <returns>True if a template was successfully extracted, false otherwise</returns>
-    bool TryExtract(IOperation operation, out string template);
+    bool TryExtract(IOperation operation, out string? template);
 }
