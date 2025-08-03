@@ -1,5 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- Package-specific metadata -->
+    <PackageId>LoggerUsage.MSBuild</PackageId>
+    <Title>Logger Usage MSBuild Integration</Title>
+    <Description>MSBuild integration library for analyzing logging usage in .NET projects. Provides workspace and compilation utilities for MSBuild-based projects.</Description>
+    <PackageTags>$(PackageTags);msbuild;integration;workspace</PackageTags>
+    
+    <!-- Library-specific settings -->
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\LoggerUsage\LoggerUsage.csproj" />
   </ItemGroup>
@@ -9,6 +21,10 @@
     <PackageReference Include="Microsoft.Build.Tasks.Core" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
