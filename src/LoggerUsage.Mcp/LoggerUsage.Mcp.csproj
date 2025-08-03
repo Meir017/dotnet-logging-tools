@@ -1,9 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+  <PropertyGroup>    
+    <!-- Package-specific metadata -->
+    <PackageId>LoggerUsage.Mcp</PackageId>
+    <Title>Logger Usage MCP Server</Title>
+    <Description>Model Context Protocol server for logging analysis integration with AI tools and IDEs.</Description>
+    <PackageTags>$(PackageTags);mcp;server;ai;integration</PackageTags>
+    
+    <!-- Application-specific settings -->
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +21,10 @@
   <ItemGroup>
     <ProjectReference Include="..\LoggerUsage\LoggerUsage.csproj" />
     <ProjectReference Include="..\LoggerUsage.MSBuild\LoggerUsage.MSBuild.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

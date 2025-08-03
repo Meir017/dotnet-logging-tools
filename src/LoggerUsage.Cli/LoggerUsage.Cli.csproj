@@ -2,6 +2,17 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    
+    <!-- Package-specific metadata -->
+    <PackageId>LoggerUsage.Cli</PackageId>
+    <Title>Logger Usage Analysis CLI Tool</Title>
+    <Description>Command-line tool for analyzing logging usage in .NET projects. Generates HTML and JSON reports of logging patterns and inconsistencies.</Description>
+    <PackageTags>$(PackageTags);cli;tool;commandline</PackageTags>
+    
+    <!-- Tool-specific settings -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>logger-usage</ToolCommandName>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,6 +22,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
