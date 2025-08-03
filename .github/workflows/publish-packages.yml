@@ -25,11 +25,14 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
-    - name: Download packages
-      uses: actions/download-artifact@v4
-      with:
-        name: nuget-packages
-        path: ./packages
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build solution
+      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+    
+    - name: Pack packages
+      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --no-build --output ./packages
     
     - name: Add GitHub Packages source
       run: dotnet nuget add source --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
@@ -54,11 +57,14 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
-    - name: Download packages
-      uses: actions/download-artifact@v4
-      with:
-        name: nuget-packages
-        path: ./packages
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build solution
+      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+    
+    - name: Pack packages
+      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --no-build --output ./packages
     
     - name: Publish packages to NuGet.org
       run: |
