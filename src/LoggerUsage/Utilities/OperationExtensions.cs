@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace LoggerUsage;
+namespace LoggerUsage.Utilities;
 
 internal static class OperationExtensions
 {

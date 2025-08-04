@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace LoggerUsage;
+namespace LoggerUsage.Utilities;
 
 internal static class SymbolExtensions
 {
