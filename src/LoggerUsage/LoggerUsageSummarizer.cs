@@ -20,12 +20,16 @@ public class LoggerUsageSummarizer
 
         foreach (var usage in extractionResult.Results)
         {
-            if (usage.MessageParameters == null) continue;
+            if (usage.MessageParameters == null)
+            {
+                continue;
+            }
+
             foreach (var param in usage.MessageParameters)
             {
                 if (!parameterTypesByName.TryGetValue(param.Name, out var types))
                 {
-                    types = new HashSet<string>();
+                    types = [];
                     parameterTypesByName[param.Name] = types;
                 }
                 if (!string.IsNullOrEmpty(param.Type))
@@ -34,7 +38,10 @@ public class LoggerUsageSummarizer
                 }
 
                 if (!parameterUsageCount.ContainsKey(param.Name))
+                {
                     parameterUsageCount[param.Name] = 0;
+                }
+
                 parameterUsageCount[param.Name]++;
             }
         }
@@ -77,7 +84,9 @@ public class LoggerUsageSummarizer
             foreach (var name in group)
             {
                 foreach (var t in parameterTypesByName[name])
+                {
                     allTypes.Add(t);
+                }
             }
             if (allTypes.Count > 1 && group.Count > 1)
             {
@@ -90,14 +99,14 @@ public class LoggerUsageSummarizer
             .GroupBy(x => x.Names, new NameTypePairListComparer())
             .Select(g => new LoggerUsageExtractionSummary.InconsistentParameterNameInfo(
                 g.Key,
-                g.Select(x => x.IssueType).Distinct().ToList()
+                [.. g.Select(x => x.IssueType).Distinct()]
             ))
             .ToList();
 
         summary.InconsistentParameterNames = inconsistencies;
 
         // Find most common parameter names
-        summary.CommonParameterNames = parameterUsageCount
+        summary.CommonParameterNames = [.. parameterUsageCount
             .OrderByDescending(kvp => kvp.Value)
             .Take(10)
             .Select(kvp =>
@@ -114,8 +123,7 @@ public class LoggerUsageSummarizer
                     Count = count,
                     MostCommonType = mostCommonType
                 };
-            })
-            .ToList();
+            })];
     }
 
     // Compares two lists of NameTypePair for set equality (order-insensitive, unique pairs)
@@ -123,9 +131,21 @@ public class LoggerUsageSummarizer
     {
         public bool Equals(List<LoggerUsageExtractionSummary.NameTypePair>? x, List<LoggerUsageExtractionSummary.NameTypePair>? y)
         {
-            if (ReferenceEquals(x, y)) return true;
-            if (x is null || y is null) return false;
-            if (x.Count != y.Count) return false;
+            if (ReferenceEquals(x, y))
+            {
+                return true;
+            }
+
+            if (x is null || y is null)
+            {
+                return false;
+            }
+
+            if (x.Count != y.Count)
+            {
+                return false;
+            }
+
             var setX = new HashSet<LoggerUsageExtractionSummary.NameTypePair>(x);
             var setY = new HashSet<LoggerUsageExtractionSummary.NameTypePair>(y);
             return setX.SetEquals(setY);

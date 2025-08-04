@@ -11,15 +11,15 @@ namespace LoggerUsage.ParameterExtraction;
 internal class GenericTypeParameterExtractor : IParameterExtractor
 {
     public bool TryExtractParameters(
-        IOperation operation, 
-        LoggingTypes loggingTypes, 
-        string? messageTemplate, 
+        IOperation operation,
+        LoggingTypes loggingTypes,
+        string? messageTemplate,
         out List<MessageParameter> parameters)
     {
-        parameters = new List<MessageParameter>();
+        parameters = [];
 
-        if (operation is not IInvocationOperation invocation || 
-            string.IsNullOrEmpty(messageTemplate) || 
+        if (operation is not IInvocationOperation invocation ||
+            string.IsNullOrEmpty(messageTemplate) ||
             !invocation.TargetMethod.IsGenericMethod)
         {
             return false;
@@ -27,7 +27,7 @@ internal class GenericTypeParameterExtractor : IParameterExtractor
 
         var formatter = new LogValuesFormatter(messageTemplate);
         var typeArguments = invocation.TargetMethod.TypeArguments;
-        
+
         for (int i = 0; i < typeArguments.Length && i < formatter.ValueNames.Count; i++)
         {
             parameters.Add(new MessageParameter(

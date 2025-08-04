@@ -14,15 +14,21 @@ namespace LoggerUsage.Analyzers
             foreach (var methodDeclaration in methodDeclarations)
             {
                 if (semanticModel.GetDeclaredSymbol(methodDeclaration) is not IMethodSymbol methodSymbol)
+                {
                     continue;
+                }
 
                 if (!methodSymbol.IsPartialDefinition)
+                {
                     continue;
+                }
 
                 foreach (var attributeData in methodSymbol.GetAttributes())
                 {
                     if (!loggingTypes.LoggerMessageAttribute.Equals(attributeData.AttributeClass, SymbolEqualityComparer.Default))
+                    {
                         continue;
+                    }
 
                     var usage = new LoggerUsageInfo
                     {

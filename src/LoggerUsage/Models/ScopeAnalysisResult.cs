@@ -15,7 +15,7 @@ namespace LoggerUsage.Models
         /// <summary>
         /// The parameters extracted from the scope state.
         /// </summary>
-        public List<MessageParameter> Parameters { get; init; } = new();
+        public List<MessageParameter> Parameters { get; init; } = [];
 
         /// <summary>
         /// Indicates whether the analyzed method is an extension method.

@@ -57,7 +57,9 @@ namespace LoggerUsage.Services
         public bool IsKeyValuePairEnumerable(ITypeSymbol? type, LoggingTypes loggingTypes)
         {
             if (type is not INamedTypeSymbol namedType)
+            {
                 return false;
+            }
 
             // Direct check for IEnumerable<KeyValuePair<string, object?>>
             if (namedType.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
@@ -75,7 +77,9 @@ namespace LoggerUsage.Services
         public bool IsKeyValuePairType(ITypeSymbol? type, LoggingTypes loggingTypes)
         {
             if (type is not INamedTypeSymbol namedType)
+            {
                 return false;
+            }
 
             return SymbolEqualityComparer.Default.Equals(namedType, loggingTypes.KeyValuePairOfStringNullableObject);
         }

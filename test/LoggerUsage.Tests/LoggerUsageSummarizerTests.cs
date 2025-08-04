@@ -13,8 +13,8 @@ public class LoggerUsageSummarizerTests
         // Arrange
         var extractionResult = new LoggerUsageExtractionResult
         {
-            Results = new List<LoggerUsageInfo>
-            {
+            Results =
+            [
                 new LoggerUsageInfo
                 {
                     MethodName = "TestMethod",
@@ -25,12 +25,12 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 1,
                         EndLineNumber = 1
                     },
-                    MessageParameters = new List<MessageParameter>
-                    {
+                    MessageParameters =
+                    [
                         new MessageParameter("userId", "string", "ParameterReference")
-                    }
+                    ]
                 }
-            },
+            ],
             Summary = new LoggerUsageExtractionSummary()
         };
         var summarizer = new LoggerUsageSummarizer();
@@ -55,8 +55,8 @@ public class LoggerUsageSummarizerTests
         // Arrange
         var extractionResult = new LoggerUsageExtractionResult
         {
-            Results = new List<LoggerUsageInfo>
-            {
+            Results =
+            [
                 new LoggerUsageInfo
                 {
                     MethodName = "TestMethod",
@@ -67,11 +67,11 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 1,
                         EndLineNumber = 1
                     },
-                    MessageParameters = new List<MessageParameter>
-                    {
+                    MessageParameters =
+                    [
                         new MessageParameter("userId", "string", "ParameterReference"),
                         new MessageParameter("orderId", "int", "ParameterReference")
-                    }
+                    ]
                 },
                 new LoggerUsageInfo
                 {
@@ -83,12 +83,12 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 2,
                         EndLineNumber = 2
                     },
-                    MessageParameters = new List<MessageParameter>
-                    {
+                    MessageParameters =
+                    [
                         new MessageParameter("userId", "int", "ParameterReference")
-                    }
+                    ]
                 }
-            },
+            ],
             Summary = new LoggerUsageExtractionSummary()
         };
         var summarizer = new LoggerUsageSummarizer();
@@ -120,8 +120,8 @@ public class LoggerUsageSummarizerTests
         // Arrange
         var extractionResult = new LoggerUsageExtractionResult
         {
-            Results = new List<LoggerUsageInfo>
-            {
+            Results =
+            [
                 new LoggerUsageInfo
                 {
                     MethodName = "TestMethod",
@@ -132,7 +132,7 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 1,
                         EndLineNumber = 1
                     },
-                    MessageParameters = new List<MessageParameter>()
+                    MessageParameters = []
                 },
                 new LoggerUsageInfo
                 {
@@ -144,9 +144,9 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 2,
                         EndLineNumber = 2
                     },
-                    MessageParameters = new List<MessageParameter>()
+                    MessageParameters = []
                 }
-            },
+            ],
             Summary = new LoggerUsageExtractionSummary()
         };
         var summarizer = new LoggerUsageSummarizer();
@@ -168,8 +168,8 @@ public class LoggerUsageSummarizerTests
         // Arrange
         var extractionResult = new LoggerUsageExtractionResult
         {
-            Results = new List<LoggerUsageInfo>
-            {
+            Results =
+            [
                 new LoggerUsageInfo
                 {
                     MethodName = "TestMethod",
@@ -180,13 +180,13 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 1,
                         EndLineNumber = 1
                     },
-                    MessageParameters = new List<MessageParameter>
-                    {
+                    MessageParameters =
+                    [
                         new MessageParameter("userId", "string", "ParameterReference"),
                         new MessageParameter("UserId", "int", "ParameterReference"),
                         new MessageParameter("userid", "string", "ParameterReference"),
                         new MessageParameter("orderId", "int", "ParameterReference")
-                    }
+                    ]
                 },
                 new LoggerUsageInfo
                 {
@@ -198,12 +198,12 @@ public class LoggerUsageSummarizerTests
                         StartLineNumber = 2,
                         EndLineNumber = 2
                     },
-                    MessageParameters = new List<MessageParameter>
-                    {
+                    MessageParameters =
+                    [
                         new MessageParameter("userId", "int", "ParameterReference")
-                    }
+                    ]
                 }
-            },
+            ],
             Summary = new LoggerUsageExtractionSummary()
         };
         var summarizer = new LoggerUsageSummarizer();

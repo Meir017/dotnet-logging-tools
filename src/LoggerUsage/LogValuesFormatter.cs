@@ -7,7 +7,7 @@ namespace LoggerUsage;
 // Take from https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Logging.Abstractions/src/LogValuesFormatter.cs
 internal class LogValuesFormatter
 {
-    private readonly List<string> _valueNames = new List<string>();
+    private readonly List<string> _valueNames = [];
 
     public LogValuesFormatter(string format)
     {

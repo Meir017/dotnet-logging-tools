@@ -75,14 +75,22 @@ public class TestClass
 
         var details = Assert.IsType<EventIdDetails>(usage.EventId);
         if (expectedId is not null)
+        {
             Assert.Equal(ConstantOrReference.Constant(expectedId), details.Id);
+        }
         else
+        {
             Assert.Same(ConstantOrReference.Missing, details.Id);
+        }
 
         if (expectedName is not null)
+        {
             Assert.Equal(ConstantOrReference.Constant(expectedName), details.Name);
+        }
         else
+        {
             Assert.Same(ConstantOrReference.Missing, details.Name);
+        }
     }
 
     public static TheoryData<string, LogLevel> LoggerMessageDefineLogLevelScenarios() => new()
