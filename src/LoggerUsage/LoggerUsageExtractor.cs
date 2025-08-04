@@ -7,11 +7,21 @@ using System.Collections.Concurrent;
 
 namespace LoggerUsage;
 
+/// <summary>
+/// Extracts logger usage information from C# source code using Roslyn analyzers.
+/// </summary>
+/// <param name="analyzers">Collection of analyzers to use for extracting logger usage patterns.</param>
+/// <param name="logger">Logger instance for diagnostics and information logging.</param>
 public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, ILogger<LoggerUsageExtractor> logger)
 {
     private readonly IEnumerable<ILoggerUsageAnalyzer> _analyzers = analyzers;
     private readonly ILogger<LoggerUsageExtractor> _logger = logger;
 
+    /// <summary>
+    /// Asynchronously extracts logger usage information from all projects in the specified workspace.
+    /// </summary>
+    /// <param name="workspace">The workspace containing the projects to analyze.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the extraction results.</returns>
     public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesAsync(Workspace workspace)
     {
         var results = new List<LoggerUsageInfo>();
@@ -42,6 +52,11 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
         return result;
     }
 
+    /// <summary>
+    /// Extracts logger usage information from a single compilation unit.
+    /// </summary>
+    /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
+    /// <returns>The extraction results containing all found logger usage information.</returns>
     public LoggerUsageExtractionResult ExtractLoggerUsages(Compilation compilation)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;

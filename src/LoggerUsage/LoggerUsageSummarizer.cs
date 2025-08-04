@@ -2,8 +2,15 @@ using LoggerUsage.Models;
 
 namespace LoggerUsage;
 
+/// <summary>
+/// Provides functionality to generate summary statistics from logger usage extraction results.
+/// </summary>
 public class LoggerUsageSummarizer
 {
+    /// <summary>
+    /// Populates the summary section of the extraction result with aggregated statistics and insights.
+    /// </summary>
+    /// <param name="extractionResult">The extraction result to populate with summary information.</param>
     public void PopulateSummary(LoggerUsageExtractionResult extractionResult)
     {
         var summary = extractionResult.Summary;
