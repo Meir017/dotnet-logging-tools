@@ -16,7 +16,7 @@
         <Authors>Meir017</Authors>
         <Company>Meir017</Company>
         <Product>dotnet-logging-usage</Product>
-        <Copyright>Copyright © Meir017 2025</Copyright>
+        <Copyright>Copyright © Meir017 $([System.DateTime]::Now.Year)</Copyright>
         
         <!-- Repository Information -->
         <RepositoryUrl>https://github.com/Meir017/dotnet-logging-usage</RepositoryUrl>
