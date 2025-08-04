@@ -2,6 +2,14 @@
 
 Create a summary of which log messages a project writes and the parameters to improve consistency
 
+[![LoggerUsage](https://img.shields.io/badge/nuget-LoggerUsage-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage) - Core library for analyzing .NET logging usage patterns
+
+[![LoggerUsage.Cli](https://img.shields.io/badge/nuget-LoggerUsage.Cli-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage.Cli) - Command-line tool for generating HTML/JSON reports
+
+[![LoggerUsage.Mcp](https://img.shields.io/badge/nuget-LoggerUsage.Mcp-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage.Mcp) - Model Context Protocol server for AI integrations
+
+[![LoggerUsage.MSBuild](https://img.shields.io/badge/nuget-LoggerUsage.MSBuild-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage.MSBuild) - MSBuild integration for workspace analysis
+
 ## Background
 
 This tool analyzes .NET projects to extract and summarize logging usage patterns. It supports the following logging APIs:
@@ -58,7 +66,7 @@ By default, the server will use the configuration in `src/LoggerUsage.Mcp/appset
 ## Roadmap
 
 - [ ] Add support for `ILogger.Log` method
-- [ ] Add support for `ILogger.BeginScope` method
+- [x] Add support for `ILogger.BeginScope` method
 - [ ] Create a summary of the log messages
 - [ ] Integrate AI to suggest improvements and find inconsistencies
 - [ ] For LoggerMessageAttribute - find all invocations of method
