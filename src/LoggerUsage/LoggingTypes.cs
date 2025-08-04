@@ -3,9 +3,13 @@ using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage
 {
+    /// <summary>
+    /// Provides access to common logging-related types from the Microsoft.Extensions.Logging namespace
+    /// and Microsoft.CodeAnalysis symbols for code analysis scenarios.
+    /// </summary>
     public class LoggingTypes
     {
-        public LoggingTypes(Compilation compilation, INamedTypeSymbol loggerInterface)
+        internal LoggingTypes(Compilation compilation, INamedTypeSymbol loggerInterface)
         {
             ILogger = loggerInterface;
             LoggerMessageAttribute = compilation.GetTypeByMetadataName(typeof(LoggerMessageAttribute).FullName!)!;
@@ -26,20 +30,69 @@ namespace LoggerUsage
 
         }
 
+        /// <summary>
+        /// Gets the ILogger interface type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol ILogger { get; }
+        
+        /// <summary>
+        /// Gets the LoggerMessageAttribute type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol LoggerMessageAttribute { get; }
+        
+        /// <summary>
+        /// Gets the EventId type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol EventId { get; }
+        
+        /// <summary>
+        /// Gets the LogLevel type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol LogLevel { get; }
+        
+        /// <summary>
+        /// Gets the LoggerExtensions type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol LoggerExtensions { get; }
+        
+        /// <summary>
+        /// Gets the LoggerMessage type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol LoggerMessage { get; }
+        
+        /// <summary>
+        /// Gets the Exception type symbol from System.
+        /// </summary>
         public INamedTypeSymbol Exception { get; }
+        
+        /// <summary>
+        /// Gets an array type symbol representing nullable object arrays (object?[]).
+        /// </summary>
         public IArrayTypeSymbol ObjectNullableArray { get; }
+        
+        /// <summary>
+        /// Gets the LogPropertiesAttribute type symbol from Microsoft.Extensions.Logging.
+        /// </summary>
         public INamedTypeSymbol LogPropertiesAttribute { get; }
 
+        /// <summary>
+        /// Gets a KeyValuePair&lt;string, object?&gt; type symbol used for structured logging parameters.
+        /// </summary>
         public INamedTypeSymbol KeyValuePairOfStringNullableObject { get; }
+        
+        /// <summary>
+        /// Gets the generic KeyValuePair&lt;,&gt; type symbol from System.Collections.Generic.
+        /// </summary>
         public INamedTypeSymbol KeyValuePairGeneric { get; }
+        
+        /// <summary>
+        /// Gets an IEnumerable&lt;KeyValuePair&lt;string, object?&gt;&gt; type symbol used for structured logging state.
+        /// </summary>
         public INamedTypeSymbol IEnumerableOfKeyValuePair { get; }
 
+        /// <summary>
+        /// Gets the logger extension modeler used for analyzing logger extension methods.
+        /// </summary>
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
     }
 }

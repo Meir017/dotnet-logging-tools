@@ -13,8 +13,7 @@ namespace LoggerUsage
         private readonly IMethodSymbol _loggerLogMethod;
         private readonly IMethodSymbol _loggerBeginScopeMethod;
 
-
-        public LoggerExtensionModeler(LoggingTypes types)
+        internal LoggerExtensionModeler(LoggingTypes types)
         {
             foreach (var method in types.LoggerExtensions.GetMembers().OfType<IMethodSymbol>())
             {
@@ -36,7 +35,15 @@ namespace LoggerUsage
                 .First(m => m.Name == nameof(ILogger.BeginScope));
         }
 
-        internal bool IsLoggerMethod(IMethodSymbol method)
+        /// <summary>
+        /// Determines whether the specified method symbol represents a logger method.
+        /// </summary>
+        /// <param name="method">The method symbol to check.</param>
+        /// <returns>
+        /// <c>true</c> if the method is a logger method (ILogger.Log or LoggerExtensions method), excluding IsEnabled and BeginScope methods; 
+        /// otherwise, <c>false</c>.
+        /// </returns>
+        public bool IsLoggerMethod(IMethodSymbol method)
         {
             if (SymbolEqualityComparer.Default.Equals(method, _loggerIsEnabledMethod))
             {
@@ -68,7 +75,15 @@ namespace LoggerUsage
             return false;
         }
 
-        internal bool IsBeginScopeMethod(IMethodSymbol method)
+        /// <summary>
+        /// Determines whether the specified method symbol represents a BeginScope method.
+        /// </summary>
+        /// <param name="method">The method symbol to check.</param>
+        /// <returns>
+        /// <c>true</c> if the method is a BeginScope method (either ILogger.BeginScope or a BeginScope extension method); 
+        /// otherwise, <c>false</c>.
+        /// </returns>
+        public bool IsBeginScopeMethod(IMethodSymbol method)
         {
             // Check if this is a BeginScope method by name
             if (method.Name != nameof(ILogger.BeginScope))

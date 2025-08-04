@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.Operations;
 
 namespace LoggerUsage;
 
-public static class OperationExtensions
+internal static class OperationExtensions
 {
     public static IOperation UnwrapConversion(this IOperation operation)
     {

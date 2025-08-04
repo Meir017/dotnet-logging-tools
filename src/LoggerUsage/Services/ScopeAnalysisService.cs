@@ -10,7 +10,7 @@ namespace LoggerUsage.Services
     /// <summary>
     /// Implementation of scope analysis service that consolidates scope state extraction logic.
     /// </summary>
-    public class ScopeAnalysisService : IScopeAnalysisService
+    internal class ScopeAnalysisService : IScopeAnalysisService
     {
         private readonly IKeyValuePairExtractionService _keyValuePairExtractionService;
         private readonly AnonymousObjectParameterExtractor _anonymousObjectParameterExtractor;

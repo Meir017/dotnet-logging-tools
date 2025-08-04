@@ -2,6 +2,9 @@ using Microsoft.CodeAnalysis;
 
 namespace LoggerUsage;
 
+/// <summary>
+/// Factory interface for creating workspaces.
+/// </summary>
 public interface IWorkspaceFactory
 {
     /// <summary>

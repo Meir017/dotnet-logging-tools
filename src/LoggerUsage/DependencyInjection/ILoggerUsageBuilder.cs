@@ -11,13 +11,27 @@ using LoggerUsage.Analyzers;
 namespace Microsoft.Extensions.DependencyInjection;
 #pragma warning restore IDE0130 // Namespace does not match folder structure
 
+/// <summary>
+/// Defines a builder pattern for configuring logger usage analysis services.
+/// </summary>
 public interface ILoggerUsageBuilder
 {
+    /// <summary>
+    /// Gets the service collection used to register logger usage services.
+    /// </summary>
     IServiceCollection Services { get; }
 }
 
+/// <summary>
+/// Provides extension methods for configuring logger usage analysis services.
+/// </summary>
 public static class LoggerUsageBuilderExtensions
 {
+    /// <summary>
+    /// Adds logger usage extraction services to the specified service collection.
+    /// </summary>
+    /// <param name="services">The service collection to add the services to.</param>
+    /// <returns>An <see cref="ILoggerUsageBuilder"/> that can be used to further configure the services.</returns>
     public static ILoggerUsageBuilder AddLoggerUsageExtractor(this IServiceCollection services)
     {
         // Core services

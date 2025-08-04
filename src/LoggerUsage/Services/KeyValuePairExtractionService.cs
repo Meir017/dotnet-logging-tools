@@ -10,7 +10,7 @@ namespace LoggerUsage.Services
     /// <summary>
     /// Implementation of KeyValuePair extraction service that handles extraction and validation of KeyValuePair collections.
     /// </summary>
-    public class KeyValuePairExtractionService : IKeyValuePairExtractionService
+    internal class KeyValuePairExtractionService : IKeyValuePairExtractionService
     {
         private readonly ILogger<KeyValuePairExtractionService> _logger;
 
