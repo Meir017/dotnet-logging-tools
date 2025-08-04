@@ -35,37 +35,7 @@ The LoggerUsage library is a sophisticated static code analysis tool that extrac
 
 ## Using the Roslyn API Correctly
 
-When checking if a symbol matches some well-known method/type, always compare the symbol, not just the name and type name. This ensures that you are checking the correct method or type, especially in cases where there might be multiple definitions or overloads.
-
-For example, instead of checking just the name and type name:
-
-DON'T DO THIS:
-
-```csharp
-if (symbol.Name == "LogInformation" && symbol.ContainingType.Name == "ILogger")
-{
-    // This is the correct symbol
-}
-```
-
-DO THIS:
-
-use the `ISymbol` interface to check the symbol directly:
-
-```csharp
-var logInformationSymbol = context.Compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.LoggerExtensions")?
-    .GetMembers("LogInformation").FirstOrDefault();
-if (symbol is IMethodSymbol methodSymbol && methodSymbol.Name == "LogInformation" && methodSymbol.ContainingType.ToDisplayString() == "Microsoft.Extensions.Logging.ILogger")
-{
-    // This is the correct symbol
-}
-```
-
-When working with the Roslyn API, always ensure you are using the correct symbol type and properties to avoid issues with method resolution and type checking. This will help maintain the integrity of your code analysis and extraction logic.
-
-### Better Symbol Comparison Pattern
-
-Use the `LoggingTypes` class and its modeler classes:
+When checking if a symbol matches a well-known method/type, always compare the symbol directly, not just names. Use the `LoggingTypes` class and its modeler classes:
 
 ```csharp
 // Access pre-resolved symbols through LoggingTypes
@@ -104,192 +74,25 @@ if (SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, loggingTy
 - Include relevant context: file paths, method names, symbol information
 - Use structured logging parameters consistently
 
-Example:
-```csharp
-_logger.LogInformation("Analyzer {AnalyzerType} found {UsageCount} usages in {FilePath} in {Duration}ms", 
-    analyzer.GetType().Name, usageCount, filePath, duration.TotalMilliseconds);
-```
-
 ### 5. Model Design
 - Use required properties for essential data
 - Provide sensible defaults for collections (empty lists, not null)
 - Use nullable reference types appropriately
-- Include comprehensive XML documentation for public API's.
+- Include comprehensive XML documentation for public APIs
 
 ### 6. Testing Patterns
 
-The test suite follows established patterns for Roslyn-based analyzers with comprehensive coverage of logging scenarios.
+Tests use `TestUtils.CreateCompilationAsync()` and `TestUtils.CreateLoggerUsageExtractor()` for setup. Key patterns:
 
-#### Test Infrastructure
+- **Basic Tests**: Create compilation, extract usages, assert results
+- **Theory Tests**: Use `[MemberData]` for parameter variations and edge cases
+- **Test Organization**: Separate files by analyzer type (`LoggerMethodsTests`, `LoggerMessageAttributeTests`, etc.)
 
-**TestUtils Class**: Central utility for test setup
-```csharp
-// Create compilations with proper references
-var compilation = await TestUtils.CreateCompilationAsync(sourceCode);
-var extractor = TestUtils.CreateLoggerUsageExtractor();
-```
-
-**Key Features:**
-- Uses `ReferenceAssemblies.Net.Net90` for consistent .NET references
-- Automatically includes `Microsoft.Extensions.Logging` assemblies
-- Suppresses common compiler warnings for test scenarios
-- Validates compilation has no errors before analysis
-
-#### Test Organization
-
-**By Analyzer Type:**
-- `LoggerMethodsTests.cs` - ILogger extension method analysis
-- `LoggerMessageAttributeTests.cs` - [LoggerMessage] attribute patterns
-- `LoggerMessageDefineTests.cs` - LoggerMessage.Define usage
-- `BeginScopeTests.cs` - Scope creation patterns
-- `LoggerUsageSummarizerTests.cs` - Summary generation logic
-
-#### Common Test Patterns
-
-**Basic Test Structure:**
-```csharp
-[Fact]
-public async Task BasicTest()
-{
-    // Arrange
-    var compilation = await TestUtils.CreateCompilationAsync(@"
-        using Microsoft.Extensions.Logging;
-        namespace TestNamespace;
-        
-        public class TestClass
-        {
-            public void TestMethod(ILogger logger)
-            {
-                logger.LogInformation(""Test message"");
-            }
-        }");
-    var extractor = TestUtils.CreateLoggerUsageExtractor();
-
-    // Act
-    var result = extractor.ExtractLoggerUsages(compilation);
-
-    // Assert
-    Assert.Single(result.Results);
-    Assert.Equal(LoggerUsageMethodType.LoggerExtensions, result.Results[0].MethodType);
-}
-```
-
-**Theory Tests for Parameter Variations:**
-```csharp
-[Theory]
-[MemberData(nameof(LoggerMessageParameterCases))]
-public async Task TestLoggerMessageParameters(
-    string template, 
-    string[] argNames, 
-    List<MessageParameter> expectedParameters)
-{
-    // Generate test code dynamically
-    var methodArgs = '"' + template + '"' + 
-        (argNames.Length > 0 ? ", " : "") + 
-        string.Join(", ", argNames);
-    
-    var code = $@"
-        using Microsoft.Extensions.Logging;
-        public class TestClass {{
-            public void TestMethod(ILogger logger, string strArg, int intArg) {{
-                logger.LogInformation({methodArgs});
-            }}
-        }}";
-        
-    // Test parameter extraction accuracy
-    Assert.Equal(expectedParameters, result.Results[0].MessageParameters);
-}
-```
-
-**Parameter Test Data:**
-```csharp
-public static TheoryData<string, string[], List<MessageParameter>> LoggerMessageParameterCases() => new()
-{
-    { "Test {arg1}", ["strArg"], [ 
-        new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference))
-    ] },
-    { "Test {arg1} {arg2}", ["strArg.Length", "intArg.ToString()"], [
-        new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
-        new MessageParameter("arg2", "string", nameof(OperationKind.Invocation))
-    ] },
-    // ... more complex scenarios
-};
-```
-
-#### Specialized Test Scenarios
-
-**LoggerMessage Attribute Tests:**
-```csharp
-[Fact]
-public async Task LoggerMessageAttributeTest()
-{
-    var code = @"
-        using Microsoft.Extensions.Logging;
-        public static partial class Log
-        {
-            [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = ""Test message"")]
-            public static partial void TestMethod(ILogger logger);
-        }
-        
-        // Mock generated code:
-        partial class Log
-        {
-            public static partial void TestMethod(ILogger logger) { }
-        }";
-        
-    // Verify attribute-based pattern detection
-    Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, result.MethodType);
-}
-```
-
-**Scope Analysis Tests:**
-```csharp
-[Theory]
-[InlineData("logger.BeginScope(\"Test scope\")", "Test scope")]
-[InlineData("logger.BeginScope(\"User {userId}\", userId)", "User {userId}")]
-public async Task BeginScopeTests(string scopeCall, string expectedTemplate)
-{
-    // Test scope pattern recognition and template extraction
-}
-```
-
-#### Custom Test Infrastructure
-
-**XUnit Serialization:**
-- Custom `MessageParameterListXunitSerializer` for complex model comparison
-- Registered via assembly attribute for seamless theory test support
-
-**Test Compilation Features:**
-- Nullable reference types enabled (`#nullable enable`)
-- Comprehensive field/property scenarios for parameter extraction
-- Edge cases: conditional access (`?.`), method chaining, constants
-
-#### Best Practices for New Tests
-
-1. **Use Descriptive Test Names**: `TestLoggerMessageParameters_WithPropertyAccess_ExtractsCorrectType`
-
-2. **Test Edge Cases:**
-   - Missing references/symbols
-   - Malformed templates
-   - Complex parameter expressions
-   - Generated code patterns
-
-3. **Validate Complete Results:**
-   - Method type classification
-   - Template extraction accuracy
-   - Parameter name/type/operation mapping
-   - Location information
-   - EventId and LogLevel extraction
-
-4. **Use Theory Tests for Variations:**
-   - Different logging method overloads
-   - Various parameter types and expressions
-   - Template complexity scenarios
-
-5. **Mock Generated Code When Needed:**
-   - LoggerMessage source generators
-   - Partial method implementations
-   - Compiler-generated patterns
+**Best Practices:**
+- Use descriptive test names with pattern: `TestMethod_WithCondition_ExpectedResult`
+- Test edge cases: missing symbols, malformed templates, complex expressions
+- Validate complete results: method type, parameters, location, EventId/LogLevel
+- Mock generated code for LoggerMessage patterns when needed
 
 
 ## Extension Points
@@ -408,14 +211,6 @@ src/LoggerUsage/
 ├── Services/            # Core services
 └── Utilities/           # Helper classes
 ```
-
-## Future Considerations
-
-- Support for custom logging frameworks
-- Enhanced parameter type analysis
-- Performance optimizations for large codebases
-- Integration with static analysis tools
-- Support for configuration-based analysis rules
 
 ## References
 
