@@ -14,7 +14,7 @@ public class ExtractLoggerUsagesFromWorkspaceTests
         // Arrange
         var workspace = await CreateTestWorkspace(new()
         {
-            ["TestProject"] = 
+            ["TestProject"] =
             [
                 ("TestDocument.cs", @"using Microsoft.Extensions.Logging;
 namespace TestNamespace;
@@ -58,7 +58,7 @@ public class TestClass
         // Arrange
         var workspace = await CreateTestWorkspace(new()
         {
-            ["ProjectA"] = 
+            ["ProjectA"] =
             [
                 ("DocumentA.cs", @"using Microsoft.Extensions.Logging;
 namespace ProjectANamespace;
@@ -70,7 +70,7 @@ public class ProjectAClass
     }
 }"),
             ],
-            ["ProjectB"] = 
+            ["ProjectB"] =
             [
                 ("DocumentB.cs", @"using Microsoft.Extensions.Logging;
 namespace ProjectBNamespace;
@@ -114,9 +114,9 @@ public class ProjectBClass
 
             var proj = workspace.AddProject(projectInfo);
 
-            foreach (var document in documents)
+            foreach (var (fileName, sourceCode) in documents)
             {
-                workspace.AddDocument(proj.Id, document.FileName, SourceText.From(document.SourceCode));
+                workspace.AddDocument(proj.Id, fileName, SourceText.From(sourceCode));
             }
         }
 
