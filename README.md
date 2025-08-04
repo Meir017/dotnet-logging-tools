@@ -1,5 +1,7 @@
 # dotnet-logging-tools
 
+> *This library is mostly vibe coded using github-copilot with the Claude Sonnet 4 model in agent mode*
+
 Create a summary of which log messages a project writes and the parameters to improve consistency
 
 [![LoggerUsage](https://img.shields.io/badge/nuget-LoggerUsage-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage) - Core library for analyzing .NET logging usage patterns
