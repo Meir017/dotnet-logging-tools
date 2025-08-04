@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.Utilities;
 
 namespace LoggerUsage.Analyzers
 {
