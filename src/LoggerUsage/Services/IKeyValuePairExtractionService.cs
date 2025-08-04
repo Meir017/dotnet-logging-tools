@@ -7,7 +7,7 @@ namespace LoggerUsage.Services
     /// <summary>
     /// Service for extracting and validating KeyValuePair collections for logger scope parameters.
     /// </summary>
-    public interface IKeyValuePairExtractionService
+    internal interface IKeyValuePairExtractionService
     {
         /// <summary>
         /// Attempts to extract parameters from KeyValuePair collections.

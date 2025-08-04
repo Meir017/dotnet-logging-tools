@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 
 namespace LoggerUsage;
 
-public static class SymbolExtensions
+internal static class SymbolExtensions
 {
     private static readonly SymbolDisplayFormat _symbolDisplayFormat = SymbolDisplayFormat.FullyQualifiedFormat
         .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)

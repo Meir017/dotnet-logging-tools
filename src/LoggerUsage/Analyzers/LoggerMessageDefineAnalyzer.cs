@@ -73,7 +73,7 @@ namespace LoggerUsage.Analyzers
             logLevel = default;
             return false;
         }
-        private bool TryExtractMessageTemplateFromLoggerMessageDefine(IInvocationOperation operation, out string messageTemplate)
+        private bool TryExtractMessageTemplateFromLoggerMessageDefine(IInvocationOperation operation, out string? messageTemplate)
         {
             // Message template is typically the third parameter in LoggerMessage.Define
             if (operation.Arguments.Length > 2)
@@ -88,7 +88,7 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, LoggingTypes loggingTypes, string messageTemplate)
+        private List<MessageParameter> ExtractMessageParametersFromGenericTypes(IInvocationOperation operation, LoggingTypes loggingTypes, string? messageTemplate)
         {
             // Use injected GenericTypeParameterExtractor from the strategy pattern
             if (genericTypeParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var parameters))

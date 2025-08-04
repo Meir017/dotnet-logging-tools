@@ -6,7 +6,7 @@ namespace LoggerUsage.Services
     /// <summary>
     /// Service for analyzing scope operations in logger usage.
     /// </summary>
-    public interface IScopeAnalysisService
+    internal interface IScopeAnalysisService
     {
         /// <summary>
         /// Analyzes a BeginScope invocation operation and extracts scope state information.

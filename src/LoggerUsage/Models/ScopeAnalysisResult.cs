@@ -5,7 +5,7 @@ namespace LoggerUsage.Models
     /// <summary>
     /// Represents the result of analyzing a BeginScope operation.
     /// </summary>
-    public class ScopeAnalysisResult
+    internal class ScopeAnalysisResult
     {
         /// <summary>
         /// The extracted message template from the scope state, if any.
