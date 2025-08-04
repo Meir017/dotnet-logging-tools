@@ -11,12 +11,12 @@ namespace LoggerUsage.ParameterExtraction;
 internal class ArrayParameterExtractor : IParameterExtractor
 {
     public bool TryExtractParameters(
-        IOperation operation, 
-        LoggingTypes loggingTypes, 
-        string? messageTemplate, 
+        IOperation operation,
+        LoggingTypes loggingTypes,
+        string? messageTemplate,
         out List<MessageParameter> parameters)
     {
-        parameters = new List<MessageParameter>();
+        parameters = [];
 
         if (operation is not IInvocationOperation invocation || string.IsNullOrEmpty(messageTemplate))
         {

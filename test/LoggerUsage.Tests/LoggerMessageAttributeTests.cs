@@ -109,14 +109,22 @@ partial class Log
 
         var details = Assert.IsType<EventIdDetails>(usage.EventId);
         if (expectedId is not null)
+        {
             Assert.Equal(ConstantOrReference.Constant(expectedId), details.Id);
+        }
         else
+        {
             Assert.Same(ConstantOrReference.Missing, details.Id);
+        }
 
         if (expectedName is not null)
+        {
             Assert.Equal(ConstantOrReference.Constant(expectedName), details.Name);
+        }
         else
+        {
             Assert.Same(ConstantOrReference.Missing, details.Name);
+        }
     }
 
     public static TheoryData<string, LogLevel?> LoggerMessageLogLevelScenarios() => new()
@@ -228,9 +236,13 @@ partial class Log
         Assert.NotNull(loggerUsages);
         Assert.Single(loggerUsages.Results);
         if (expectedMessage == null)
+        {
             Assert.True(string.IsNullOrEmpty(loggerUsages.Results[0].MessageTemplate));
+        }
         else
+        {
             Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
+        }
     }
 
     public static TheoryData<string, string, List<MessageParameter>> LoggerMessageParameterScenarios() => new()

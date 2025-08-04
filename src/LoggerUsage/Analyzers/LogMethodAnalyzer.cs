@@ -21,10 +21,14 @@ namespace LoggerUsage.Analyzers
             foreach (var invocation in invocations)
             {
                 if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
+                {
                     continue;
+                }
 
                 if (!loggingTypes.LoggerExtensionModeler.IsLoggerMethod(operation.TargetMethod))
+                {
                     continue;
+                }
 
                 yield return ExtractLoggerMethodUsage(operation, loggingTypes, invocation);
             }
@@ -98,7 +102,10 @@ namespace LoggerUsage.Analyzers
                     if (loggingTypes.LogLevel.Equals(operation.TargetMethod.Parameters[i].Type, SymbolEqualityComparer.Default))
                     {
                         var argumentOperation = operation.Arguments[i].Value;
-                        if (argumentOperation is not IFieldReferenceOperation fieldReferenceOperation) continue;
+                        if (argumentOperation is not IFieldReferenceOperation fieldReferenceOperation)
+                        {
+                            continue;
+                        }
 
                         if (fieldReferenceOperation.ConstantValue.HasValue)
                         {

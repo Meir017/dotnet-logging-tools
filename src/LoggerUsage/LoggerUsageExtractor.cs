@@ -29,11 +29,15 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
         foreach (var project in workspace.CurrentSolution.Projects)
         {
             if (project.Language != LanguageNames.CSharp)
+            {
                 continue;
+            }
 
             var compilation = await project.GetCompilationAsync();
             if (compilation == null)
+            {
                 continue;
+            }
 
             _logger.LogInformation("Analyzing project compilation '{Project}' with {Count} references", compilation.AssemblyName, compilation.References.Count());
 
@@ -74,14 +78,20 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
         Parallel.ForEach(compilation.SyntaxTrees, syntaxTree =>
         {
-            if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs")) return;
+            if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
+            {
+                return;
+            }
 
             _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
 
             var root = syntaxTree.GetRoot();
             var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
-            if (root == null || semanticModel == null) return;
+            if (root == null || semanticModel == null)
+            {
+                return;
+            }
 
             foreach (var analyzer in _analyzers)
             {

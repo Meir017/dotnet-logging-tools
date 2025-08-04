@@ -7,18 +7,18 @@ namespace LoggerUsage.ParameterExtraction;
 
 /// <summary>
 /// Extracts parameters from method signatures for LoggerMessage attributes.
-/// Note: This extractor requires additional context (IMethodSymbol) that's not available 
+/// Note: This extractor requires additional context (IMethodSymbol) that's not available
 /// in the standard IParameterExtractor interface. This is a placeholder implementation.
 /// </summary>
 internal class MethodSignatureParameterExtractor : IParameterExtractor
 {
     public bool TryExtractParameters(
-        IOperation operation, 
-        LoggingTypes loggingTypes, 
-        string? messageTemplate, 
+        IOperation operation,
+        LoggingTypes loggingTypes,
+        string? messageTemplate,
         out List<MessageParameter> parameters)
     {
-        parameters = new List<MessageParameter>();
+        parameters = [];
 
         // This extractor requires additional context that's not available in the operation
         // The actual implementation would need access to the IMethodSymbol
@@ -31,21 +31,25 @@ internal class MethodSignatureParameterExtractor : IParameterExtractor
     /// This is the actual implementation used by LoggerMessageAttributeAnalyzer.
     /// </summary>
     public static bool TryExtractFromMethodSignature(
-        IMethodSymbol methodSymbol, 
-        string messageTemplate, 
-        LoggingTypes loggingTypes, 
+        IMethodSymbol methodSymbol,
+        string messageTemplate,
+        LoggingTypes loggingTypes,
         out List<MessageParameter> messageParameters)
     {
-        messageParameters = new List<MessageParameter>();
-        
+        messageParameters = [];
+
         if (string.IsNullOrEmpty(messageTemplate))
+        {
             return false;
+        }
 
         // 1. Extract placeholders from the message template
         var formatter = new LogValuesFormatter(messageTemplate);
         if (formatter.ValueNames.Count == 0)
+        {
             return false;
-        
+        }
+
         // 2. Get method parameters, excluding ILogger, LogLevel, and Exception (by type)
         var parameters = methodSymbol.Parameters
             .Where(p =>

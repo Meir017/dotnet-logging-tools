@@ -17,10 +17,14 @@ namespace LoggerUsage.Analyzers
             foreach (var invocation in invocations)
             {
                 if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
+                {
                     continue;
+                }
 
                 if (!loggingTypes.LoggerExtensionModeler.IsBeginScopeMethod(operation.TargetMethod))
+                {
                     continue;
+                }
 
                 yield return ExtractBeginScopeUsage(operation, loggingTypes, invocation);
             }
@@ -41,14 +45,14 @@ namespace LoggerUsage.Analyzers
             {
                 usage.MessageTemplate = analysisResult.MessageTemplate;
                 usage.MessageParameters = analysisResult.Parameters;
-                
-                logger.LogDebug("Successfully analyzed BeginScope usage with {Count} parameters", 
+
+                logger.LogDebug("Successfully analyzed BeginScope usage with {Count} parameters",
                     analysisResult.Parameters.Count);
             }
             else
             {
                 logger.LogWarning("Failed to analyze BeginScope usage: {Error}", analysisResult.ErrorMessage);
-                usage.MessageParameters = new List<MessageParameter>();
+                usage.MessageParameters = [];
             }
 
             return usage;

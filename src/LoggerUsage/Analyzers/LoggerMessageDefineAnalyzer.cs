@@ -18,11 +18,15 @@ namespace LoggerUsage.Analyzers
             foreach (var invocation in invocations)
             {
                 if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
+                {
                     continue;
+                }
 
                 if (!operation.TargetMethod.ContainingType.Equals(loggingTypes.LoggerMessage, SymbolEqualityComparer.Default)
                     || !operation.TargetMethod.Name.Equals(nameof(LoggerMessage.Define)))
+                {
                     continue;
+                }
 
                 yield return ExtractLoggerMessageDefineUsage(operation, loggingTypes, invocation);
             }
@@ -42,7 +46,7 @@ namespace LoggerUsage.Analyzers
                 usage.LogLevel = logLevel;
             }
 
-            if (operation.Arguments.Length > 1 && 
+            if (operation.Arguments.Length > 1 &&
                 EventIdExtractor.TryExtractFromArgument(operation.Arguments[1].Value, out var eventId))
             {
                 usage.EventId = eventId;
@@ -95,7 +99,7 @@ namespace LoggerUsage.Analyzers
             {
                 return parameters;
             }
-            return new List<MessageParameter>();
+            return [];
         }
     }
 }

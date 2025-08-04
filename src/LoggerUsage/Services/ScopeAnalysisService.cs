@@ -37,7 +37,7 @@ namespace LoggerUsage.Services
                 if (operation.Arguments.Length <= argumentIndex)
                 {
                     _logger.LogDebug("No arguments found at index {Index} for method {Method}", argumentIndex, operation.TargetMethod.Name);
-                    return ScopeAnalysisResult.Success(null, new List<MessageParameter>(), operation.TargetMethod.IsExtensionMethod);
+                    return ScopeAnalysisResult.Success(null, [], operation.TargetMethod.IsExtensionMethod);
                 }
 
                 var stateArgument = operation.Arguments[argumentIndex];
@@ -48,7 +48,7 @@ namespace LoggerUsage.Services
                 // Extract message parameters based on the argument type and method type
                 var parameters = ExtractParameters(operation, stateArgument, messageTemplate, loggingTypes);
 
-                _logger.LogDebug("Successfully analyzed scope state. Template: {Template}, Parameters: {Count}", 
+                _logger.LogDebug("Successfully analyzed scope state. Template: {Template}, Parameters: {Count}",
                     messageTemplate, parameters.Count);
 
                 return ScopeAnalysisResult.Success(messageTemplate, parameters, operation.TargetMethod.IsExtensionMethod);
@@ -97,7 +97,7 @@ namespace LoggerUsage.Services
                 return ExtractCoreMethodParameters(stateArgument, loggingTypes);
             }
 
-            return new List<MessageParameter>();
+            return [];
         }
 
         /// <summary>
@@ -107,15 +107,19 @@ namespace LoggerUsage.Services
         {
             try
             {
-                _logger.LogDebug("Extracting parameters from template: {Template} in {Method}", 
+                _logger.LogDebug("Extracting parameters from template: {Template} in {Method}",
                     messageTemplate, operation.TargetMethod.Name);
 
                 if (string.IsNullOrEmpty(messageTemplate))
-                    return new List<MessageParameter>();
+                {
+                    return [];
+                }
 
                 var formatter = new LogValuesFormatter(messageTemplate);
                 if (formatter.ValueNames.Count == 0)
-                    return new List<MessageParameter>();
+                {
+                    return [];
+                }
 
                 var messageParameters = new List<MessageParameter>();
 
@@ -132,9 +136,9 @@ namespace LoggerUsage.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract parameters from template: {Template} in {Method}", 
+                _logger.LogWarning(ex, "Failed to extract parameters from template: {Template} in {Method}",
                     messageTemplate, operation.TargetMethod.Name);
-                return new List<MessageParameter>();
+                return [];
             }
         }
 
@@ -145,14 +149,14 @@ namespace LoggerUsage.Services
         {
             // Try to extract key-value pairs first
             var messageParameters = _keyValuePairExtractionService.TryExtractParameters(stateArgument, loggingTypes);
-            
+
             // If we got parameters from KeyValuePair extraction, return them
             if (messageParameters.Count > 0)
             {
                 return messageParameters;
             }
 
-            // If the type is a KeyValuePair enumerable but we couldn't extract values, 
+            // If the type is a KeyValuePair enumerable but we couldn't extract values,
             // still don't fall back to anonymous object extraction
             if (_keyValuePairExtractionService.IsKeyValuePairEnumerable(stateArgument.Value?.Type, loggingTypes))
             {
@@ -173,16 +177,16 @@ namespace LoggerUsage.Services
                     }
 
                     _logger.LogDebug("No parameters extracted from anonymous object");
-                    return new List<MessageParameter>();
+                    return [];
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to extract parameters from anonymous object");
-                    return new List<MessageParameter>();
+                    return [];
                 }
             }
 
-            return new List<MessageParameter>();
+            return [];
         }
 
         /// <summary>

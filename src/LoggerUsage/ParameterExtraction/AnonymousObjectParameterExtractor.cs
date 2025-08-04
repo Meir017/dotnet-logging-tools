@@ -16,7 +16,7 @@ internal class AnonymousObjectParameterExtractor : IParameterExtractor
         string? messageTemplate,
         out List<MessageParameter> parameters)
     {
-        parameters = new List<MessageParameter>();
+        parameters = [];
 
         if (operation is not IAnonymousObjectCreationOperation objectCreation)
         {
@@ -27,7 +27,9 @@ internal class AnonymousObjectParameterExtractor : IParameterExtractor
         {
             if (property is not ISimpleAssignmentOperation assignment
             || assignment.Target is not IPropertyReferenceOperation propertyRef)
+            {
                 continue;
+            }
 
             var parameter = MessageParameterFactory.CreateFromOperation(
                 propertyRef.Member.Name,
