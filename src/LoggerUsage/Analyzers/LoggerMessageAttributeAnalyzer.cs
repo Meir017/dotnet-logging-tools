@@ -2,13 +2,73 @@ using Microsoft.CodeAnalysis;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
+using Microsoft.CodeAnalysis.Operations;
+using System.Collections.Concurrent;
+using Microsoft.CodeAnalysis.FindSymbols;
 
 namespace LoggerUsage.Analyzers
 {
     internal class LoggerMessageAttributeAnalyzer(ILogger<LoggerMessageAttributeAnalyzer> logger) : ILoggerUsageAnalyzer
     {
+        /// <summary>
+        /// Represents a LoggerMessage method declaration with its signature information
+        /// </summary>
+        private record LoggerMessageDeclaration(
+            IMethodSymbol MethodSymbol,
+            string ContainingTypeName,
+            MethodDeclarationSyntax DeclarationSyntax,
+            LoggerUsageInfo BaseUsageInfo);
+
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
         {
+            logger.LogTrace("Starting LoggerMessageAttribute analysis");
+
+            // Phase 1: Discover LoggerMessage method declarations
+            var declarations = DiscoverLoggerMessageDeclarations(loggingTypes, root, semanticModel);
+
+            if (!declarations.Any())
+            {
+                logger.LogTrace("No LoggerMessage declarations found");
+                yield break;
+            }
+
+            logger.LogTrace("Found {DeclarationCount} LoggerMessage declarations", declarations.Count);
+
+            // Phase 2: Find invocations for each declaration
+            foreach (var declaration in declarations)
+            {
+                var invocations = FindLoggerMessageInvocations(declaration, root, semanticModel);
+
+                // Create LoggerMessageUsageInfo with invocation data
+                var loggerMessageUsage = new LoggerMessageUsageInfo
+                {
+                    MethodName = declaration.BaseUsageInfo.MethodName,
+                    MethodType = declaration.BaseUsageInfo.MethodType,
+                    Location = declaration.BaseUsageInfo.Location,
+                    MessageTemplate = declaration.BaseUsageInfo.MessageTemplate,
+                    LogLevel = declaration.BaseUsageInfo.LogLevel,
+                    EventId = declaration.BaseUsageInfo.EventId,
+                    MessageParameters = declaration.BaseUsageInfo.MessageParameters,
+                    DeclaringTypeName = declaration.ContainingTypeName,
+                    Invocations = invocations
+                };
+
+                logger.LogTrace("LoggerMessage method {MethodName} has {InvocationCount} invocations",
+                    declaration.MethodSymbol.Name, invocations.Count);
+
+                yield return loggerMessageUsage;
+            }
+        }
+
+        /// <summary>
+        /// Phase 1: Discover all LoggerMessage method declarations in the syntax tree
+        /// </summary>
+        private List<LoggerMessageDeclaration> DiscoverLoggerMessageDeclarations(
+            LoggingTypes loggingTypes,
+            SyntaxNode root,
+            SemanticModel semanticModel)
+        {
+            var declarations = new List<LoggerMessageDeclaration>();
             var methodDeclarations = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
 
             foreach (var methodDeclaration in methodDeclarations)
@@ -30,6 +90,7 @@ namespace LoggerUsage.Analyzers
                         continue;
                     }
 
+                    // Create base LoggerUsageInfo (existing functionality)
                     var usage = new LoggerUsageInfo
                     {
                         MethodName = methodSymbol.Name,
@@ -56,10 +117,170 @@ namespace LoggerUsage.Analyzers
                         }
                     }
 
-                    logger.LogTrace("Extracted LoggerMessageAttribute usage {MethodName}", usage.MethodName);
-                    yield return usage;
+                    var containingTypeName = methodSymbol.ContainingType.ToDisplayString();
+                    declarations.Add(new LoggerMessageDeclaration(
+                        methodSymbol,
+                        containingTypeName,
+                        methodDeclaration,
+                        usage));
+
+                    logger.LogTrace("Extracted LoggerMessageAttribute declaration {MethodName} in {ContainingType}",
+                        usage.MethodName, containingTypeName);
                 }
             }
+
+            return declarations;
+        }
+
+        /// <summary>
+        /// Phase 2: Find all invocations of a specific LoggerMessage method
+        /// </summary>
+        private List<LoggerMessageInvocation> FindLoggerMessageInvocations(
+            LoggerMessageDeclaration declaration,
+            SyntaxNode root,
+            SemanticModel semanticModel)
+        {
+            var invocations = new List<LoggerMessageInvocation>();
+            var invocationNodes = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+
+            foreach (var invocationNode in invocationNodes)
+            {
+                if (semanticModel.GetOperation(invocationNode) is not IInvocationOperation operation)
+                {
+                    continue;
+                }
+
+                if (IsLoggerMessageMethodInvocation(operation, declaration))
+                {
+                    var invocation = CreateLoggerMessageInvocation(operation, invocationNode, root, semanticModel);
+                    invocations.Add(invocation);
+
+                    logger.LogTrace("Found invocation of {MethodName} in {ContainingType} at line {LineNumber}",
+                        declaration.MethodSymbol.Name,
+                        invocation.ContainingType,
+                        invocation.InvocationLocation.StartLineNumber);
+                }
+            }
+
+            return invocations;
+        }
+
+        /// <summary>
+        /// Determines if an invocation operation is calling the specified LoggerMessage method
+        /// </summary>
+        private static bool IsLoggerMessageMethodInvocation(IInvocationOperation operation, LoggerMessageDeclaration declaration)
+        {
+            var targetMethod = operation.TargetMethod;
+
+            // Check if the target method matches our LoggerMessage method
+            // This includes both the partial definition and any generated implementation
+            if (SymbolEqualityComparer.Default.Equals(targetMethod.OriginalDefinition, declaration.MethodSymbol.OriginalDefinition))
+            {
+                return true;
+            }
+
+            // Check if this is a generated method that matches our signature
+            if (IsGeneratedLoggerMessageMethod(targetMethod, declaration))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a method is a generated LoggerMessage method matching the declaration
+        /// </summary>
+        private static bool IsGeneratedLoggerMessageMethod(IMethodSymbol targetMethod, LoggerMessageDeclaration declaration)
+        {
+            // Must have the same name and containing type
+            if (targetMethod.Name != declaration.MethodSymbol.Name)
+            {
+                return false;
+            }
+
+            if (!SymbolEqualityComparer.Default.Equals(targetMethod.ContainingType, declaration.MethodSymbol.ContainingType))
+            {
+                return false;
+            }
+
+            // Check parameter signatures match
+            if (targetMethod.Parameters.Length != declaration.MethodSymbol.Parameters.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < targetMethod.Parameters.Length; i++)
+            {
+                if (!SymbolEqualityComparer.Default.Equals(
+                    targetMethod.Parameters[i].Type,
+                    declaration.MethodSymbol.Parameters[i].Type))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Creates a LoggerMessageInvocation from an invocation operation
+        /// </summary>
+        private static LoggerMessageInvocation CreateLoggerMessageInvocation(
+            IInvocationOperation operation,
+            InvocationExpressionSyntax invocationSyntax,
+            SyntaxNode root,
+            SemanticModel semanticModel)
+        {
+            var containingType = GetContainingTypeName(invocationSyntax, semanticModel);
+            var location = LocationHelper.CreateFromInvocation(invocationSyntax);
+            var arguments = ExtractInvocationArguments(operation);
+
+            return new LoggerMessageInvocation
+            {
+                ContainingType = containingType,
+                InvocationLocation = location,
+                Arguments = arguments
+            };
+        }
+
+        /// <summary>
+        /// Gets the fully qualified name of the type containing the invocation
+        /// </summary>
+        private static string GetContainingTypeName(InvocationExpressionSyntax invocationSyntax, SemanticModel semanticModel)
+        {
+            var containingSymbol = semanticModel.GetEnclosingSymbol(invocationSyntax.SpanStart);
+
+            while (containingSymbol != null)
+            {
+                if (containingSymbol is INamedTypeSymbol typeSymbol)
+                {
+                    return typeSymbol.ToDisplayString();
+                }
+                containingSymbol = containingSymbol.ContainingSymbol;
+            }
+
+            return "Unknown";
+        }
+
+        /// <summary>
+        /// Extracts argument information from an invocation operation
+        /// </summary>
+        private static List<MessageParameter> ExtractInvocationArguments(IInvocationOperation operation)
+        {
+            var arguments = new List<MessageParameter>();
+
+            foreach (var argument in operation.Arguments)
+            {
+                var parameterName = argument.Parameter?.Name ?? "Unknown";
+                var parameterType = argument.Parameter?.Type?.ToDisplayString() ?? "Unknown";
+
+                // For now, we'll create a simple representation
+                // This can be enhanced later to analyze the actual argument expressions
+                arguments.Add(new MessageParameter(parameterName, parameterType, "InvocationArgument"));
+            }
+
+            return arguments;
         }
 
         private static bool TryExtractEventId(AttributeData attribute, IMethodSymbol methodSymbol, LoggingTypes loggingTypes, out EventIdDetails eventIdDetails)
