@@ -25,6 +25,7 @@ public static partial class Log
 // mock generated code:
 partial class Log
 {
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
     public static partial void TestMethod(ILogger logger) { }
 }
 ";
@@ -87,6 +88,7 @@ public static partial class Log
 // mock generated code:
 partial class Log
 {{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
     public static partial void TestMethod(ILogger logger) {{ }}
 }}
 ";
@@ -175,6 +177,7 @@ public static partial class Log
 // mock generated code:
 partial class Log
 {{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
     public static partial void TestMethod(ILogger logger) {{ }}
 }}
 ";
@@ -223,6 +226,7 @@ public static partial class Log
 // mock generated code:
 partial class Log
 {{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
     public static partial void TestMethod(ILogger logger) {{ }}
 }}
 ";
@@ -291,9 +295,10 @@ public static partial class Log
 // mock generated code:
 partial class Log
 {{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
     public static partial void TestMethod({methodParameters.Replace("[LogProperties] ", "")}) {{ }}
 }}
-    
+
 public class LogData
 {{
     public int UserId {{ get; set; }}
@@ -320,4 +325,411 @@ public class LogData
             Assert.Equal(expectedParameters, usage.MessageParameters);
         }
     }
+
+    #region LoggerMessage Invocation Tests
+
+    [Fact]
+    public async Task LoggerMessageWithInvocation_ReturnsLoggerMessageUsageInfo()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User {UserId} logged in""
+    )]
+    public static partial void LogUserLogin(ILogger logger, int userId);
+}
+
+// Mock generated code:
+partial class Log
+{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void LogUserLogin(ILogger logger, int userId) { }
+}
+
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void LoginUser(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+    }
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, usage.MethodType);
+        Assert.Equal("TestNamespace.Log", usage.DeclaringTypeName);
+        Assert.True(usage.HasInvocations);
+        Assert.Equal(1, usage.InvocationCount);
+
+        var invocation = Assert.Single(usage.Invocations);
+        Assert.Equal("TestNamespace.UserService", invocation.ContainingType);
+        Assert.NotNull(invocation.InvocationLocation);
+    }
+
+    [Fact]
+    public async Task LoggerMessageWithMultipleInvocations_TracksAllCallSites()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User {UserId} logged in""
+    )]
+    public static partial void LogUserLogin(ILogger logger, int userId);
+}
+
+// Mock generated code:
+partial class Log
+{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void LogUserLogin(ILogger logger, int userId) { }
+}
+
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void LoginUser(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+    }
+
+    public void LoginUserFromAdmin(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+    }
+}
+
+public class AdminService
+{
+    private readonly ILogger<AdminService> _logger;
+
+    public AdminService(ILogger<AdminService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void ProcessUserLogin(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+    }
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.True(usage.HasInvocations);
+        Assert.Equal(3, usage.InvocationCount);
+
+        // Verify invocations from different containing types
+        var userServiceInvocations = usage.Invocations.Where(i => i.ContainingType == "TestNamespace.UserService").ToList();
+        var adminServiceInvocations = usage.Invocations.Where(i => i.ContainingType == "TestNamespace.AdminService").ToList();
+
+        Assert.Equal(2, userServiceInvocations.Count);
+        Assert.Single(adminServiceInvocations);
+    }
+
+    [Fact]
+    public async Task LoggerMessageWithoutInvocations_ReturnsEmptyInvocationsList()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Unused message""
+    )]
+    public static partial void UnusedMethod(ILogger logger);
+}
+
+// Mock generated code:
+partial class Log
+{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void UnusedMethod(ILogger logger) { }
+}
+
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+
+    // Method exists but LoggerMessage is never called
+    public void DoSomething()
+    {
+        _logger.LogInformation(""Regular log message"");
+    }
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count); // LoggerMessage + regular logger call
+
+        var loggerMessageUsage = loggerUsages.Results
+            .OfType<LoggerMessageUsageInfo>()
+            .Single(u => u.MethodName == "UnusedMethod");
+
+        Assert.False(loggerMessageUsage.HasInvocations);
+        Assert.Equal(0, loggerMessageUsage.InvocationCount);
+        Assert.Empty(loggerMessageUsage.Invocations);
+    }
+
+    [Fact]
+    public async Task LoggerMessageInvocation_ExtractsArgumentInformation()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User {UserId} performed {Action}""
+    )]
+    public static partial void LogUserAction(ILogger logger, int userId, string action);
+}
+
+// Mock generated code:
+partial class Log
+{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void LogUserAction(ILogger logger, int userId, string action) { }
+}
+
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void LogAction(int userId, string action)
+    {
+        Log.LogUserAction(_logger, userId, action);
+    }
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasInvocations);
+
+        var invocation = Assert.Single(usage.Invocations);
+        Assert.Equal(3, invocation.Arguments.Count); // logger, userId, action
+
+        // Verify argument details
+        var loggerArg = invocation.Arguments.FirstOrDefault(a => a.Name == "logger");
+        var userIdArg = invocation.Arguments.FirstOrDefault(a => a.Name == "userId");
+        var actionArg = invocation.Arguments.FirstOrDefault(a => a.Name == "action");
+
+        Assert.NotNull(loggerArg);
+        Assert.NotNull(userIdArg);
+        Assert.NotNull(actionArg);
+
+        Assert.Equal("int", userIdArg.Type);
+        Assert.Equal("string", actionArg.Type);
+    }
+
+    [Fact]
+    public async Task MultipleLoggerMessageMethods_TracksInvocationsIndependently()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User {UserId} logged in""
+    )]
+    public static partial void LogUserLogin(ILogger logger, int userId);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Warning,
+        Message = ""User {UserId} failed login""
+    )]
+    public static partial void LogUserLoginFailed(ILogger logger, int userId);
+}
+
+// Mock generated code:
+partial class Log
+{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void LogUserLogin(ILogger logger, int userId) { }
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void LogUserLoginFailed(ILogger logger, int userId) { }
+}
+
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void LoginUser(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+        Log.LogUserLogin(_logger, userId); // Called twice
+    }
+
+    public void FailedLogin(int userId)
+    {
+        Log.LogUserLoginFailed(_logger, userId); // Called once
+    }
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count);
+
+        var loginUsage = loggerUsages.Results.OfType<LoggerMessageUsageInfo>()
+            .Single(u => u.MethodName == "LogUserLogin");
+        var loginFailedUsage = loggerUsages.Results.OfType<LoggerMessageUsageInfo>()
+            .Single(u => u.MethodName == "LogUserLoginFailed");
+
+        Assert.Equal(2, loginUsage.InvocationCount);
+        Assert.Equal(1, loginFailedUsage.InvocationCount);
+    }
+
+    [Fact]
+    public async Task LoggerMessageInDifferentNamespace_TracksInvocationsCorrectly()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace.Logging
+{
+    public static partial class ApplicationLog
+    {
+        [LoggerMessage(
+            EventId = 1,
+            Level = LogLevel.Information,
+            Message = ""Application started""
+        )]
+        public static partial void LogApplicationStarted(ILogger logger);
+    }
+}
+
+// Mock generated code:
+namespace TestNamespace.Logging
+{
+    partial class ApplicationLog
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogApplicationStarted(ILogger logger) { }
+    }
+}
+
+namespace TestNamespace.Services
+{
+    public class StartupService
+    {
+        private readonly ILogger<StartupService> _logger;
+
+        public StartupService(ILogger<StartupService> logger)
+        {
+            _logger = logger;
+        }
+
+        public void Start()
+        {
+            TestNamespace.Logging.ApplicationLog.LogApplicationStarted(_logger);
+        }
+    }
+}";
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogApplicationStarted", usage.MethodName);
+        Assert.Equal("TestNamespace.Logging.ApplicationLog", usage.DeclaringTypeName);
+        Assert.True(usage.HasInvocations);
+
+        var invocation = Assert.Single(usage.Invocations);
+        Assert.Equal("TestNamespace.Services.StartupService", invocation.ContainingType);
+    }
+
+    #endregion
 }
