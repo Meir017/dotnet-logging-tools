@@ -3,12 +3,13 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
+using TUnit.Core;
 
 namespace LoggerUsage.Tests;
 
 public class ExtractLoggerUsagesFromWorkspaceTests
 {
-    [Fact]
+    [Test]
     public async Task Test_SimpleWorkspace()
     {
         // Arrange
@@ -37,7 +38,7 @@ public class TestClass
         Assert.Single(loggerUsages.Results);
     }
 
-    [Fact]
+    [Test]
     public async Task Test_EmptyWorkspace()
     {
         // Arrange
@@ -52,7 +53,7 @@ public class TestClass
         Assert.Empty(loggerUsages.Results);
     }
 
-    [Fact]
+    [Test]
     public async Task Test_WorkspaceWithMultipleProjects()
     {
         // Arrange

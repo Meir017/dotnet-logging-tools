@@ -1,11 +1,12 @@
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using TUnit.Core;
 
 namespace LoggerUsage.Tests;
 
 public class LoggerMessageDefineTests
 {
-    [Fact]
+    [Test]
     public async Task BasicTest()
     {
         // Arrange
@@ -36,17 +37,17 @@ public class TestClass
         Assert.NotNull(result.EventId);
     }
 
-    public static TheoryData<string, int?, string?> LoggerMessageDefineEventIdScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageDefineEventIdScenarios()
     {
-        { "new EventId(1, \"UserCreated\")", 1, "UserCreated" },
-        { "new EventId(100, \"OrderProcessed\")", 100, "OrderProcessed" },
-        { "new EventId(0)", 0, null },
-        { "new EventId(-1)", -1, null },
-        { "1", 1, null },
-    };
+        yield return new object[] { "new EventId(1, \"UserCreated\")", 1, "UserCreated" };
+        yield return new object[] { "new EventId(100, \"OrderProcessed\")", 100, "OrderProcessed" };
+        yield return new object[] { "new EventId(0)", 0, null };
+        yield return new object[] { "new EventId(-1)", -1, null };
+        yield return new object[] { "1", 1, null };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageDefineEventIdScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageDefineEventIdScenarios))]
     public async Task LoggerMessageDefine_EventId_Scenarios(string eventIdArg, int? expectedId, string? expectedName)
     {
         // Arrange
@@ -93,19 +94,19 @@ public class TestClass
         }
     }
 
-    public static TheoryData<string, LogLevel> LoggerMessageDefineLogLevelScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageDefineLogLevelScenarios()
     {
-        { "LogLevel.Information", LogLevel.Information },
-        { "LogLevel.Warning", LogLevel.Warning },
-        { "LogLevel.Error", LogLevel.Error },
-        { "LogLevel.Critical", LogLevel.Critical },
-        { "LogLevel.Trace", LogLevel.Trace },
-        { "LogLevel.Debug", LogLevel.Debug },
-        { "LogLevel.None", LogLevel.None },
-    };
+        yield return new object[] { "LogLevel.Information", LogLevel.Information };
+        yield return new object[] { "LogLevel.Warning", LogLevel.Warning };
+        yield return new object[] { "LogLevel.Error", LogLevel.Error };
+        yield return new object[] { "LogLevel.Critical", LogLevel.Critical };
+        yield return new object[] { "LogLevel.Trace", LogLevel.Trace };
+        yield return new object[] { "LogLevel.Debug", LogLevel.Debug };
+        yield return new object[] { "LogLevel.None", LogLevel.None };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageDefineLogLevelScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageDefineLogLevelScenarios))]
     public async Task LoggerMessageDefine_LogLevel_Scenarios(string logLevelArg, LogLevel expectedLogLevel)
     {
         // Arrange
@@ -131,18 +132,18 @@ public class TestClass
         Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
     }
 
-    public static TheoryData<string, string> LoggerMessageDefineMessageScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageDefineMessageScenarios()
     {
-        { "\"Test message\"", "Test message" },
-        { "\"User {Name} was created\"", "User {Name} was created" },
-        { "\"Order {OrderId} was processed\"", "Order {OrderId} was processed" },
-        { "\"User {UserName} logged in from IP {IpAddress}\"", "User {UserName} logged in from IP {IpAddress}" },
-        { "\"System startup completed\"", "System startup completed" },
-        { "\"\"", "" },
-    };
+        yield return new object[] { "\"Test message\"", "Test message" };
+        yield return new object[] { "\"User {Name} was created\"", "User {Name} was created" };
+        yield return new object[] { "\"Order {OrderId} was processed\"", "Order {OrderId} was processed" };
+        yield return new object[] { "\"User {UserName} logged in from IP {IpAddress}\"", "User {UserName} logged in from IP {IpAddress}" };
+        yield return new object[] { "\"System startup completed\"", "System startup completed" };
+        yield return new object[] { "\"\"", "" };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageDefineMessageScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageDefineMessageScenarios))]
     public async Task LoggerMessageDefine_Message_Scenarios(string messageArg, string expectedMessage)
     {
         // Arrange
@@ -168,28 +169,28 @@ public class TestClass
         Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
     }
 
-    public static TheoryData<string, string, List<MessageParameter>> LoggerMessageDefineParameterScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageDefineParameterScenarios()
     {
         // No parameters
-        { "", "System startup completed", [] },
+        yield return new object[] { "", "System startup completed", new List<MessageParameter>() };
         // Single parameter
-        { "<string>", "User {Name} was created", [new("Name", "string", null)] },
+        yield return new object[] { "<string>", "User {Name} was created", new List<MessageParameter> { new("Name", "string", null) } };
         // Multiple parameters
-        { "<string, int>", "User {UserName} logged in from IP {IpAddress}", [new("UserName", "string", null), new("IpAddress", "int", null)] },
+        yield return new object[] { "<string, int>", "User {UserName} logged in from IP {IpAddress}", new List<MessageParameter> { new("UserName", "string", null), new("IpAddress", "int", null) } };
         // Different types
-        { "<int, System.DateTime>", "Order {OrderId} processed at {ProcessedTime}", [new("OrderId", "int", null), new("ProcessedTime", "System.DateTime", null)] },
+        yield return new object[] { "<int, System.DateTime>", "Order {OrderId} processed at {ProcessedTime}", new List<MessageParameter> { new("OrderId", "int", null), new("ProcessedTime", "System.DateTime", null) } };
         // Complex types
-        { "<System.Guid, string, double>", "Transaction {Id} for {Customer} amount {Amount}", [new("Id", "System.Guid", null), new("Customer", "string", null), new("Amount", "double", null)] },
+        yield return new object[] { "<System.Guid, string, double>", "Transaction {Id} for {Customer} amount {Amount}", new List<MessageParameter> { new("Id", "System.Guid", null), new("Customer", "string", null), new("Amount", "double", null) } };
         // 4 parameters
-        { "<string, int, System.DateTime, bool>", "User {UserName} with ID {UserId} logged in at {LoginTime} with success {IsSuccessful}", [new("UserName", "string", null), new("UserId", "int", null), new("LoginTime", "System.DateTime", null), new("IsSuccessful", "bool", null)] },
+        yield return new object[] { "<string, int, System.DateTime, bool>", "User {UserName} with ID {UserId} logged in at {LoginTime} with success {IsSuccessful}", new List<MessageParameter> { new("UserName", "string", null), new("UserId", "int", null), new("LoginTime", "System.DateTime", null), new("IsSuccessful", "bool", null) } };
         // 5 parameters
-        { "<System.Guid, string, decimal, int, System.TimeSpan>", "Order {OrderId} for customer {CustomerName} with total {Total} containing {ItemCount} items processed in {Duration}", [new("OrderId", "System.Guid", null), new("CustomerName", "string", null), new("Total", "decimal", null), new("ItemCount", "int", null), new("Duration", "System.TimeSpan", null)] },
+        yield return new object[] { "<System.Guid, string, decimal, int, System.TimeSpan>", "Order {OrderId} for customer {CustomerName} with total {Total} containing {ItemCount} items processed in {Duration}", new List<MessageParameter> { new("OrderId", "System.Guid", null), new("CustomerName", "string", null), new("Total", "decimal", null), new("ItemCount", "int", null), new("Duration", "System.TimeSpan", null) } };
         // 6 parameters
-        { "<string, int, string, System.DateTime, double, long>", "API call {Endpoint} by user {UserId} from {IpAddress} at {Timestamp} took {ResponseTime} ms with size {ResponseSize} bytes", [new("Endpoint", "string", null), new("UserId", "int", null), new("IpAddress", "string", null), new("Timestamp", "System.DateTime", null), new("ResponseTime", "double", null), new("ResponseSize", "long", null)] },
-    };
+        yield return new object[] { "<string, int, string, System.DateTime, double, long>", "API call {Endpoint} by user {UserId} from {IpAddress} at {Timestamp} took {ResponseTime} ms with size {ResponseSize} bytes", new List<MessageParameter> { new("Endpoint", "string", null), new("UserId", "int", null), new("IpAddress", "string", null), new("Timestamp", "System.DateTime", null), new("ResponseTime", "double", null), new("ResponseSize", "long", null) } };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageDefineParameterScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageDefineParameterScenarios))]
     public async Task LoggerMessageDefine_Parameter_Scenarios(string genericTypes, string messageTemplate, List<MessageParameter> expectedParameters)
     {
         // Generate the correct Action delegate type based on generic parameters
@@ -248,7 +249,7 @@ public class TestClass
         return $"Action<{string.Join(", ", actionParams)}>";
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageDefine_Should_HandleNullMessageTemplate()
     {
         // Arrange
@@ -277,7 +278,7 @@ public class TestClass
         Assert.Null(usage.MessageTemplate);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageDefine_Should_IgnoreNonGenericMethods()
     {
         // Arrange
@@ -311,7 +312,7 @@ public class TestClass
         Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageDefine_Should_HandleMismatchedParameterCount()
     {
         // Arrange - 2 generic type arguments but only 1 parameter in message template
@@ -347,7 +348,7 @@ public class TestClass
         Assert.NotEmpty(usage.MessageParameters);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageDefine_Should_HandleStaticEventIdReference()
     {
         // Arrange
@@ -392,7 +393,7 @@ public class TestClass
         }
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageDefine_Should_HandleVariableMessageTemplate()
     {
         // Arrange
@@ -429,7 +430,7 @@ public class TestClass
         // This is expected behavior - the extractor can only extract literal string templates
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageDefine_Should_HandleComplexGenericTypes()
     {
         // Arrange

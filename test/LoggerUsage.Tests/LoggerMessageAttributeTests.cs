@@ -1,11 +1,12 @@
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using TUnit.Core;
 
 namespace LoggerUsage.Tests;
 
 public class LoggerMessageAttributeTests
 {
-    [Fact]
+    [Test]
     public async Task BasicTest()
     {
         // Arrange
@@ -41,31 +42,29 @@ partial class Log
         Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, loggerUsages.Results[0].MethodType);
     }
 
-    public static TheoryData<string, int?, string?> LoggerMessageEventIdScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageEventIdScenarios()
     {
-        { "EventId = 1,", 1, null },
-        { "EventId = 2, EventName = \"Name2\",", 2, "Name2" },
-        { "EventId = 0,", 0, null },
-        { "EventId = -1,", -1, null },
-        { "EventId = IdConstant, EventName = NameConstant,", 6, "ConstantNameField" },
-        { "EventId = int.MaxValue,", int.MaxValue, null },
-        { "EventId = 1 + 2,", 3, null },
-        { "EventName = nameof(TestMethod),", null, "TestMethod" },
-        { "1, LogLevel.Information, \"ctor message\",", 1, null },
-        { "1, LogLevel.Information, \"ctor message\", EventId = 3,", 3, null },
-        { "1, LogLevel.Information, \"ctor message\", EventId = int.MaxValue,", int.MaxValue, null },
-        { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null },
-        { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null },
-        { "eventId: 1, level: LogLevel.Information, message: \"ctor message\",", 1, null },
-        { "level: LogLevel.Information, eventId: 1, message: \"ctor message\",", 1, null },
-        { "level: LogLevel.Information, message: \"ctor message\", eventId: 1,", 1, null },
+        yield return new object[] { "EventId = 1,", 1, null };
+        yield return new object[] { "EventId = 2, EventName = \"Name2\",", 2, "Name2" };
+        yield return new object[] { "EventId = 0,", 0, null };
+        yield return new object[] { "EventId = -1,", -1, null };
+        yield return new object[] { "EventId = IdConstant, EventName = NameConstant,", 6, "ConstantNameField" };
+        yield return new object[] { "EventId = int.MaxValue,", int.MaxValue, null };
+        yield return new object[] { "EventId = 1 + 2,", 3, null };
+        yield return new object[] { "EventName = nameof(TestMethod),", null, "TestMethod" };
+        yield return new object[] { "1, LogLevel.Information, \"ctor message\",", 1, null };
+        yield return new object[] { "1, LogLevel.Information, \"ctor message\", EventId = 3,", 3, null };
+        yield return new object[] { "1, LogLevel.Information, \"ctor message\", EventId = int.MaxValue,", int.MaxValue, null };
+        yield return new object[] { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null };
+        yield return new object[] { "1, LogLevel.Information, \"ctor message\", EventId = IdConstant,", 6, null };
+        yield return new object[] { "eventId: 1, level: LogLevel.Information, message: \"ctor message\",", 1, null };
+        yield return new object[] { "level: LogLevel.Information, eventId: 1, message: \"ctor message\",", 1, null };
+        yield return new object[] { "level: LogLevel.Information, message: \"ctor message\", eventId: 1,", 1, null };
+        yield return new object[] { string.Empty, null, null };
+    }
 
-
-        { string.Empty, null, null },
-    };
-
-    [Theory]
-    [MemberData(nameof(LoggerMessageEventIdScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageEventIdScenarios))]
     public async Task LoggerMessage_EventId_EventName_Scenarios(string? eventIdAndNameArg, int? expectedId, string? expectedName)
     {
         // Arrange
@@ -129,36 +128,36 @@ partial class Log
         }
     }
 
-    public static TheoryData<string, LogLevel?> LoggerMessageLogLevelScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageLogLevelScenarios()
     {
-        { "Level = LogLevel.Information,", LogLevel.Information },
-        { "Level = LogLevel.Warning,", LogLevel.Warning },
-        { "Level = LogLevel.Error,", LogLevel.Error },
-        { "Level = LogLevel.Critical,", LogLevel.Critical },
-        { "Level = LogLevel.Trace,", LogLevel.Trace },
-        { "Level = LogLevel.Debug,", LogLevel.Debug },
-        { "Level = LogLevel.None,", LogLevel.None },
+        yield return new object[] { "Level = LogLevel.Information,", LogLevel.Information };
+        yield return new object[] { "Level = LogLevel.Warning,", LogLevel.Warning };
+        yield return new object[] { "Level = LogLevel.Error,", LogLevel.Error };
+        yield return new object[] { "Level = LogLevel.Critical,", LogLevel.Critical };
+        yield return new object[] { "Level = LogLevel.Trace,", LogLevel.Trace };
+        yield return new object[] { "Level = LogLevel.Debug,", LogLevel.Debug };
+        yield return new object[] { "Level = LogLevel.None,", LogLevel.None };
 
-        { "(LogLevel)0,", LogLevel.Trace },
-        { "(LogLevel)1,", LogLevel.Debug },
-        { "(LogLevel)2,", LogLevel.Information },
-        { "(LogLevel)3,", LogLevel.Warning },
-        { "(LogLevel)4,", LogLevel.Error },
-        { "(LogLevel)5,", LogLevel.Critical },
-        { "(LogLevel)6,", LogLevel.None },
-        { "LogLevel.Information,", LogLevel.Information },
-        { "LogLevel.Information, \"ctor message\",", LogLevel.Information },
-        { "1, LogLevel.Information, \"ctor message\",", LogLevel.Information },
-        { "1, LogLevel.Warning, \"ctor message\",", LogLevel.Warning },
-        { "level: LogLevel.Error, eventId: 1, message: \"ctor message\",", LogLevel.Error },
-        { "eventId: 1, level: LogLevel.Critical, message: \"ctor message\",", LogLevel.Critical },
-        { "eventId: 1, message: \"ctor message\", level: LogLevel.Trace,", LogLevel.Trace },
-        { "LogLevel.Warning, Level = LogLevel.Information,", LogLevel.Information },
-        { string.Empty, null },
-    };
+        yield return new object[] { "(LogLevel)0,", LogLevel.Trace };
+        yield return new object[] { "(LogLevel)1,", LogLevel.Debug };
+        yield return new object[] { "(LogLevel)2,", LogLevel.Information };
+        yield return new object[] { "(LogLevel)3,", LogLevel.Warning };
+        yield return new object[] { "(LogLevel)4,", LogLevel.Error };
+        yield return new object[] { "(LogLevel)5,", LogLevel.Critical };
+        yield return new object[] { "(LogLevel)6,", LogLevel.None };
+        yield return new object[] { "LogLevel.Information,", LogLevel.Information };
+        yield return new object[] { "LogLevel.Information, \"ctor message\",", LogLevel.Information };
+        yield return new object[] { "1, LogLevel.Information, \"ctor message\",", LogLevel.Information };
+        yield return new object[] { "1, LogLevel.Warning, \"ctor message\",", LogLevel.Warning };
+        yield return new object[] { "level: LogLevel.Error, eventId: 1, message: \"ctor message\",", LogLevel.Error };
+        yield return new object[] { "eventId: 1, level: LogLevel.Critical, message: \"ctor message\",", LogLevel.Critical };
+        yield return new object[] { "eventId: 1, message: \"ctor message\", level: LogLevel.Trace,", LogLevel.Trace };
+        yield return new object[] { "LogLevel.Warning, Level = LogLevel.Information,", LogLevel.Information };
+        yield return new object[] { string.Empty, null };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageLogLevelScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageLogLevelScenarios))]
     public async Task LoggerMessage_LogLevel_Scenarios(string? logLevelArg, LogLevel? expectedLogLevel)
     {
         // Arrange
@@ -193,21 +192,21 @@ partial class Log
         Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
     }
 
-    public static TheoryData<string, string?> LoggerMessageMessageScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageMessageScenarios()
     {
-        { "Message = \"Test message\",", "Test message" },
-        { "Message = \"Another message\",", "Another message" },
-        { "1, LogLevel.Information, \"Ctor message\",", "Ctor message" },
-        { "1, LogLevel.Information, \"\",", "" },
-        { "1, LogLevel.Information, null,", null },
-        { "message: \"Named message\",", "Named message" },
-        { "LogLevel.Information, \"Ctor message 2\",", "Ctor message 2" },
-        { "1, LogLevel.Information, \"Ctor message 3\", Message = \"Override message\",", "Override message" },
-        { string.Empty, null },
-    };
+        yield return new object[] { "Message = \"Test message\",", "Test message" };
+        yield return new object[] { "Message = \"Another message\",", "Another message" };
+        yield return new object[] { "1, LogLevel.Information, \"Ctor message\",", "Ctor message" };
+        yield return new object[] { "1, LogLevel.Information, \"\",", "" };
+        yield return new object[] { "1, LogLevel.Information, null,", null };
+        yield return new object[] { "message: \"Named message\",", "Named message" };
+        yield return new object[] { "LogLevel.Information, \"Ctor message 2\",", "Ctor message 2" };
+        yield return new object[] { "1, LogLevel.Information, \"Ctor message 3\", Message = \"Override message\",", "Override message" };
+        yield return new object[] { string.Empty, null };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageMessageScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageMessageScenarios))]
     public async Task LoggerMessage_Message_Scenarios(string? messageArg, string? expectedMessage)
     {
         // Arrange
@@ -249,34 +248,34 @@ partial class Log
         }
     }
 
-    public static TheoryData<string, string, List<MessageParameter>> LoggerMessageParameterScenarios() => new()
+    public static IEnumerable<object[]> LoggerMessageParameterScenarios()
     {
         // Single parameter
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", [new("UserId", "int", null)] },
+        yield return new object[] { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId", new List<MessageParameter> { new("UserId", "int", null) } };
         // Multiple parameters
-        { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", [new("UserId", "int", null), new("Action", "string", null), new("Time", "System.DateTime", null)] },
+        yield return new object[] { "Message = \"User {UserId} performed {Action} at {Time}\",", "ILogger logger, int userId, string action, System.DateTime time", new List<MessageParameter> { new("UserId", "int", null), new("Action", "string", null), new("Time", "System.DateTime", null) } };
         // Case insensitivity
-        { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", [new("userid", "int", null), new("ACTION", "string", null)] },
+        yield return new object[] { "Message = \"User {userid} did {ACTION}\",", "ILogger logger, int UserId, string Action", new List<MessageParameter> { new("userid", "int", null), new("ACTION", "string", null) } };
         // Exclude ILogger, LogLevel, Exception
-        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", [new("UserId", "int", null)] },
+        yield return new object[] { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.Exception ex", new List<MessageParameter> { new("UserId", "int", null) } };
         // Exclude ILogger, LogLevel, custom Exception
-        { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.ArgumentException ex", [new("UserId", "int", null)] },
+        yield return new object[] { "Message = \"Error for {UserId}\",", "ILogger logger, int userId, System.ArgumentException ex", new List<MessageParameter> { new("UserId", "int", null) } };
         // Complex placeholder syntax
-        { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", [new("UserId", "int", null)] },
+        yield return new object[] { "Message = \"User {UserId:X}\",", "ILogger logger, int userId", new List<MessageParameter> { new("UserId", "int", null) } };
         // Fully qualified type
-        { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", [new("UserId", "int", null), new("Id", "string", null)] },
+        yield return new object[] { "Message = \"User {UserId} logged {Id} in\",", "ILogger logger, System.Int32 userId, System.String id", new List<MessageParameter> { new("UserId", "int", null), new("Id", "string", null) } };
         // Nullable types
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", [new("UserId", "int?", null)] },
+        yield return new object[] { "Message = \"User {UserId} logged in\",", "ILogger logger, int? userId", new List<MessageParameter> { new("UserId", "int?", null) } };
         // Generic types
-        { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", [new("Ids", "System.Collections.Generic.List<int>", null)] },
+        yield return new object[] { "Message = \"User {Ids} logged in\",", "ILogger logger, System.Collections.Generic.List<System.Int32> ids", new List<MessageParameter> { new("Ids", "System.Collections.Generic.List<int>", null) } };
         // With [LogProperties]
-        { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId, [LogProperties] LogData data", [new("UserId", "int", null)] },
+        yield return new object[] { "Message = \"User {UserId} logged in\",", "ILogger logger, int userId, [LogProperties] LogData data", new List<MessageParameter> { new("UserId", "int", null) } };
         // With [LogProperties] and multiple arguments
-        { "Message = \"User {UserId} logged in {Action}\",", "ILogger logger, int userId, [LogProperties] LogData data, string action", [new("UserId", "int", null), new("Action", "string", null)] },
-    };
+        yield return new object[] { "Message = \"User {UserId} logged in {Action}\",", "ILogger logger, int userId, [LogProperties] LogData data, string action", new List<MessageParameter> { new("UserId", "int", null), new("Action", "string", null) } };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageParameterScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageParameterScenarios))]
     public async Task LoggerMessage_Parameter_Scenarios(string messageArg, string methodParameters, List<MessageParameter> expectedParameters)
     {
         // Arrange
@@ -328,7 +327,7 @@ public class LogData
 
     #region LoggerMessage Invocation Tests
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageWithInvocation_ReturnsLoggerMessageUsageInfo()
     {
         // Arrange
@@ -388,7 +387,7 @@ public class UserService
         Assert.NotNull(invocation.InvocationLocation);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageWithMultipleInvocations_TracksAllCallSites()
     {
         // Arrange
@@ -469,7 +468,7 @@ public class AdminService
         Assert.Single(adminServiceInvocations);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageWithoutInvocations_ReturnsEmptyInvocationsList()
     {
         // Arrange
@@ -527,7 +526,7 @@ public class UserService
         Assert.Empty(loggerMessageUsage.Invocations);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageInvocation_ExtractsArgumentInformation()
     {
         // Arrange
@@ -594,7 +593,7 @@ public class UserService
         Assert.Equal("string", actionArg.Type);
     }
 
-    [Fact]
+    [Test]
     public async Task MultipleLoggerMessageMethods_TracksInvocationsIndependently()
     {
         // Arrange
@@ -666,7 +665,7 @@ public class UserService
         Assert.Equal(1, loginFailedUsage.InvocationCount);
     }
 
-    [Fact]
+    [Test]
     public async Task LoggerMessageInDifferentNamespace_TracksInvocationsCorrectly()
     {
         // Arrange

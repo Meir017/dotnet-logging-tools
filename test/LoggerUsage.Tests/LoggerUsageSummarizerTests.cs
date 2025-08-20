@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using LoggerUsage;
 using LoggerUsage.Models;
-using Xunit;
+using TUnit.Core;
 
 namespace LoggerUsage.Tests;
 
 public class LoggerUsageSummarizerTests
 {
-    [Fact]
+    [Test]
     public void PopulateSummary_SingleParameter_SummaryIsCorrect()
     {
         // Arrange
@@ -49,7 +49,7 @@ public class LoggerUsageSummarizerTests
         Assert.Equal(new LoggerUsageExtractionSummary.CommonParameterNameInfo("userId", 1, "string"), extractionResult.Summary.CommonParameterNames[0]);
     }
 
-    [Fact]
+    [Test]
     public void PopulateSummary_MultipleParametersAndTypes_DetectsInconsistencies()
     {
         // Arrange
@@ -114,7 +114,7 @@ public class LoggerUsageSummarizerTests
         Assert.Contains("int", extractionResult.Summary.ParameterTypesByName["userId"]);
     }
 
-    [Fact]
+    [Test]
     public void PopulateSummary_EmptyParameters_SummaryIsEmpty()
     {
         // Arrange
@@ -162,7 +162,7 @@ public class LoggerUsageSummarizerTests
         Assert.Empty(extractionResult.Summary.CommonParameterNames);
     }
 
-    [Fact]
+    [Test]
     public void PopulateSummary_TypeMismatchAndCasingDifference_AreDetected()
     {
         // Arrange
