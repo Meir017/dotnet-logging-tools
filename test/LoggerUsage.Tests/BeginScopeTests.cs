@@ -1,5 +1,6 @@
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using TUnit.Core;
 
 namespace LoggerUsage.Tests;
 
@@ -14,7 +15,7 @@ namespace LoggerUsage.Tests;
 /// </summary>
 public class BeginScopeTests
 {
-    [Fact]
+    [Test]
     public async Task BeginScope_ExtensionMethod_DetectedCorrectly()
     {
         // Arrange
@@ -46,7 +47,7 @@ public class TestClass
         Assert.Equal("Processing request {RequestId}", beginScopeUsage.MessageTemplate);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_CoreMethod_DetectedCorrectly()
     {
         // Arrange
@@ -78,8 +79,8 @@ public class TestClass
         Assert.Null(beginScopeUsage.MessageTemplate);
     }
 
-    [Theory]
-    [MemberData(nameof(BeginScopeMessageParameterCases))]
+    [Test]
+    [MethodDataSource(nameof(BeginScopeMessageParameterCases))]
     public async Task BeginScope_ExtensionMethod_MessageParameters(string template, string[] argNames, List<MessageParameter> expectedParameters)
     {
         // Arrange
@@ -164,7 +165,7 @@ public class TestClass
         { "Processing request", [], [] },
     };
 
-    [Fact]
+    [Test]
     public async Task BeginScope_ExtensionMethod_WithSingleParameter()
     {
         // Arrange
@@ -196,7 +197,7 @@ public class TestClass
         Assert.Equal("Constant", beginScopeUsage.MessageParameters[0].Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_ExtensionMethod_WithMultipleParameters()
     {
         // Arrange
@@ -237,8 +238,8 @@ public class TestClass
         Assert.Equal("Constant", beginScopeUsage.MessageParameters[2].Kind);
     }
 
-    [Theory]
-    [MemberData(nameof(KeyValuePairBeginScopeTestCases))]
+    [Test]
+    [MethodDataSource(nameof(KeyValuePairBeginScopeTestCases))]
     public async Task BeginScope_KeyValuePairCollections_DetectedCorrectly(string testCode, int expectedParameterCount, List<MessageParameter> expectedParameters)
     {
         // Arrange
@@ -360,7 +361,7 @@ public class TestClass
         }
     };
 
-    [Fact]
+    [Test]
     public async Task BeginScope_AnonymousObject_ExtractsParametersCorrectly()
     {
         // Arrange
@@ -410,7 +411,7 @@ public class TestClass
         Assert.Equal("PropertyReference", timestampParam.Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_AnonymousObjectWithComplexTypes_HandledCorrectly()
     {
         // Arrange
@@ -459,7 +460,7 @@ public class TestClass
         Assert.Equal("System.Collections.Generic.List<string>", flagsParam.Type);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_AnonymousObjectWithNullValues_HandledGracefully()
     {
         // Arrange
@@ -506,7 +507,7 @@ public class TestClass
         Assert.Equal("object", nullableParam.Type);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_ExtensionMethodWithParamsArray_ExtractsParametersCorrectly()
     {
         // Arrange
@@ -550,7 +551,7 @@ public class TestClass
         Assert.Equal("PropertyReference", beginScopeUsage.MessageParameters[2].Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_ExtensionMethodWithArrayArgument_HandledCorrectly()
     {
         // Arrange
@@ -589,7 +590,7 @@ public class TestClass
         Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[1].Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_ComplexParamsArgumentHandling_ProcessedCorrectly()
     {
         // Arrange
@@ -629,7 +630,7 @@ public class TestClass
         Assert.Equal("Flags", beginScopeUsage.MessageParameters[2].Name);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_MessageTemplateFromVariable_HandledCorrectly()
     {
         // Arrange
@@ -664,7 +665,7 @@ public class TestClass
         Assert.Empty(beginScopeUsage.MessageParameters);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_LocalVariableReference_ExtractedCorrectly()
     {
         // Arrange
@@ -704,7 +705,7 @@ public class TestClass
         Assert.Equal("LocalReference", beginScopeUsage.MessageParameters[0].Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_FieldReference_ExtractedCorrectly()
     {
         // Arrange
@@ -742,7 +743,7 @@ public class TestClass
         Assert.Equal("FieldReference", beginScopeUsage.MessageParameters[0].Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_MethodInvocationCreatingKeyValuePairs_HandledCorrectly()
     {
         // Arrange
@@ -779,7 +780,7 @@ public class TestClass
         Assert.Empty(beginScopeUsage.MessageParameters);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_DictionaryWithAssignmentOperations_ExtractedCorrectly()
     {
         // Arrange
@@ -823,7 +824,7 @@ public class TestClass
         Assert.Equal("LocalReference", firstParam.Kind);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_EmptyScope_HandledGracefully()
     {
         // Arrange
@@ -853,7 +854,7 @@ public class TestClass
         Assert.Empty(beginScopeUsage.MessageParameters);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_NullArgument_HandledGracefully()
     {
         // Arrange
@@ -887,7 +888,7 @@ public class TestClass
         Assert.Empty(beginScopeUsage.MessageParameters);
     }
 
-    [Fact]
+    [Test]
     public async Task BeginScope_NestedScopes_BothDetected()
     {
         // Arrange

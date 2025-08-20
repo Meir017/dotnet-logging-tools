@@ -1,12 +1,13 @@
 ﻿using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using TUnit.Core;
 
 namespace LoggerUsage.Tests;
 
 public class LoggerMethodsTests
 {
-    [Fact]
+    [Test]
     public async Task BasicTest()
     {
         // Arrange
@@ -31,7 +32,7 @@ public class TestClass
         Assert.Equal(LoggerUsageMethodType.LoggerExtensions, loggerUsages.Results[0].MethodType);
     }
 
-    [Fact]
+    [Test]
     public async Task BasicTestNamedArguments()
     {
         // Arrange
@@ -59,8 +60,8 @@ public class TestClass
         Assert.Same(ConstantOrReference.Missing, details.Name);
     }
 
-    public static TheoryData<string[]> LoggerLogArguments() =>
-    [
+    public static IEnumerable<object[]> LoggerLogArguments()
+    {
         /*
 ILogger: void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter);
 
@@ -71,16 +72,17 @@ public static void Log(this ILogger logger, LogLevel logLevel, Exception? except
 public static void Log(this ILogger logger, LogLevel logLevel, EventId eventId, Exception? exception, string? message, params object?[] args)
         
         */
-        new[] { "LogLevel.Information", "new EventId(1)", "\"the-state\"", "null", "(state, ex) => state.ToString()" },
-        new[] { "LogLevel.Warning", "new EventId(2)", "\"Warning message\"" },
-        new[] { "LogLevel.Error", "new EventId(3)", "\"Error state\"", "new Exception(\"err\")", "(state, ex) => state.ToString()" },
-        new[] { "LogLevel.Debug", "default(EventId)", "\"Debug info\"", "null", "(state, ex) => state.ToString()" },
-        new[] { "LogLevel.Critical", "new EventId(4, \"CriticalEvent\")", "\"Critical!\"", "ex", "(state, ex) => $\"{state} - {ex?.Message}\"" },
-        new[] { "LogLevel.Trace", "new EventId()", "\"Trace message\"", "null", "(state, ex) => state.ToString()" }
-    ];
+        yield return new object[] { new[] { "LogLevel.Information", "new EventId(1)", "\"the-state\"", "null", "(state, ex) => state.ToString()" } };
+        yield return new object[] { new[] { "LogLevel.Warning", "new EventId(2)", "\"Warning message\"" } };
+        yield return new object[] { new[] { "LogLevel.Error", "new EventId(3)", "\"Error state\"", "new Exception(\"err\")", "(state, ex) => state.ToString()" } };
+        yield return new object[] { new[] { "LogLevel.Debug", "default(EventId)", "\"Debug info\"", "null", "(state, ex) => state.ToString()" } };
+        yield return new object[] { new[] { "LogLevel.Critical", "new EventId(4, \"CriticalEvent\")", "\"Critical!\"", "ex", "(state, ex) => $\"{state} - {ex?.Message}\"" } };
+        yield return new object[] { new[] { "LogLevel.Trace", "new EventId()", "\"Trace message\"", "null", "(state, ex) => state.ToString()" } };
+    }
 
-    [Theory(Skip = "Not implemented yet")]
-    [MemberData(nameof(LoggerLogArguments))]
+    // Skip for now as mentioned in original test
+    // [Test]
+    // [MethodDataSource(nameof(LoggerLogArguments))]
     public async Task TestLoggerLogMethod(string[] logArgs)
     {
         // Arrange
@@ -150,8 +152,8 @@ public class TestClass
         );
     }
 
-    [Theory]
-    [MemberData(nameof(LoggerExtensionMethods))]
+    [Test]
+    [MethodDataSource(nameof(LoggerExtensionMethods))]
     public async Task TestLoggerExtensionMethods(string methodName, string[] args)
     {
         // Arrange
@@ -179,25 +181,25 @@ public class TestClass
         Assert.Single(loggerUsages.Results);
     }
 
-    public static TheoryData<string, LogLevel?> LoggerLogLevelScenarios() => new()
+    public static IEnumerable<object[]> LoggerLogLevelScenarios()
     {
-        { "LogInformation(", LogLevel.Information },
-        { "LogWarning(", LogLevel.Warning },
-        { "LogError(", LogLevel.Error },
-        { "LogCritical(", LogLevel.Critical },
-        { "LogDebug(", LogLevel.Debug },
-        { "LogTrace(", LogLevel.Trace },
-        { "Log(LogLevel.Information, ", LogLevel.Information },
-        { "Log(LogLevel.Warning, ", LogLevel.Warning },
-        { "Log(LogLevel.Error, ", LogLevel.Error },
-        { "Log(LogLevel.Critical, ", LogLevel.Critical },
-        { "Log(LogLevel.Debug, ", LogLevel.Debug },
-        { "Log(LogLevel.Trace, ", LogLevel.Trace },
-        { "Log(LogLevel.None, ", LogLevel.None }
-    };
+        yield return new object[] { "LogInformation(", LogLevel.Information };
+        yield return new object[] { "LogWarning(", LogLevel.Warning };
+        yield return new object[] { "LogError(", LogLevel.Error };
+        yield return new object[] { "LogCritical(", LogLevel.Critical };
+        yield return new object[] { "LogDebug(", LogLevel.Debug };
+        yield return new object[] { "LogTrace(", LogLevel.Trace };
+        yield return new object[] { "Log(LogLevel.Information, ", LogLevel.Information };
+        yield return new object[] { "Log(LogLevel.Warning, ", LogLevel.Warning };
+        yield return new object[] { "Log(LogLevel.Error, ", LogLevel.Error };
+        yield return new object[] { "Log(LogLevel.Critical, ", LogLevel.Critical };
+        yield return new object[] { "Log(LogLevel.Debug, ", LogLevel.Debug };
+        yield return new object[] { "Log(LogLevel.Trace, ", LogLevel.Trace };
+        yield return new object[] { "Log(LogLevel.None, ", LogLevel.None };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerLogLevelScenarios))]
+    [Test]
+    [MethodDataSource(nameof(LoggerLogLevelScenarios))]
     public async Task TestLoggerLogLevelScenarios(string methodName, LogLevel? expectedLogLevel)
     {
         // Arrange
@@ -224,15 +226,15 @@ public class TestClass
         Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
     }
 
-    public static TheoryData<string, string, EventIdRef> LoggerEventIdScenariosReference() => new()
+    public static IEnumerable<object[]> LoggerEventIdScenariosReference()
     {
-        { "LogInformation", "eidVar", new EventIdRef(nameof(OperationKind.LocalReference), "eidVar") },
-        { "LogInformation", "eidParam", new EventIdRef(nameof(OperationKind.ParameterReference), "eidParam") },
-        { "LogInformation", "_eidField", new EventIdRef(nameof(OperationKind.FieldReference), "_eidField") },
-    };
+        yield return new object[] { "LogInformation", "eidVar", new EventIdRef(nameof(OperationKind.LocalReference), "eidVar") };
+        yield return new object[] { "LogInformation", "eidParam", new EventIdRef(nameof(OperationKind.ParameterReference), "eidParam") };
+        yield return new object[] { "LogInformation", "_eidField", new EventIdRef(nameof(OperationKind.FieldReference), "_eidField") };
+    }
 
-    [Theory]
-    [MemberData(nameof(LoggerEventIdScenariosReference))]
+    [Test]
+    [MethodDataSource(nameof(LoggerEventIdScenariosReference))]
     public async Task TestLoggerEventIdScenariosReference(string methodName, string eventId, EventIdRef expectedEventIdRef)
     {
         // Arrange
@@ -283,8 +285,8 @@ public class TestClass
         { "LogInformation", "new EventId(idVar, nameVar)", new ConstantOrReference(nameof(OperationKind.LocalReference), "idVar"), new ConstantOrReference(nameof(OperationKind.LocalReference), "nameVar") },
     };
 
-    [Theory]
-    [MemberData(nameof(LoggerEventIdScenariosValues))]
+    [Test]
+    [MethodDataSource(nameof(LoggerEventIdScenariosValues))]
     public async Task TestLoggerEventIdScenariosValues(string methodName, string eventId, ConstantOrReference expectedId, ConstantOrReference expectedName)
     {
         var code = $@"using Microsoft.Extensions.Logging;
@@ -314,7 +316,7 @@ public class TestClass
         Assert.Equal(expectedName, details.Name);
     }
 
-    [Theory]
+    [Test]
     [InlineData("default(EventId)")]
     [InlineData("eventId: default")]
     [InlineData("new EventId()")]
@@ -361,8 +363,8 @@ public class TestClass
         { "Test message {arg1:}", [ "\"arg1\"" ] }, // empty format
     };
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageTemplates))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageTemplates))]
     public async Task TestLoggerMessageTemplate(string template, string[] args)
     {
         // Arrange
@@ -400,8 +402,8 @@ public class TestClass
         { $"no placeholders {nameof(System)}", [], "no placeholders System" },
     };
 
-    [Theory]
-    [MemberData(nameof(LoggerInterpolatedTemplateCases))]
+    [Test]
+    [MethodDataSource(nameof(LoggerInterpolatedTemplateCases))]
     public async Task TestLoggerMessageTemplateWithInterpolatedConstant(string template, string[] args, string expectedTemplate)
     {
         // Arrange
@@ -551,8 +553,8 @@ public class TestClass
         ] },
     };
 
-    [Theory]
-    [MemberData(nameof(LoggerMessageParameterCases))]
+    [Test]
+    [MethodDataSource(nameof(LoggerMessageParameterCases))]
     public async Task TestLoggerMessageParameters(string template, string[] argNames, List<MessageParameter> expectedParameters)
     {
         // Arrange
