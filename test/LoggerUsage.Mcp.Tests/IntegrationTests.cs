@@ -53,7 +53,12 @@ public class IntegrationTests
         Assert.Equal("text", response.Content[0].Type);
         Assert.NotNull(response.Content[0].Text);
 
-        var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(response.Content[0].Text!, JsonSerializerOptions.Web);
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
+        var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(response.Content[0].Text!, options);
         Assert.NotNull(loggerUsages);
         Assert.NotNull(loggerUsages.Results);
         Assert.NotEmpty(loggerUsages.Results);

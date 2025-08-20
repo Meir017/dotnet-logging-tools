@@ -127,43 +127,43 @@ public class TestClass
         Assert.Equal(expectedParameters, parameters);
     }
 
-    public static TheoryData<string, string[], List<MessageParameter>> BeginScopeMessageParameterCases() => new()
+    public static IEnumerable<object[]> BeginScopeMessageParameterCases()
     {
         // Simple parameter references
-        { "Processing request {RequestId}", ["123"], [ 
+        yield return new object[] { "Processing request {RequestId}", new[] { "123" }, new List<MessageParameter> { 
             new MessageParameter("RequestId", "int", "Constant")
-        ] },
-        { "User {UserId} in request {RequestId}", ["\"user123\"", "456"], [ 
+        } };
+        yield return new object[] { "User {UserId} in request {RequestId}", new[] { "\"user123\"", "456" }, new List<MessageParameter> { 
             new MessageParameter("UserId", "string", "Constant"), 
             new MessageParameter("RequestId", "int", "Constant") 
-        ] },
-        { "Processing {Operation} for {UserId} with {RequestId}", ["\"Create\"", "\"user123\"", "789"], [
+        } };
+        yield return new object[] { "Processing {Operation} for {UserId} with {RequestId}", new[] { "\"Create\"", "\"user123\"", "789" }, new List<MessageParameter> {
             new MessageParameter("Operation", "string", "Constant"), 
             new MessageParameter("UserId", "string", "Constant"), 
             new MessageParameter("RequestId", "int", "Constant")
-        ] },
+        } };
 
         // Parameter references from method arguments
-        { "User {UserId} processing {RequestId}", ["strArg", "intArg"], [ 
+        yield return new object[] { "User {UserId} processing {RequestId}", new[] { "strArg", "intArg" }, new List<MessageParameter> { 
             new MessageParameter("UserId", "string", "ParameterReference"), 
             new MessageParameter("RequestId", "int", "ParameterReference") 
-        ] },
+        } };
 
         // Local variable references
-        { "Processing {Operation} for {UserId}", ["localStr", "localInt"], [
+        yield return new object[] { "Processing {Operation} for {UserId}", new[] { "localStr", "localInt" }, new List<MessageParameter> {
             new MessageParameter("Operation", "string", "LocalReference"),
             new MessageParameter("UserId", "int", "LocalReference")
-        ] },
+        } };
 
         // Field references
-        { "Processing {Operation} for {RequestId}", ["_strField", "_intField"], [
+        yield return new object[] { "Processing {Operation} for {RequestId}", new[] { "_strField", "_intField" }, new List<MessageParameter> {
             new MessageParameter("Operation", "string", "FieldReference"),
             new MessageParameter("RequestId", "int", "FieldReference")
-        ] },
+        } };
 
         // No parameters
-        { "Processing request", [], [] },
-    };
+        yield return new object[] { "Processing request", new string[0], new List<MessageParameter>() };
+    }
 
     [Test]
     public async Task BeginScope_ExtensionMethod_WithSingleParameter()
@@ -269,8 +269,9 @@ public class TestClass
         }
     }
 
-    public static TheoryData<string, int, List<MessageParameter>> KeyValuePairBeginScopeTestCases() => new()
+    public static IEnumerable<object[]> KeyValuePairBeginScopeTestCases()
     {
+        yield return new object[]
         {
             @"#nullable enable
 using Microsoft.Extensions.Logging;
@@ -300,7 +301,8 @@ public class TestClass
                 new("UserId", "string", "Constant"),
                 new("Operation", "string", "Constant")
             }
-        },
+        };
+        yield return new object[]
         {
             @"#nullable enable
 using Microsoft.Extensions.Logging;
@@ -328,7 +330,8 @@ public class TestClass
                 new("RequestId", "int", "Constant"),
                 new("UserId", "string", "Constant")
             }
-        },
+        };
+        yield return new object[]
         {
             @"#nullable enable
 using Microsoft.Extensions.Logging;
@@ -358,8 +361,8 @@ public class TestClass
                 new("UserId", "string", "Constant"),
                 new("IsActive", "bool", "Constant")
             }
-        }
-    };
+        };
+    }
 
     [Test]
     public async Task BeginScope_AnonymousObject_ExtractsParametersCorrectly()

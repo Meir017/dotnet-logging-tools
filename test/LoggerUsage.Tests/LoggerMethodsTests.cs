@@ -109,7 +109,7 @@ public class TestClass
         Assert.Empty(loggerUsages.Results);
     }
 
-    public static TheoryData<string, string[]> LoggerExtensionMethods()
+    public static IEnumerable<object[]> LoggerExtensionMethods()
     {
         string[] shortMessage = ["\"Test message\""];
         string[] messageWithSingleArg = ["\"Test message {Arg1}\"", "6"];
@@ -119,7 +119,7 @@ public class TestClass
         string[] eventIds = ["new EventId()", "1", "new EventId(1, \"Test\")", "new EventId(1)"];
         string[] exceptions = ["new Exception()", "new Exception(\"Test exception\")", "ex"];
 
-        return new MatrixTheoryData<string, string[]>(
+        var matrixData = new MatrixTheoryData<string, string[]>(
             Enum.GetNames(typeof(LogLevel)).Except([nameof(LogLevel.None)]).Select(logLevel => "Log" + logLevel),
             [
                 shortMessage,
@@ -150,6 +150,11 @@ public class TestClass
                 })),
             ]
         );
+        
+        foreach (var item in matrixData)
+        {
+            yield return item;
+        }
     }
 
     [Test]
@@ -265,25 +270,25 @@ public class TestClass
         Assert.Equal(expectedEventIdRef, @ref);
     }
 
-    public static TheoryData<string, string, ConstantOrReference, ConstantOrReference> LoggerEventIdScenariosValues() => new()
+    public static IEnumerable<object[]> LoggerEventIdScenariosValues()
     {
-        { "LogWarning", "6", ConstantOrReference.Constant(6), ConstantOrReference.Missing },
-        { "LogWarning", "new EventId(1)", ConstantOrReference.Constant(1), ConstantOrReference.Missing },
-        { "LogError", "new EventId(1, \"EventName\")", ConstantOrReference.Constant(1), ConstantOrReference.Constant("EventName") },
-        { "LogCritical", "new EventId(int.MaxValue, \"MaxValueEvent\")", ConstantOrReference.Constant(int.MaxValue), ConstantOrReference.Constant("MaxValueEvent") },
-        { "LogDebug", "new EventId(42, \"CustomEvent\")", ConstantOrReference.Constant(42), ConstantOrReference.Constant("CustomEvent") },
-        { "LogWarning", "new EventId(0, \"OnlyName\")", ConstantOrReference.Constant(0), ConstantOrReference.Constant("OnlyName") },
-        { "LogCritical", "new EventId(-1, \"NegativeId\")", ConstantOrReference.Constant(-1), ConstantOrReference.Constant("NegativeId") },
-        { "LogDebug", "new EventId(0, \"\")", ConstantOrReference.Constant(0), ConstantOrReference.Constant("") },
-        { "LogInformation", "new EventId(1 + 2, \"ExprName\")", ConstantOrReference.Constant(3), ConstantOrReference.Constant("ExprName") },
-        { "LogWarning", "new EventId(id: 7, name: \"NamedArgs\")", ConstantOrReference.Constant(7), ConstantOrReference.Constant("NamedArgs") },
-        { "LogInformation", "new EventId(_id, _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") },
-        { "LogInformation", "new EventId(_id, name: _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") },
-        { "LogInformation", "new EventId(id: _id, _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") },
-        { "LogInformation", "new EventId(_id, name: \"FieldName\")", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), ConstantOrReference.Constant("FieldName") },
-        { "LogInformation", "new EventId(5, name: \"FieldName\")", ConstantOrReference.Constant(5), ConstantOrReference.Constant("FieldName") },
-        { "LogInformation", "new EventId(idVar, nameVar)", new ConstantOrReference(nameof(OperationKind.LocalReference), "idVar"), new ConstantOrReference(nameof(OperationKind.LocalReference), "nameVar") },
-    };
+        yield return new object[] { "LogWarning", "6", ConstantOrReference.Constant(6), ConstantOrReference.Missing };
+        yield return new object[] { "LogWarning", "new EventId(1)", ConstantOrReference.Constant(1), ConstantOrReference.Missing };
+        yield return new object[] { "LogError", "new EventId(1, \"EventName\")", ConstantOrReference.Constant(1), ConstantOrReference.Constant("EventName") };
+        yield return new object[] { "LogCritical", "new EventId(int.MaxValue, \"MaxValueEvent\")", ConstantOrReference.Constant(int.MaxValue), ConstantOrReference.Constant("MaxValueEvent") };
+        yield return new object[] { "LogDebug", "new EventId(42, \"CustomEvent\")", ConstantOrReference.Constant(42), ConstantOrReference.Constant("CustomEvent") };
+        yield return new object[] { "LogWarning", "new EventId(0, \"OnlyName\")", ConstantOrReference.Constant(0), ConstantOrReference.Constant("OnlyName") };
+        yield return new object[] { "LogCritical", "new EventId(-1, \"NegativeId\")", ConstantOrReference.Constant(-1), ConstantOrReference.Constant("NegativeId") };
+        yield return new object[] { "LogDebug", "new EventId(0, \"\")", ConstantOrReference.Constant(0), ConstantOrReference.Constant("") };
+        yield return new object[] { "LogInformation", "new EventId(1 + 2, \"ExprName\")", ConstantOrReference.Constant(3), ConstantOrReference.Constant("ExprName") };
+        yield return new object[] { "LogWarning", "new EventId(id: 7, name: \"NamedArgs\")", ConstantOrReference.Constant(7), ConstantOrReference.Constant("NamedArgs") };
+        yield return new object[] { "LogInformation", "new EventId(_id, _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") };
+        yield return new object[] { "LogInformation", "new EventId(_id, name: _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") };
+        yield return new object[] { "LogInformation", "new EventId(id: _id, _name)", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), new ConstantOrReference(nameof(OperationKind.FieldReference), "_name") };
+        yield return new object[] { "LogInformation", "new EventId(_id, name: \"FieldName\")", new ConstantOrReference(nameof(OperationKind.FieldReference), "_id"), ConstantOrReference.Constant("FieldName") };
+        yield return new object[] { "LogInformation", "new EventId(5, name: \"FieldName\")", ConstantOrReference.Constant(5), ConstantOrReference.Constant("FieldName") };
+        yield return new object[] { "LogInformation", "new EventId(idVar, nameVar)", new ConstantOrReference(nameof(OperationKind.LocalReference), "idVar"), new ConstantOrReference(nameof(OperationKind.LocalReference), "nameVar") };
+    }
 
     [Test]
     [MethodDataSource(nameof(LoggerEventIdScenariosValues))]
@@ -317,9 +322,9 @@ public class TestClass
     }
 
     [Test]
-    [InlineData("default(EventId)")]
-    [InlineData("eventId: default")]
-    [InlineData("new EventId()")]
+    [Arguments("default(EventId)")]
+    [Arguments("eventId: default")]
+    [Arguments("new EventId()")]
     public async Task TestLoggerWithDefaultEventId(string eventId)
     {
         // Arrange
@@ -344,24 +349,24 @@ public class TestClass
         Assert.Null(loggerUsages.Results[0].EventId);
     }
 
-    public static TheoryData<string, string[]> LoggerMessageTemplates() => new()
+    public static IEnumerable<object[]> LoggerMessageTemplates()
     {
-        { "Test message", [] },
-        { "Test message {arg1}", [ "\"arg1\"" ] },
-        { "Test message {arg1} {arg2}", [ "\"arg1\"", "\"arg2\"" ] },
-        { "Test message {arg1} {arg2} {arg3}", [ "\"arg1\"", "\"arg2\"", "\"arg3\"" ] },
-        { "Test message with \"quotes\"", []},
-        { "Test message with {arg1} and \"quotes\"", [ "\"arg1\"" ] },
-        { "Test message with {arg1} and {arg2} and \"quotes\"", [ "\"arg1\"", "\"arg2\"" ] },
-        { "Test message with {arg1} and {arg2} and {arg3} and \"quotes\"", [ "\"arg1\"", "\"arg2\"", "\"arg3\"" ] },
+        yield return new object[] { "Test message", new string[0] };
+        yield return new object[] { "Test message {arg1}", new[] { "\"arg1\"" } };
+        yield return new object[] { "Test message {arg1} {arg2}", new[] { "\"arg1\"", "\"arg2\"" } };
+        yield return new object[] { "Test message {arg1} {arg2} {arg3}", new[] { "\"arg1\"", "\"arg2\"", "\"arg3\"" } };
+        yield return new object[] { "Test message with \"quotes\"", new string[0] };
+        yield return new object[] { "Test message with {arg1} and \"quotes\"", new[] { "\"arg1\"" } };
+        yield return new object[] { "Test message with {arg1} and {arg2} and \"quotes\"", new[] { "\"arg1\"", "\"arg2\"" } };
+        yield return new object[] { "Test message with {arg1} and {arg2} and {arg3} and \"quotes\"", new[] { "\"arg1\"", "\"arg2\"", "\"arg3\"" } };
 
         // Placeholders with format strings
-        { "Test message {arg1:N2}", [ "\"arg1\"" ] },
-        { "Test message {arg1:D} {arg2:X}", [ "\"arg1\"", "\"arg2\"" ] },
-        { "Logged on {PlaceHolderName:MMMM dd, yyyy}", ["System.DateTimeOffset.UtcNow"] },
-        { "Test message {arg1} and {arg2:N0} and {arg3}", [ "\"arg1\"", "\"arg2\"", "\"arg3\"" ] },
-        { "Test message {arg1:}", [ "\"arg1\"" ] }, // empty format
-    };
+        yield return new object[] { "Test message {arg1:N2}", new[] { "\"arg1\"" } };
+        yield return new object[] { "Test message {arg1:D} {arg2:X}", new[] { "\"arg1\"", "\"arg2\"" } };
+        yield return new object[] { "Logged on {PlaceHolderName:MMMM dd, yyyy}", new[] { "System.DateTimeOffset.UtcNow" } };
+        yield return new object[] { "Test message {arg1} and {arg2:N0} and {arg3}", new[] { "\"arg1\"", "\"arg2\"", "\"arg3\"" } };
+        yield return new object[] { "Test message {arg1:}", new[] { "\"arg1\"" } }; // empty format
+    }
 
     [Test]
     [MethodDataSource(nameof(LoggerMessageTemplates))]
@@ -394,13 +399,13 @@ public class TestClass
         Assert.Equal(template, loggerUsages.Results[0].MessageTemplate);
     }
 
-    public static TheoryData<string, string[], string> LoggerInterpolatedTemplateCases() => new()
+    public static IEnumerable<object[]> LoggerInterpolatedTemplateCases()
     {
-        { $"test {nameof(System)} message with {{arg1}} template", ["\"arg1\""], "test System message with {arg1} template" },
-        { $"prefix {nameof(System)} and {{arg}}", ["\"arg\""], "prefix System and {arg}" },
-        { $"just {{arg}} and {nameof(System)}", ["\"arg\""], "just {arg} and System" },
-        { $"no placeholders {nameof(System)}", [], "no placeholders System" },
-    };
+        yield return new object[] { $"test {nameof(System)} message with {{arg1}} template", new[] { "\"arg1\"" }, "test System message with {arg1} template" };
+        yield return new object[] { $"prefix {nameof(System)} and {{arg}}", new[] { "\"arg\"" }, "prefix System and {arg}" };
+        yield return new object[] { $"just {{arg}} and {nameof(System)}", new[] { "\"arg\"" }, "just {arg} and System" };
+        yield return new object[] { $"no placeholders {nameof(System)}", new string[0], "no placeholders System" };
+    }
 
     [Test]
     [MethodDataSource(nameof(LoggerInterpolatedTemplateCases))]
@@ -433,125 +438,125 @@ public class TestClass
         Assert.Equal(expectedTemplate, result.Results[0].MessageTemplate);
     }
 
-    public static TheoryData<string, string[], List<MessageParameter>> LoggerMessageParameterCases() => new()
+    public static IEnumerable<object[]> LoggerMessageParameterCases()
     {
-        { "Test message {arg1}", ["strArg"], [ 
+        yield return new object[] { "Test message {arg1}", new[] { "strArg" }, new List<MessageParameter> { 
                 new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference))
-        ] },
-        { "Test message {arg1} {arg2}", ["strArg", "intArg"], [ 
+        } };
+        yield return new object[] { "Test message {arg1} {arg2}", new[] { "strArg", "intArg" }, new List<MessageParameter> { 
             new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
             new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)) 
-        ] },
-        { "Test message {arg1} {arg2} {arg3}", ["strArg", "intArg", "boolArg"], [
+        } };
+        yield return new object[] { "Test message {arg1} {arg2} {arg3}", new[] { "strArg", "intArg", "boolArg" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
             new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)), 
             new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
-        ] },
-        { "Test message {arg1} and {arg2} and {arg3}", ["strArg", "intArg", "boolArg"], [ 
+        } };
+        yield return new object[] { "Test message {arg1} and {arg2} and {arg3}", new[] { "strArg", "intArg", "boolArg" }, new List<MessageParameter> { 
             new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
             new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)), 
             new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
-         ] },
-        { "Test message with no params", [], [] },
+         } };
+        yield return new object[] { "Test message with no params", new string[0], new List<MessageParameter>() };
 
         // Property references
-        { "Test with references properties {arg1}", ["strArg.Length"], [
+        yield return new object[] { "Test with references properties {arg1}", new[] { "strArg.Length" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference))
-        ] },
-        { "Test with references properties {arg1} and {arg2}", ["strArg.Length", "intArg.ToString()"], [
+        } };
+        yield return new object[] { "Test with references properties {arg1} and {arg2}", new[] { "strArg.Length", "intArg.ToString()" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
             new MessageParameter("arg2", "string", nameof(OperationKind.Invocation))
-        ] },
-        { "Test with references properties {arg1} and {arg2} and {arg3}", ["strArg.Length", "intArg.ToString()", "boolArg.ToString()"], [
+        } };
+        yield return new object[] { "Test with references properties {arg1} and {arg2} and {arg3}", new[] { "strArg.Length", "intArg.ToString()", "boolArg.ToString()" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
             new MessageParameter("arg2", "string", nameof(OperationKind.Invocation)),
             new MessageParameter("arg3", "string", nameof(OperationKind.Invocation))
-        ] },
+        } };
 
         // Instance member references
-        { "Test with references properties {arg1}", ["this._strField.Length"], [
+        yield return new object[] { "Test with references properties {arg1}", new[] { "this._strField.Length" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference))
-        ] },
-        { "Test with references properties {arg1} and {arg2}", ["this._strField.Length", "this._intField.ToString()"], [
+        } };
+        yield return new object[] { "Test with references properties {arg1} and {arg2}", new[] { "this._strField.Length", "this._intField.ToString()" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
             new MessageParameter("arg2", "string", nameof(OperationKind.Invocation))
-        ] },
-        { "Test with references properties {arg1} and {arg2} and {arg3}", ["this._strField.Length", "this._intField.ToString()", "this._boolField.ToString()"], [
+        } };
+        yield return new object[] { "Test with references properties {arg1} and {arg2} and {arg3}", new[] { "this._strField.Length", "this._intField.ToString()", "this._boolField.ToString()" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.PropertyReference)),
             new MessageParameter("arg2", "string", nameof(OperationKind.Invocation)),
             new MessageParameter("arg3", "string", nameof(OperationKind.Invocation))
-        ] },
+        } };
 
         // Conditional access
-        { "Test with nullable references properties {arg1}", ["this._strField?.Length"], [
+        yield return new object[] { "Test with nullable references properties {arg1}", new[] { "this._strField?.Length" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int?", nameof(OperationKind.ConditionalAccess))
-        ] },
-        { "Test with nullable references properties {arg1} and {arg2}", ["this._strField?.Length", "this._intField?.ToString()"], [
+        } };
+        yield return new object[] { "Test with nullable references properties {arg1} and {arg2}", new[] { "this._strField?.Length", "this._intField?.ToString()" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int?", nameof(OperationKind.ConditionalAccess)),
             new MessageParameter("arg2", "string", nameof(OperationKind.ConditionalAccess))
-        ] },
-        { "Test with nullable references properties {arg1} and {arg2} and {arg3}", ["this._strField?.Length", "this._intField?.ToString()", "this._boolField?.ToString()"], [
+        } };
+        yield return new object[] { "Test with nullable references properties {arg1} and {arg2} and {arg3}", new[] { "this._strField?.Length", "this._intField?.ToString()", "this._boolField?.ToString()" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int?", nameof(OperationKind.ConditionalAccess)),
             new MessageParameter("arg2", "string", nameof(OperationKind.ConditionalAccess)),
             new MessageParameter("arg3", "string", nameof(OperationKind.ConditionalAccess))
-        ] },
+        } };
 
         // Conditional access with null coalescing
-        { "Test with nullable references properties {arg1}", ["this._strField?.Length ?? 0"], [
+        yield return new object[] { "Test with nullable references properties {arg1}", new[] { "this._strField?.Length ?? 0" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.Coalesce))
-        ] },
-        { "Test with nullable references properties {arg1} and {arg2}", ["this._strField?.Length ?? 0", "this._intField?.ToString() ?? \"default-value\""], [
+        } };
+        yield return new object[] { "Test with nullable references properties {arg1} and {arg2}", new[] { "this._strField?.Length ?? 0", "this._intField?.ToString() ?? \"default-value\"" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.Coalesce)),
             new MessageParameter("arg2", "string", nameof(OperationKind.Coalesce))
-        ] },
-        { "Test with nullable references properties {arg1} and {arg2} and {arg3}", ["this._strField?.Length ?? 0", "this._intField?.ToString() ?? \"default-value\"", "this._boolField?.ToString() ?? \"default-value\""], [
+        } };
+        yield return new object[] { "Test with nullable references properties {arg1} and {arg2} and {arg3}", new[] { "this._strField?.Length ?? 0", "this._intField?.ToString() ?? \"default-value\"", "this._boolField?.ToString() ?? \"default-value\"" }, new List<MessageParameter> {
             new MessageParameter("arg1", "int", nameof(OperationKind.Coalesce)),
             new MessageParameter("arg2", "string", nameof(OperationKind.Coalesce)),
             new MessageParameter("arg3", "string", nameof(OperationKind.Coalesce))
-        ] },
+        } };
 
         // Constant references
-        { "Test message {arg1}", ["constStr"], [
+        yield return new object[] { "Test message {arg1}", new[] { "constStr" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", "Constant") // const is local in Roslyn
-        ] },
-        { "Test message {arg1} {arg2}", ["constStr", "constInt"], [
+        } };
+        yield return new object[] { "Test message {arg1} {arg2}", new[] { "constStr", "constInt" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", "Constant"),
             new MessageParameter("arg2", "int", "Constant")
-        ] },
-        { "Test message {arg1} {arg2} {arg3}", ["constStr", "constInt", "constBool"], [
+        } };
+        yield return new object[] { "Test message {arg1} {arg2} {arg3}", new[] { "constStr", "constInt", "constBool" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", "Constant"),
             new MessageParameter("arg2", "int", "Constant"),
             new MessageParameter("arg3", "bool", "Constant")
-        ] },
+        } };
 
         // Local variable references
-        { "Test message {arg1}", ["localStr"], [
+        yield return new object[] { "Test message {arg1}", new[] { "localStr" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.LocalReference))
-        ] },
-        { "Test message {arg1} {arg2}", ["localStr", "localInt"], [
+        } };
+        yield return new object[] { "Test message {arg1} {arg2}", new[] { "localStr", "localInt" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.LocalReference)),
             new MessageParameter("arg2", "int", nameof(OperationKind.LocalReference))
-        ] },
-        { "Test message {arg1} {arg2} {arg3}", ["localStr", "localInt", "localBool"], [
+        } };
+        yield return new object[] { "Test message {arg1} {arg2} {arg3}", new[] { "localStr", "localInt", "localBool" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.LocalReference)),
             new MessageParameter("arg2", "int", nameof(OperationKind.LocalReference)),
             new MessageParameter("arg3", "bool", nameof(OperationKind.LocalReference))
-        ] },
+        } };
 
         // with formatting
-        { "Test message {arg1:N2}", ["strArg"], [
+        yield return new object[] { "Test message {arg1:N2}", new[] { "strArg" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference))
-        ] },
-        { "Test message {arg1:D} {arg2:X}", ["strArg", "intArg"], [
+        } };
+        yield return new object[] { "Test message {arg1:D} {arg2:X}", new[] { "strArg", "intArg" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
             new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference))
-        ] },
-        { "Test message {arg1} and {arg2:N0} and {arg3}", ["strArg", "intArg", "boolArg"], [
+        } };
+        yield return new object[] { "Test message {arg1} and {arg2:N0} and {arg3}", new[] { "strArg", "intArg", "boolArg" }, new List<MessageParameter> {
             new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
             new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)),
             new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
-        ] },
-    };
+        } };
+    }
 
     [Test]
     [MethodDataSource(nameof(LoggerMessageParameterCases))]

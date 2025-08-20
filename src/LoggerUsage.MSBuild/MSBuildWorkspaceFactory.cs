@@ -8,7 +8,7 @@ namespace LoggerUsage.MSBuild;
 
 public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
 {
-    private static bool _msBuildLocatorRegistered;
+    private static int _msBuildLocatorRegistered;
 
     private readonly ILogger<MSBuildWorkspaceFactory> _logger;
 
@@ -16,7 +16,7 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
     {
         _logger = logger;
 
-        if (Interlocked.CompareExchange(ref _msBuildLocatorRegistered, true, false) == false)
+        if (Interlocked.CompareExchange(ref _msBuildLocatorRegistered, 1, 0) == 0)
         {
             MSBuildLocator.RegisterDefaults();
         }
