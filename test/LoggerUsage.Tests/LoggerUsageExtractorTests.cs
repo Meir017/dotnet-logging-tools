@@ -1,8 +1,10 @@
+using TUnit.Core;
+
 namespace LoggerUsage.Tests;
 
 public class LoggerUsageExtractorTests
 {
-    [Fact]
+    [Test]
     public async Task BasicTestWithLogMethodAndLoggerMessageAttribute()
     {
         // Arrange

@@ -3,12 +3,13 @@ using System.Text.Json;
 using LoggerUsage.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using ModelContextProtocol.Client;
+using TUnit.Core;
 
 namespace LoggerUsage.Mcp.Tests;
 
 public class IntegrationTests
 {
-    [Fact]
+    [Test]
     public async Task Test_ListTools()
     {
         // Arrange
@@ -27,7 +28,7 @@ public class IntegrationTests
         Assert.Equal(nameof(LoggerUsageExtractorTool.AnalyzeLoggerUsagesInCsproj), response[0].Name);
     }
 
-    [Fact]
+    [Test]
     public async Task Test_AnalyzeLoggerUsagesInCsproj()
     {
         // Arrange

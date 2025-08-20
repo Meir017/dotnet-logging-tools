@@ -1,16 +1,19 @@
+using TUnit.Core;
+
 namespace LoggerUsage.Cli.Tests;
 
 public class ProgramTests
 {
-    public static TheoryData<string[]> RunProgramWithoutPathData => new(
-        [],
-        ["fake-csproj.csproj"],
-        ["fake-sln.sln"],
-        ["fake-slnx.slnx"]
-    );
+    public static IEnumerable<object[]> RunProgramWithoutPathData()
+    {
+        yield return new object[] { Array.Empty<string>() };
+        yield return new object[] { new[] { "fake-csproj.csproj" } };
+        yield return new object[] { new[] { "fake-sln.sln" } };
+        yield return new object[] { new[] { "fake-slnx.slnx" } };
+    }
 
-    [Theory]
-    [MemberData(nameof(RunProgramWithoutPathData))]
+    [Test]
+    [MethodDataSource(nameof(RunProgramWithoutPathData))]
     public async Task RunProgramWithoutPath(string[] args)
     {
         // Arrange
@@ -23,9 +26,9 @@ public class ProgramTests
         Assert.Equal(-1, result);
     }
 
-    [Theory]
-    [InlineData("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj")]
-    [InlineData("logging-usage.sln")]
+    [Test]
+    [Arguments("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj")]
+    [Arguments("logging-usage.sln")]
     public async Task RunProgramWithPath(params string[] paths)
     {
         // Arrange
@@ -39,9 +42,9 @@ public class ProgramTests
         Assert.Equal(0, result);
     }
 
-    [Theory]
-    [InlineData("output.json")]
-    [InlineData("output.html")]
+    [Test]
+    [Arguments("output.json")]
+    [Arguments("output.html")]
     public async Task RunProgramWithPathAndOutputPath(string outputFileName)
     {
         // Arrange

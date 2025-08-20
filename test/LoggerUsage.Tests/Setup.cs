@@ -1,4 +1,3 @@
 using LoggerUsage.Models;
-using Xunit.Sdk;
-
-[assembly: RegisterXunitSerializer(typeof(LoggerUsage.Tests.MessageParameterListXunitSerializer), typeof(List<MessageParameter>))]
+// XUnit serializer not needed for TUnit
+// [assembly: RegisterXunitSerializer(typeof(LoggerUsage.Tests.MessageParameterListXunitSerializer), typeof(List<MessageParameter>))]
