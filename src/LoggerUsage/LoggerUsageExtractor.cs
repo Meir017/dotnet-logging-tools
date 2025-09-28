@@ -41,7 +41,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
             _logger.LogInformation("Analyzing project compilation '{Project}' with {Count} references", compilation.AssemblyName, compilation.References.Count());
 
-            var extractionResult = ExtractLoggerUsages(compilation);
+            var extractionResult = ExtractLoggerUsagesWithSolution(compilation, workspace.CurrentSolution);
             results.AddRange(extractionResult.Results);
         }
 
@@ -57,11 +57,12 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
     }
 
     /// <summary>
-    /// Extracts logger usage information from a single compilation unit.
+    /// Extracts logger usage information from a single compilation unit with optional solution context.
     /// </summary>
     /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
+    /// <param name="solution">Optional solution for cross-project analysis.</param>
     /// <returns>The extraction results containing all found logger usage information.</returns>
-    public LoggerUsageExtractionResult ExtractLoggerUsages(Compilation compilation)
+    public LoggerUsageExtractionResult ExtractLoggerUsagesWithSolution(Compilation compilation, Solution? solution = null)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
         if (loggerInterface == null)
@@ -75,7 +76,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
         var loggingTypes = new LoggingTypes(compilation, loggerInterface);
         var results = new ConcurrentBag<LoggerUsageInfo>();
-
+        
         Parallel.ForEach(compilation.SyntaxTrees, syntaxTree =>
         {
             if (syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
@@ -97,7 +98,12 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
             {
                 var start = Stopwatch.GetTimestamp();
                 _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
-                var usages = analyzer.Analyze(loggingTypes, root, semanticModel);
+                
+                var analysisContext = solution != null 
+                    ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
+                    : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
+                var usages = analyzer.Analyze(analysisContext);
+                
                 var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
                 var duration = Stopwatch.GetElapsedTime(start);
                 _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
@@ -116,5 +122,15 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
             Results = [.. results],
             Summary = new()
         };
+    }
+
+    /// <summary>
+    /// Extracts logger usage information from a single compilation unit.
+    /// </summary>
+    /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
+    /// <returns>The extraction results containing all found logger usage information.</returns>
+    public LoggerUsageExtractionResult ExtractLoggerUsages(Compilation compilation)
+    {
+        return ExtractLoggerUsagesWithSolution(compilation);
     }
 }

@@ -15,22 +15,22 @@ namespace LoggerUsage.Analyzers
         ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
         private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
+        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
-            var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocation in invocations)
             {
-                if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
+                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
                 {
                     continue;
                 }
 
-                if (!loggingTypes.LoggerExtensionModeler.IsLoggerMethod(operation.TargetMethod))
+                if (!context.LoggingTypes.LoggerExtensionModeler.IsLoggerMethod(operation.TargetMethod))
                 {
                     continue;
                 }
 
-                yield return ExtractLoggerMethodUsage(operation, loggingTypes, invocation);
+                yield return ExtractLoggerMethodUsage(operation, context.LoggingTypes, invocation);
             }
         }
 
