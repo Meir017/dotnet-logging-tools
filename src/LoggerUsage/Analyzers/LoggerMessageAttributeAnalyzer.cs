@@ -3,7 +3,6 @@ using LoggerUsage.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.CodeAnalysis.Operations;
-using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis.FindSymbols;
 
 namespace LoggerUsage.Analyzers
@@ -39,7 +38,7 @@ namespace LoggerUsage.Analyzers
             // Phase 2: Find invocations for each declaration
             foreach (var declaration in declarations)
             {
-                var invocations = FindLoggerMessageInvocations(declaration, context.Root, context.SemanticModel);
+                var invocations = await FindLoggerMessageInvocations(declaration, context);
 
                 // Create LoggerMessageUsageInfo with invocation data
                 var loggerMessageUsage = new LoggerMessageUsageInfo
@@ -141,24 +140,54 @@ namespace LoggerUsage.Analyzers
         /// <summary>
         /// Phase 2: Find all invocations of a specific LoggerMessage method
         /// </summary>
-        private List<LoggerMessageInvocation> FindLoggerMessageInvocations(
-            LoggerMessageDeclaration declaration,
-            SyntaxNode root,
-            SemanticModel semanticModel)
+        private async Task<List<LoggerMessageInvocation>> FindLoggerMessageInvocations(LoggerMessageDeclaration declaration, LoggingAnalysisContext context)
         {
             var invocations = new List<LoggerMessageInvocation>();
-            var invocationNodes = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            if (context.Solution is not null)
+            {
+                var callers = await SymbolFinder.FindCallersAsync(declaration.MethodSymbol, context.Solution);
+                foreach (var caller in callers)
+                {
+                    foreach (var location in caller.Locations)
+                    {
+                        if (location.IsInSource && location.SourceTree != null)
+                        {
+                            var syntaxRoot = await location.SourceTree.GetRootAsync();
+                            if (syntaxRoot.FindNode(location.SourceSpan) is IdentifierNameSyntax identifierName // the method name - e.g. LogUserActivity
+                                && identifierName.Parent is MemberAccessExpressionSyntax memberAccess // the member access - e.g. UserLogger.LogUserActivity
+                                && memberAccess.Parent is InvocationExpressionSyntax invocationExpression // the invocation expression - e.g. UserLogger.LogUserActivity(...)
+                            )
+                            {
+                                var document = context.Solution.GetDocumentId(location.SourceTree);
+                                var project = context.Solution.GetProject(document!.ProjectId);
+                                var compilation = await project!.GetCompilationAsync();
+                                var semanticModel = compilation!.GetSemanticModel(location.SourceTree);
 
+                                if (semanticModel.GetOperation(invocationExpression) is not IInvocationOperation operation)
+                                {
+                                    continue;
+                                }
+
+                                invocations.Add(CreateLoggerMessageInvocation(operation, invocationExpression, syntaxRoot, semanticModel));
+                            }
+                        }
+                    }
+                }
+
+                return invocations;
+            }
+
+            var invocationNodes = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocationNode in invocationNodes)
             {
-                if (semanticModel.GetOperation(invocationNode) is not IInvocationOperation operation)
+                if (context.SemanticModel.GetOperation(invocationNode) is not IInvocationOperation operation)
                 {
                     continue;
                 }
 
                 if (IsLoggerMessageMethodInvocation(operation, declaration))
                 {
-                    var invocation = CreateLoggerMessageInvocation(operation, invocationNode, root, semanticModel);
+                    var invocation = CreateLoggerMessageInvocation(operation, invocationNode, context.Root, context.SemanticModel);
                     invocations.Add(invocation);
 
                     logger.LogTrace("Found invocation of {MethodName} in {ContainingType} at line {LineNumber}",
