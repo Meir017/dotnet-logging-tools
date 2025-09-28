@@ -18,7 +18,7 @@ namespace LoggerUsage.Analyzers
             MethodDeclarationSyntax DeclarationSyntax,
             LoggerUsageInfo BaseUsageInfo);
 
-        public async Task<IEnumerable<LoggerUsageInfo>> Analyze(LoggingAnalysisContext context)
+        public async Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
         {
             logger.LogTrace("Starting LoggerMessageAttribute analysis");
 
@@ -28,10 +28,12 @@ namespace LoggerUsage.Analyzers
             if (!declarations.Any())
             {
                 logger.LogTrace("No LoggerMessage declarations found");
-                yield break;
+                return [];
             }
 
             logger.LogTrace("Found {DeclarationCount} LoggerMessage declarations", declarations.Count);
+
+            var results = new List<LoggerUsageInfo>();
 
             // Phase 2: Find invocations for each declaration
             foreach (var declaration in declarations)
@@ -52,11 +54,15 @@ namespace LoggerUsage.Analyzers
                     Invocations = invocations
                 };
 
-                logger.LogTrace("LoggerMessage method {MethodName} has {InvocationCount} invocations",
-                    declaration.MethodSymbol.Name, invocations.Count);
+                logger.LogTrace("Analyzed LoggerMessage method {MethodName} with {InvocationCount} invocations",
+                    loggerMessageUsage.MethodName, loggerMessageUsage.InvocationCount);
 
-                yield return loggerMessageUsage;
+                results.Add(loggerMessageUsage);
             }
+
+            // Ensure this is truly async
+            await Task.Yield();
+            return results;
         }
 
         /// <summary>
