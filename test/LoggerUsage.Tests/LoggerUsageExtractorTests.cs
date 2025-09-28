@@ -34,7 +34,7 @@ partial class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);

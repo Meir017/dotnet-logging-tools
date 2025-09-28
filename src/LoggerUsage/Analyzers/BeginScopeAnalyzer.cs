@@ -11,9 +11,11 @@ namespace LoggerUsage.Analyzers
         IScopeAnalysisService scopeAnalysisService,
         ILogger<BeginScopeAnalyzer> logger) : ILoggerUsageAnalyzer
     {
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
+        public async Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
         {
+            var results = new List<LoggerUsageInfo>();
             var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            
             foreach (var invocation in invocations)
             {
                 if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
@@ -26,8 +28,12 @@ namespace LoggerUsage.Analyzers
                     continue;
                 }
 
-                yield return ExtractBeginScopeUsage(operation, context.LoggingTypes, invocation);
+                results.Add(ExtractBeginScopeUsage(operation, context.LoggingTypes, invocation));
             }
+            
+            // Ensure this is truly async
+            await Task.Yield();
+            return results;
         }
 
         private LoggerUsageInfo ExtractBeginScopeUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)

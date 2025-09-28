@@ -33,7 +33,7 @@ partial class Log
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -97,7 +97,7 @@ partial class Log
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -185,7 +185,7 @@ partial class Log
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -234,7 +234,7 @@ partial class Log
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -309,7 +309,7 @@ public class LogData
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -370,7 +370,7 @@ public class UserService
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -450,7 +450,7 @@ public class AdminService
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -512,7 +512,7 @@ public class UserService
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -569,7 +569,7 @@ public class UserService
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -651,7 +651,7 @@ public class UserService
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -716,7 +716,7 @@ namespace TestNamespace.Services
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
