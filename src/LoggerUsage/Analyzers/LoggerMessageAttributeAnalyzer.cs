@@ -19,12 +19,12 @@ namespace LoggerUsage.Analyzers
             MethodDeclarationSyntax DeclarationSyntax,
             LoggerUsageInfo BaseUsageInfo);
 
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
+        public IEnumerable<LoggerUsageInfo> Analyze(AnalysisContext context)
         {
             logger.LogTrace("Starting LoggerMessageAttribute analysis");
 
             // Phase 1: Discover LoggerMessage method declarations
-            var declarations = DiscoverLoggerMessageDeclarations(loggingTypes, root, semanticModel);
+            var declarations = DiscoverLoggerMessageDeclarations(context.LoggingTypes, context.Root, context.SemanticModel);
 
             if (!declarations.Any())
             {
@@ -37,7 +37,7 @@ namespace LoggerUsage.Analyzers
             // Phase 2: Find invocations for each declaration
             foreach (var declaration in declarations)
             {
-                var invocations = FindLoggerMessageInvocations(declaration, root, semanticModel);
+                var invocations = FindLoggerMessageInvocations(declaration, context.Root, context.SemanticModel);
 
                 // Create LoggerMessageUsageInfo with invocation data
                 var loggerMessageUsage = new LoggerMessageUsageInfo
