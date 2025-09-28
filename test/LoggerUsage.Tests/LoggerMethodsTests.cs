@@ -23,7 +23,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -48,7 +48,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -99,7 +99,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -172,7 +172,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -216,7 +216,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -253,7 +253,7 @@ public class TestClass
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = TestUtils.CreateLoggerUsageExtractor();
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -305,7 +305,7 @@ public class TestClass
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = TestUtils.CreateLoggerUsageExtractor();
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
         Assert.NotNull(loggerUsages);
         Assert.Single(loggerUsages.Results);
         Assert.NotNull(loggerUsages.Results[0].EventId);
@@ -336,7 +336,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
         Assert.NotNull(loggerUsages);
         Assert.Single(loggerUsages.Results);
         Assert.Null(loggerUsages.Results[0].EventId);
@@ -384,7 +384,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -423,7 +423,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var result = extractor.ExtractLoggerUsages(compilation);
+        var result = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(result);
@@ -584,7 +584,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);

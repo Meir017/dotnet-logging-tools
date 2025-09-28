@@ -34,7 +34,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -66,7 +66,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -114,7 +114,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -184,7 +184,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -216,7 +216,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -246,7 +246,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         Assert.NotNull(loggerUsages);
@@ -383,7 +383,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -440,7 +440,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -486,7 +486,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -529,7 +529,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -572,7 +572,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -613,7 +613,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -653,7 +653,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -691,7 +691,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -729,7 +729,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -768,7 +768,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -808,7 +808,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -844,7 +844,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -876,7 +876,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
@@ -911,7 +911,7 @@ public class TestClass
         var extractor = TestUtils.CreateLoggerUsageExtractor();
 
         // Act
-        var loggerUsages = extractor.ExtractLoggerUsages(compilation);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
         var beginScopeUsages = loggerUsages.Results.Where(r => r.MethodType == LoggerUsageMethodType.BeginScope).ToList();
