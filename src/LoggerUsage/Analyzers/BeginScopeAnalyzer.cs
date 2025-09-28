@@ -11,22 +11,22 @@ namespace LoggerUsage.Analyzers
         IScopeAnalysisService scopeAnalysisService,
         ILogger<BeginScopeAnalyzer> logger) : ILoggerUsageAnalyzer
     {
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
+        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
-            var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocation in invocations)
             {
-                if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
+                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
                 {
                     continue;
                 }
 
-                if (!loggingTypes.LoggerExtensionModeler.IsBeginScopeMethod(operation.TargetMethod))
+                if (!context.LoggingTypes.LoggerExtensionModeler.IsBeginScopeMethod(operation.TargetMethod))
                 {
                     continue;
                 }
 
-                yield return ExtractBeginScopeUsage(operation, loggingTypes, invocation);
+                yield return ExtractBeginScopeUsage(operation, context.LoggingTypes, invocation);
             }
         }
 

@@ -12,23 +12,23 @@ namespace LoggerUsage.Analyzers
         IMessageTemplateExtractor messageTemplateExtractor,
         GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingTypes loggingTypes, SyntaxNode root, SemanticModel semanticModel)
+        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
-            var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocation in invocations)
             {
-                if (semanticModel.GetOperation(invocation) is not IInvocationOperation operation)
+                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
                 {
                     continue;
                 }
 
-                if (!operation.TargetMethod.ContainingType.Equals(loggingTypes.LoggerMessage, SymbolEqualityComparer.Default)
+                if (!operation.TargetMethod.ContainingType.Equals(context.LoggingTypes.LoggerMessage, SymbolEqualityComparer.Default)
                     || !operation.TargetMethod.Name.Equals(nameof(LoggerMessage.Define)))
                 {
                     continue;
                 }
 
-                yield return ExtractLoggerMessageDefineUsage(operation, loggingTypes, invocation);
+                yield return ExtractLoggerMessageDefineUsage(operation, context.LoggingTypes, invocation);
             }
         }
 
