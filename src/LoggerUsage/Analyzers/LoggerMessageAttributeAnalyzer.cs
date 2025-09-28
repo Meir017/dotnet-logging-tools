@@ -19,6 +19,53 @@ namespace LoggerUsage.Analyzers
             MethodDeclarationSyntax DeclarationSyntax,
             LoggerUsageInfo BaseUsageInfo);
 
+        public async Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
+        {
+            logger.LogTrace("Starting LoggerMessageAttribute analysis");
+
+            // Phase 1: Discover LoggerMessage method declarations
+            var declarations = DiscoverLoggerMessageDeclarations(context.LoggingTypes, context.Root, context.SemanticModel);
+
+            if (!declarations.Any())
+            {
+                logger.LogTrace("No LoggerMessage declarations found");
+                return [];
+            }
+
+            logger.LogTrace("Found {DeclarationCount} LoggerMessage declarations", declarations.Count);
+
+            var results = new List<LoggerUsageInfo>();
+
+            // Phase 2: Find invocations for each declaration
+            foreach (var declaration in declarations)
+            {
+                var invocations = FindLoggerMessageInvocations(declaration, context.Root, context.SemanticModel);
+
+                // Create LoggerMessageUsageInfo with invocation data
+                var loggerMessageUsage = new LoggerMessageUsageInfo
+                {
+                    MethodName = declaration.BaseUsageInfo.MethodName,
+                    MethodType = declaration.BaseUsageInfo.MethodType,
+                    Location = declaration.BaseUsageInfo.Location,
+                    MessageTemplate = declaration.BaseUsageInfo.MessageTemplate,
+                    LogLevel = declaration.BaseUsageInfo.LogLevel,
+                    EventId = declaration.BaseUsageInfo.EventId,
+                    MessageParameters = declaration.BaseUsageInfo.MessageParameters,
+                    DeclaringTypeName = declaration.ContainingTypeName,
+                    Invocations = invocations
+                };
+
+                logger.LogTrace("Analyzed LoggerMessage method {MethodName} with {InvocationCount} invocations",
+                    loggerMessageUsage.MethodName, loggerMessageUsage.InvocationCount);
+
+                results.Add(loggerMessageUsage);
+            }
+
+            // Ensure this is truly async
+            await Task.Yield();
+            return results;
+        }
+
         public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
             logger.LogTrace("Starting LoggerMessageAttribute analysis");

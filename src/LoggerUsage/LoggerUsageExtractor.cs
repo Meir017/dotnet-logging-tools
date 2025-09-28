@@ -41,7 +41,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
             _logger.LogInformation("Analyzing project compilation '{Project}' with {Count} references", compilation.AssemblyName, compilation.References.Count());
 
-            var extractionResult = ExtractLoggerUsagesWithSolution(compilation, workspace.CurrentSolution);
+            var extractionResult = await ExtractLoggerUsagesWithSolutionAsync(compilation, workspace.CurrentSolution);
             results.AddRange(extractionResult.Results);
         }
 
@@ -62,7 +62,97 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
     /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
     /// <param name="solution">Optional solution for cross-project analysis.</param>
     /// <returns>The extraction results containing all found logger usage information.</returns>
+    public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesWithSolutionAsync(Compilation compilation, Solution? solution = null)
+    {
+        var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
+        if (loggerInterface == null)
+        {
+            _logger.LogWarning("ILogger interface not found in compilation '{CompilationPath}'. Skipping analysis. Existing {Count} references [{References}]",
+                compilation.SourceModule.Name,
+                compilation.References.Count(),
+                string.Join(',', compilation.References.Select(r => r.Display)));
+            return new LoggerUsageExtractionResult();
+        }
+
+        var loggingTypes = new LoggingTypes(compilation, loggerInterface);
+        var results = new ConcurrentBag<LoggerUsageInfo>();
+        
+        // Process syntax trees in parallel using async approach
+        var syntaxTreeTasks = compilation.SyntaxTrees
+            .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
+            .Select(async syntaxTree =>
+            {
+                _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
+
+                var root = syntaxTree.GetRoot();
+                var semanticModel = compilation.GetSemanticModel(syntaxTree);
+
+                if (root == null || semanticModel == null)
+                {
+                    return;
+                }
+
+                var analysisContext = solution != null 
+                    ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
+                    : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
+
+                // Run all analyzers in parallel for this syntax tree
+                var analyzerTasks = _analyzers.Select(async analyzer =>
+                {
+                    var start = Stopwatch.GetTimestamp();
+                    _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
+                    
+                    var usages = await analyzer.AnalyzeAsync(analysisContext);
+                    
+                    var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
+                    var duration = Stopwatch.GetElapsedTime(start);
+                    _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
+
+                    return usages;
+                });
+
+                var allUsages = await Task.WhenAll(analyzerTasks);
+                
+                foreach (var usages in allUsages)
+                {
+                    foreach (var usage in usages)
+                    {
+                        results.Add(usage);
+                    }
+                }
+            });
+
+        await Task.WhenAll(syntaxTreeTasks);
+
+        // TODO: Populate summary.ParameterTypesByName from results
+
+        return new LoggerUsageExtractionResult
+        {
+            Results = [.. results],
+            Summary = new()
+        };
+    }
+
+    /// <summary>
+    /// Extracts logger usage information from a single compilation unit with optional solution context.
+    /// </summary>
+    /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
+    /// <param name="solution">Optional solution for cross-project analysis.</param>
+    /// <returns>The extraction results containing all found logger usage information.</returns>
     public LoggerUsageExtractionResult ExtractLoggerUsagesWithSolution(Compilation compilation, Solution? solution = null)
+    {
+        return ExtractLoggerUsagesWithSolutionAsync(compilation, solution).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Extracts logger usage information from a single compilation unit with optional solution context.
+    /// This is the legacy synchronous implementation kept for backward compatibility.
+    /// </summary>
+    /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
+    /// <param name="solution">Optional solution for cross-project analysis.</param>
+    /// <returns>The extraction results containing all found logger usage information.</returns>
+    [Obsolete("Use ExtractLoggerUsagesWithSolutionAsync instead. This method will be removed in a future version.")]
+    public LoggerUsageExtractionResult ExtractLoggerUsagesWithSolution_Sync(Compilation compilation, Solution? solution = null)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
         if (loggerInterface == null)
