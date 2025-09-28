@@ -100,8 +100,8 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
                 
                 var analysisContext = solution != null 
-                    ? AnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
-                    : AnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
+                    ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
+                    : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
                 var usages = analyzer.Analyze(analysisContext);
                 
                 var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;

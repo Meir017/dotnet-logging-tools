@@ -12,6 +12,6 @@ namespace LoggerUsage.Analyzers
         /// </summary>
         /// <param name="context">The analysis context containing all necessary data for the analysis.</param>
         /// <returns>A collection of logger usage information found in the analyzed code.</returns>
-        IEnumerable<LoggerUsageInfo> Analyze(AnalysisContext context);
+        IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context);
     }
 }

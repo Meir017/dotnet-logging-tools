@@ -15,7 +15,7 @@ namespace LoggerUsage.Analyzers
         ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
         private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
-        public IEnumerable<LoggerUsageInfo> Analyze(AnalysisContext context)
+        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
             var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocation in invocations)

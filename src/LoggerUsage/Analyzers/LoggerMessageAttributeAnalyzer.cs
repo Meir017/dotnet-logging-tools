@@ -19,7 +19,7 @@ namespace LoggerUsage.Analyzers
             MethodDeclarationSyntax DeclarationSyntax,
             LoggerUsageInfo BaseUsageInfo);
 
-        public IEnumerable<LoggerUsageInfo> Analyze(AnalysisContext context)
+        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
             logger.LogTrace("Starting LoggerMessageAttribute analysis");
 

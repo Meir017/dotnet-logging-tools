@@ -12,7 +12,7 @@ namespace LoggerUsage.Analyzers
         IMessageTemplateExtractor messageTemplateExtractor,
         GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
-        public IEnumerable<LoggerUsageInfo> Analyze(AnalysisContext context)
+        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
         {
             var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocation in invocations)
