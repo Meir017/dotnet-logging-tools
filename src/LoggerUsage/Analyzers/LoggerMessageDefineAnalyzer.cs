@@ -38,26 +38,6 @@ namespace LoggerUsage.Analyzers
             return results;
         }
 
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
-        {
-            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
-            foreach (var invocation in invocations)
-            {
-                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
-                {
-                    continue;
-                }
-
-                if (!operation.TargetMethod.ContainingType.Equals(context.LoggingTypes.LoggerMessage, SymbolEqualityComparer.Default)
-                    || !operation.TargetMethod.Name.Equals(nameof(LoggerMessage.Define)))
-                {
-                    continue;
-                }
-
-                yield return ExtractLoggerMessageDefineUsage(operation, context.LoggingTypes, invocation);
-            }
-        }
-
         private LoggerUsageInfo ExtractLoggerMessageDefineUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
         {
             var usage = new LoggerUsageInfo

@@ -192,7 +192,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 var analysisContext = solution != null 
                     ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
                     : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
-                var usages = analyzer.Analyze(analysisContext);
+                var usages = analyzer.AnalyzeAsync(analysisContext).GetAwaiter().GetResult();
                 
                 var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
                 var duration = Stopwatch.GetElapsedTime(start);

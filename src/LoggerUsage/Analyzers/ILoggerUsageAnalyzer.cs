@@ -13,16 +13,5 @@ namespace LoggerUsage.Analyzers
         /// <param name="context">The analysis context containing all necessary data for the analysis.</param>
         /// <returns>A task that represents the asynchronous operation, containing the logger usage information found in the analyzed code.</returns>
         Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context);
-
-        /// <summary>
-        /// Analyzes the provided context to extract logger usage information.
-        /// </summary>
-        /// <param name="context">The analysis context containing all necessary data for the analysis.</param>
-        /// <returns>A collection of logger usage information found in the analyzed code.</returns>
-        [Obsolete("Use AnalyzeAsync instead. This method will be removed in a future version.")]
-        IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
-        {
-            return AnalyzeAsync(context).GetAwaiter().GetResult();
-        }
     }
 }

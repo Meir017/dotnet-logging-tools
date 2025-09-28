@@ -36,25 +36,6 @@ namespace LoggerUsage.Analyzers
             return results;
         }
 
-        public IEnumerable<LoggerUsageInfo> Analyze(LoggingAnalysisContext context)
-        {
-            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
-            foreach (var invocation in invocations)
-            {
-                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
-                {
-                    continue;
-                }
-
-                if (!context.LoggingTypes.LoggerExtensionModeler.IsBeginScopeMethod(operation.TargetMethod))
-                {
-                    continue;
-                }
-
-                yield return ExtractBeginScopeUsage(operation, context.LoggingTypes, invocation);
-            }
-        }
-
         private LoggerUsageInfo ExtractBeginScopeUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)
         {
             var usage = new LoggerUsageInfo
