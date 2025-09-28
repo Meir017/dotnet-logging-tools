@@ -71,5 +71,5 @@ By default, the server will use the configuration in `src/LoggerUsage.Mcp/appset
 - [x] Add support for `ILogger.BeginScope` method
 - [ ] Create a summary of the log messages
 - [ ] Integrate AI to suggest improvements and find inconsistencies
-- [ ] For LoggerMessageAttribute - find all invocations of method
+- [x] For LoggerMessageAttribute - find all invocations of method (see [implementation plan](LoggerMessageAttribute-Invocations-Plan.md))
 - [x] Expose as a MCP

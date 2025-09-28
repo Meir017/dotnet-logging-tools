@@ -153,19 +153,22 @@ namespace LoggerUsage.Analyzers
                         if (location.IsInSource && location.SourceTree != null)
                         {
                             var syntaxRoot = await location.SourceTree.GetRootAsync();
-                            if (syntaxRoot.FindNode(location.SourceSpan) is InvocationExpressionSyntax node)
+                            if (syntaxRoot.FindNode(location.SourceSpan) is IdentifierNameSyntax identifierName // the method name - e.g. LogUserActivity
+                                && identifierName.Parent is MemberAccessExpressionSyntax memberAccess // the member access - e.g. UserLogger.LogUserActivity
+                                && memberAccess.Parent is InvocationExpressionSyntax invocationExpression // the invocation expression - e.g. UserLogger.LogUserActivity(...)
+                            )
                             {
                                 var document = context.Solution.GetDocumentId(location.SourceTree);
                                 var project = context.Solution.GetProject(document!.ProjectId);
                                 var compilation = await project!.GetCompilationAsync();
                                 var semanticModel = compilation!.GetSemanticModel(location.SourceTree);
 
-                                if (semanticModel.GetOperation(node) is not IInvocationOperation operation)
+                                if (semanticModel.GetOperation(invocationExpression) is not IInvocationOperation operation)
                                 {
                                     continue;
                                 }
 
-                                invocations.Add(CreateLoggerMessageInvocation(operation, node, syntaxRoot, semanticModel));
+                                invocations.Add(CreateLoggerMessageInvocation(operation, invocationExpression, syntaxRoot, semanticModel));
                             }
                         }
                     }

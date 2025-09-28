@@ -1,5 +1,12 @@
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Testing;
+using Microsoft.CodeAnalysis.Text;
+using Microsoft.CodeAnalysis.FindSymbols;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace LoggerUsage.Tests;
 
@@ -729,6 +736,982 @@ namespace TestNamespace.Services
 
         var invocation = Assert.Single(usage.Invocations);
         Assert.Equal("TestNamespace.Services.StartupService", invocation.ContainingType);
+    }
+
+    [Fact]
+    public async Task LoggerMessageWithInMemorySolution_TestsCrossProjectInvocationFinding()
+    {
+        // This test properly tests cross-project invocation finding:
+        // - Project A defines LoggerMessage methods
+        // - Project B references A and calls the LoggerMessage methods
+        // - When analyzing Project A with solution context, should find invocations from Project B
+
+        // Arrange - Create proper cross-project solution
+        var (solution, loggerProjectId, consumerProjectId) = await CreateInMemorySolutionWithLoggerMessageProjects();
+
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act - Analyze the LOGGER project but provide the full solution for cross-project analysis
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+        var resultsWithSolution = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!, solution);
+
+        // Also test without solution (should only find local invocations = 0)
+        var resultsWithoutSolution = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!);
+
+        // Assert
+        Assert.NotNull(resultsWithSolution);
+        Assert.Single(resultsWithSolution.Results);
+        Assert.NotNull(resultsWithoutSolution);
+        Assert.Single(resultsWithoutSolution.Results);
+
+        var usageWithSolution = Assert.IsType<LoggerMessageUsageInfo>(resultsWithSolution.Results[0]);
+        var usageWithoutSolution = Assert.IsType<LoggerMessageUsageInfo>(resultsWithoutSolution.Results[0]);
+
+        Console.WriteLine($"Analysis WITH solution found {usageWithSolution.InvocationCount} invocations");
+        Console.WriteLine($"Analysis WITHOUT solution found {usageWithoutSolution.InvocationCount} invocations");
+
+        // Without solution: Should find 0 invocations (no local invocations in logger project)
+        Assert.False(usageWithoutSolution.HasInvocations, "Without solution context, should not find cross-project invocations");
+        Assert.Equal(0, usageWithoutSolution.InvocationCount);
+
+        // With solution: Should find cross-project invocations using SymbolFinder.FindCallersAsync
+        Assert.True(usageWithSolution.HasInvocations, $"With solution context, should find cross-project invocations but found {usageWithSolution.InvocationCount}");
+        Assert.Equal(2, usageWithSolution.InvocationCount); // Should find 2 invocations from consumer project
+
+        // Verify invocations are from the consumer project
+        Assert.All(usageWithSolution.Invocations, invocation =>
+            Assert.Contains("ConsumerProject", invocation.ContainingType));
+    }
+
+    [Fact]
+    public async Task LoggerMessageWithCrossProjectInvocations_FindsInvocationsUsingInMemorySolution()
+    {
+        // Arrange - Create an in-memory solution with multiple projects
+        var (solution, loggerProjectId, consumerProjectId) = await CreateInMemorySolutionWithLoggerMessageProjects();
+
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act - Extract from logger project but provide solution for cross-project analysis
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!, solution);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserActivity", usage.MethodName);
+        Assert.Equal("LoggerProject.UserLogger", usage.DeclaringTypeName);
+
+        // Debug information
+        Console.WriteLine($"Found {usage.InvocationCount} invocations");
+        foreach (var invocation in usage.Invocations)
+        {
+            Console.WriteLine($"  - {invocation.ContainingType} at line {invocation.InvocationLocation.StartLineNumber}");
+        }
+
+        Assert.True(usage.HasInvocations, $"Expected invocations to be found, but got {usage.InvocationCount} invocations");
+        Assert.Equal(2, usage.InvocationCount); // Should find invocations in consumer project
+
+        // Verify invocations from consumer project
+        var consumerInvocations = usage.Invocations.Where(i => i.ContainingType.Contains("ConsumerProject")).ToList();
+        Assert.Equal(2, consumerInvocations.Count);
+
+        // Should find invocations in both services
+        Assert.Contains(usage.Invocations, i => i.ContainingType == "ConsumerProject.Services.UserService");
+        Assert.Contains(usage.Invocations, i => i.ContainingType == "ConsumerProject.Services.ActivityService");
+    }
+
+    [Fact]
+    public async Task LoggerMessageWithCrossProjectInvocations_FallsBackToLocalAnalysisWhenNoSolution()
+    {
+        // Arrange - Create the same projects but analyze without solution context
+        var (solution, loggerProjectId, consumerProjectId) = await CreateInMemorySolutionWithLoggerMessageProjects();
+
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act - Extract from logger project WITHOUT solution (should only find local invocations)
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!); // No solution parameter
+
+        // Assert - Should still find the LoggerMessage declaration but no cross-project invocations
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserActivity", usage.MethodName);
+        Assert.Equal("LoggerProject.UserLogger", usage.DeclaringTypeName);
+        Assert.False(usage.HasInvocations); // Should not find cross-project invocations
+        Assert.Equal(0, usage.InvocationCount);
+    }
+
+    private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateInMemorySolutionWithLoggerMessageProjects()
+    {
+        // Create base references
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var logPropertiesReference = MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location);
+        var baseReferences = references.Add(loggerReference).Add(logPropertiesReference);
+
+        // Create solution
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        // Logger project code - ONLY contains LoggerMessage declarations (NO invocations)
+        var loggerProjectCode = @"using Microsoft.Extensions.Logging;
+
+namespace LoggerProject
+{
+    public static partial class UserLogger
+    {
+        [LoggerMessage(
+            EventId = 100,
+            Level = LogLevel.Information,
+            Message = ""User {UserId} performed activity {ActivityType} at {Timestamp}""
+        )]
+        public static partial void LogUserActivity(ILogger logger, int userId, string activityType, System.DateTime timestamp);
+    }
+}
+
+// Mock generated code:
+namespace LoggerProject
+{
+    partial class UserLogger
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogUserActivity(ILogger logger, int userId, string activityType, System.DateTime timestamp) { }
+    }
+}";
+
+        // Consumer project code - Contains invocations of LoggerMessage methods
+        var consumerProjectCode = @"using Microsoft.Extensions.Logging;
+using LoggerProject;
+
+namespace ConsumerProject.Services
+{
+    public class UserService
+    {
+        private readonly ILogger<UserService> _logger;
+
+        public UserService(ILogger<UserService> logger)
+        {
+            _logger = logger;
+        }
+
+        public void ProcessUserLogin(int userId)
+        {
+            UserLogger.LogUserActivity(_logger, userId, ""Login"", System.DateTime.Now);
+        }
+    }
+
+    public class ActivityService
+    {
+        private readonly ILogger<ActivityService> _logger;
+
+        public ActivityService(ILogger<ActivityService> logger)
+        {
+            _logger = logger;
+        }
+
+        public void TrackUserActivity(int userId, string activity)
+        {
+            UserLogger.LogUserActivity(_logger, userId, activity, System.DateTime.UtcNow);
+        }
+    }
+}";
+
+        // Create logger project
+        var loggerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("LoggerProject"),
+            VersionStamp.Create(),
+            "LoggerProject",
+            "LoggerProject",
+            LanguageNames.CSharp,
+            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithSpecificDiagnosticOptions(new Dictionary<string, ReportDiagnostic>
+                {
+                    ["CS0169"] = ReportDiagnostic.Suppress,
+                    ["CS0649"] = ReportDiagnostic.Suppress,
+                    ["CS0219"] = ReportDiagnostic.Suppress,
+                    ["CS0414"] = ReportDiagnostic.Suppress,
+                    ["CS8602"] = ReportDiagnostic.Suppress,
+                }),
+            metadataReferences: baseReferences);
+
+        solution = solution.AddProject(loggerProjectInfo);
+        var loggerProjectId = loggerProjectInfo.Id;
+
+        // Add source file to logger project
+        var loggerDocumentInfo = DocumentInfo.Create(
+            DocumentId.CreateNewId(loggerProjectId),
+            "UserLogger.cs",
+            loader: TextLoader.From(TextAndVersion.Create(SourceText.From(loggerProjectCode), VersionStamp.Create())));
+
+        solution = solution.AddDocument(loggerDocumentInfo);
+
+        // Create consumer project with reference to logger project
+        var consumerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("ConsumerProject"),
+            VersionStamp.Create(),
+            "ConsumerProject",
+            "ConsumerProject",
+            LanguageNames.CSharp,
+            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithSpecificDiagnosticOptions(new Dictionary<string, ReportDiagnostic>
+                {
+                    ["CS0169"] = ReportDiagnostic.Suppress,
+                    ["CS0649"] = ReportDiagnostic.Suppress,
+                    ["CS0219"] = ReportDiagnostic.Suppress,
+                    ["CS0414"] = ReportDiagnostic.Suppress,
+                    ["CS8602"] = ReportDiagnostic.Suppress,
+                }),
+            metadataReferences: baseReferences,
+            projectReferences: [new ProjectReference(loggerProjectId)]);
+
+        solution = solution.AddProject(consumerProjectInfo);
+        var consumerProjectId = consumerProjectInfo.Id;
+
+        // Add source file to consumer project
+        var consumerDocumentInfo = DocumentInfo.Create(
+            DocumentId.CreateNewId(consumerProjectId),
+            "Services.cs",
+            loader: TextLoader.From(TextAndVersion.Create(SourceText.From(consumerProjectCode), VersionStamp.Create())));
+
+        solution = solution.AddDocument(consumerDocumentInfo);
+
+        // Verify compilations are valid
+        var loggerCompilation = await solution.GetProject(loggerProjectId)!.GetCompilationAsync();
+        var consumerCompilation = await solution.GetProject(consumerProjectId)!.GetCompilationAsync();
+
+        var loggerErrors = loggerCompilation!.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        var consumerErrors = consumerCompilation!.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+
+        Console.WriteLine($"Logger project errors: {loggerErrors.Count}");
+        foreach (var error in loggerErrors)
+        {
+            Console.WriteLine($"  - {error}");
+        }
+        Console.WriteLine($"Consumer project errors: {consumerErrors.Count}");
+        foreach (var error in consumerErrors)
+        {
+            Console.WriteLine($"  - {error}");
+        }
+
+        Assert.Empty(loggerErrors);
+        Assert.Empty(consumerErrors);
+
+        return (solution, loggerProjectId, consumerProjectId);
+    }
+
+    private static async Task<Solution> CreateInMemorySolutionWithLocalLoggerMessageInvocations()
+    {
+        // Create base references
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var logPropertiesReference = MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location);
+        var baseReferences = references.Add(loggerReference).Add(logPropertiesReference);
+
+        // Create solution
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        // Single project using the exact pattern from working tests
+        var projectCode = @"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User {UserId} logged in""
+    )]
+    public static partial void LogUserLogin(ILogger logger, int userId);
+}
+
+// Mock generated code:
+partial class Log
+{
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+    public static partial void LogUserLogin(ILogger logger, int userId) { }
+}
+
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void LoginUser(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+    }
+
+    public void LoginUserAgain(int userId)
+    {
+        Log.LogUserLogin(_logger, userId);
+    }
+}";
+
+        // Create project
+        var projectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("TestProject"),
+            VersionStamp.Create(),
+            "TestProject",
+            "TestProject",
+            LanguageNames.CSharp,
+            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithSpecificDiagnosticOptions(new Dictionary<string, ReportDiagnostic>
+                {
+                    ["CS0169"] = ReportDiagnostic.Suppress,
+                    ["CS0649"] = ReportDiagnostic.Suppress,
+                    ["CS0219"] = ReportDiagnostic.Suppress,
+                    ["CS0414"] = ReportDiagnostic.Suppress,
+                    ["CS8602"] = ReportDiagnostic.Suppress,
+                }),
+            metadataReferences: baseReferences);
+
+        solution = solution.AddProject(projectInfo);
+
+        // Add source file
+        var documentInfo = DocumentInfo.Create(
+            DocumentId.CreateNewId(projectInfo.Id),
+            "UserLogger.cs",
+            loader: TextLoader.From(TextAndVersion.Create(SourceText.From(projectCode), VersionStamp.Create())));
+
+        solution = solution.AddDocument(documentInfo);
+
+        // Verify compilation is valid
+        var project = solution.GetProject(projectInfo.Id)!;
+        var compilation = await project.GetCompilationAsync();
+        var errors = compilation!.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+
+        Console.WriteLine($"Project errors: {errors.Count}");
+        foreach (var error in errors)
+        {
+            Console.WriteLine($"  - {error}");
+        }
+
+        Assert.Empty(errors);
+
+        return solution;
+    }
+
+    private static async Task<Solution> CreateInMemorySolutionWithCode(string code)
+    {
+        // Create base references
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var logPropertiesReference = MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location);
+        var baseReferences = references.Add(loggerReference).Add(logPropertiesReference);
+
+        // Create solution
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        // Create project
+        var projectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("TestProject"),
+            VersionStamp.Create(),
+            "TestProject",
+            "TestProject",
+            LanguageNames.CSharp,
+            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithSpecificDiagnosticOptions(new Dictionary<string, ReportDiagnostic>
+                {
+                    ["CS0169"] = ReportDiagnostic.Suppress,
+                    ["CS0649"] = ReportDiagnostic.Suppress,
+                    ["CS0219"] = ReportDiagnostic.Suppress,
+                    ["CS0414"] = ReportDiagnostic.Suppress,
+                    ["CS8602"] = ReportDiagnostic.Suppress,
+                }),
+            metadataReferences: baseReferences);
+
+        solution = solution.AddProject(projectInfo);
+
+        // Add source file
+        var documentInfo = DocumentInfo.Create(
+            DocumentId.CreateNewId(projectInfo.Id),
+            "TestCode.cs",
+            loader: TextLoader.From(TextAndVersion.Create(SourceText.From(code), VersionStamp.Create())));
+
+        solution = solution.AddDocument(documentInfo);
+
+        // Verify compilation is valid
+        var project = solution.GetProject(projectInfo.Id)!;
+        var compilation = await project.GetCompilationAsync();
+        var errors = compilation!.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+
+        if (errors.Count > 0)
+        {
+            Console.WriteLine($"Compilation errors: {errors.Count}");
+            foreach (var error in errors)
+            {
+                Console.WriteLine($"  - {error}");
+            }
+        }
+
+        Assert.Empty(errors);
+
+        return solution;
+    }
+
+    #endregion
+
+    #region SymbolFinder Logic Validation Tests
+
+    [Fact]
+    public async Task LoggerMessage_SymbolFinderWithGeneratedMethods_UnderstandsPartialVsGenerated()
+    {
+        // This test verifies if SymbolFinder can find callers when we search for
+        // the partial method declaration vs the generated implementation
+
+        var (solution, loggerProjectId, consumerProjectId) = await CreateSimpleCrossProjectSolution();
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+
+        // Find the LoggerMessage partial method symbol
+        var partialMethodSymbol = FindLoggerMessageMethodSymbol(loggerCompilation!, "LogUserAction");
+        Assert.NotNull(partialMethodSymbol);
+        Assert.True(partialMethodSymbol.IsPartialDefinition);
+
+        // Test 1: Search for callers using the partial method symbol
+        var callersFromPartial = await SymbolFinder.FindCallersAsync(partialMethodSymbol, solution, TestContext.Current.CancellationToken);
+        Console.WriteLine($"Callers found using partial method: {callersFromPartial.Count()}");
+
+        // Find the generated implementation (if it exists)
+        var generatedMethodSymbol = FindGeneratedLoggerMessageMethod(loggerCompilation!, "LogUserAction");
+        if (generatedMethodSymbol != null)
+        {
+            Console.WriteLine($"Found generated method: {generatedMethodSymbol.Name}");
+
+            // Test 2: Search for callers using the generated method symbol
+            var callersFromGenerated = await SymbolFinder.FindCallersAsync(generatedMethodSymbol, solution, TestContext.Current.CancellationToken);
+            Console.WriteLine($"Callers found using generated method: {callersFromGenerated.Count()}");
+
+            // Analysis: Which symbol finds the actual invocations?
+            Assert.True(callersFromPartial.Any() || callersFromGenerated.Any(),
+                "Either partial or generated method should find invocations");
+        }
+    }
+
+    [Fact]
+    public async Task LoggerMessage_SymbolFinderWithMultipleInvocationsInSameProject_FindsAllCallSites()
+    {
+        // Test: One consumer project with multiple calls to the same LoggerMessage method
+
+        var (solution, loggerProjectId, consumerProjectId) = await CreateCrossProjectWithMultipleInvocations();
+
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+
+        var methodSymbol = FindLoggerMessageMethodSymbol(loggerCompilation!, "LogUserAction");
+        var callers = await SymbolFinder.FindCallersAsync(methodSymbol!, solution, TestContext.Current.CancellationToken);
+
+        Console.WriteLine($"Total callers found: {callers.Count()}");
+        var totalLocations = callers.SelectMany(c => c.Locations).Count();
+        Console.WriteLine($"Total call locations: {totalLocations}");
+
+        // Should find multiple invocations from the consumer project
+        Assert.True(totalLocations >= 2, $"Expected at least 2 invocations, found {totalLocations}");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_SymbolFinderWithTwoConsumerProjects_FindsInvocationsFromBoth()
+    {
+        // Test: Two different projects both invoking the same LoggerMessage method
+
+        var (solution, loggerProjectId, consumer1Id, consumer2Id) = await CreateCrossProjectWithTwoConsumers();
+
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+
+        var methodSymbol = FindLoggerMessageMethodSymbol(loggerCompilation!, "LogUserAction");
+        var callers = await SymbolFinder.FindCallersAsync(methodSymbol!, solution, TestContext.Current.CancellationToken);
+
+        Console.WriteLine($"Total callers found: {callers.Count()}");
+
+        // Group by project to see distribution
+        var callersByProject = callers.GroupBy(c =>
+        {
+            var firstLocation = c.Locations.FirstOrDefault();
+            if (firstLocation?.SourceTree != null)
+            {
+                var docId = solution.GetDocumentId(firstLocation.SourceTree);
+                return solution.GetProject(docId!.ProjectId)?.Name ?? "Unknown";
+            }
+            return "Unknown";
+        }).ToList();
+
+        Console.WriteLine("Callers by project:");
+        foreach (var group in callersByProject)
+        {
+            Console.WriteLine($"  {group.Key}: {group.Count()} callers");
+        }
+
+        // Should find invocations from both consumer projects
+        Assert.True(callersByProject.Count >= 2,
+            $"Expected invocations from 2+ projects, found from {callersByProject.Count} projects");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_SymbolFinderWithStaticUsing_FindsInvocationsRegardlessOfSyntax()
+    {
+        // Test: Different ways of calling the LoggerMessage method (static using vs qualified)
+
+        var (solution, loggerProjectId, consumerProjectId) = await CreateCrossProjectWithDifferentInvocationStyles();
+
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+
+        var methodSymbol = FindLoggerMessageMethodSymbol(loggerCompilation!, "LogUserAction");
+        var callers = await SymbolFinder.FindCallersAsync(methodSymbol!, solution, TestContext.Current.CancellationToken);
+
+        Console.WriteLine($"Total callers found: {callers.Count()}");
+        var totalLocations = callers.SelectMany(c => c.Locations).Count();
+        Console.WriteLine($"Total call locations: {totalLocations}");
+
+        // Should find invocations regardless of syntax style
+        Assert.True(totalLocations >= 2,
+            $"Expected invocations with different syntax styles, found {totalLocations}");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_SymbolFinderNegativeTest_DoesNotFindWrongMethods()
+    {
+        // Test: Ensure SymbolFinder doesn't find calls to similarly named methods
+
+        var (solution, loggerProjectId, consumerProjectId) = await CreateCrossProjectWithSimilarMethodNames();
+
+        var loggerProject = solution.GetProject(loggerProjectId)!;
+        var loggerCompilation = await loggerProject.GetCompilationAsync(TestContext.Current.CancellationToken);
+
+        var correctMethodSymbol = FindLoggerMessageMethodSymbol(loggerCompilation!, "LogUserAction");
+        var callers = await SymbolFinder.FindCallersAsync(correctMethodSymbol!, solution, TestContext.Current.CancellationToken);
+
+        // Should only find calls to the correct method, not similar methods
+        var totalLocations = callers.SelectMany(c => c.Locations).Count();
+        Console.WriteLine($"Callers found for LogUserAction: {totalLocations}");
+
+        // This test validates that SymbolFinder is precise in its matching
+        Assert.True(totalLocations == 1, // Only one correct invocation exists in the test setup
+            $"Expected exactly 1 invocation of LogUserAction, found {totalLocations}");
+    }
+
+    #endregion
+
+    #region Test Helper Methods for SymbolFinder Validation
+
+    private static IMethodSymbol? FindLoggerMessageMethodSymbol(Compilation compilation, string methodName)
+    {
+        foreach (var syntaxTree in compilation.SyntaxTrees)
+        {
+            var semanticModel = compilation.GetSemanticModel(syntaxTree);
+            var root = syntaxTree.GetRoot();
+
+            var methodDeclarations = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+                .Where(m => m.Identifier.ValueText == methodName);
+
+            foreach (var methodDecl in methodDeclarations)
+            {
+                if (semanticModel.GetDeclaredSymbol(methodDecl) is IMethodSymbol methodSymbol
+                    && methodSymbol.IsPartialDefinition)
+                {
+                    // Check if it has LoggerMessage attribute
+                    if (methodSymbol.GetAttributes().Any(attr =>
+                        attr.AttributeClass?.Name == "LoggerMessageAttribute"))
+                    {
+                        return methodSymbol;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static IMethodSymbol? FindGeneratedLoggerMessageMethod(Compilation compilation, string methodName)
+    {
+        // Look for the generated implementation of the LoggerMessage method
+        var allTypes = compilation.GetSymbolsWithName(_ => true, SymbolFilter.Type).OfType<INamedTypeSymbol>();
+
+        foreach (var type in allTypes)
+        {
+            var methods = type.GetMembers(methodName).OfType<IMethodSymbol>();
+            foreach (var method in methods)
+            {
+                // Look for methods with GeneratedCodeAttribute
+                if (method.GetAttributes().Any(attr =>
+                    attr.AttributeClass?.Name == "GeneratedCodeAttribute"))
+                {
+                    return method;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateSimpleCrossProjectSolution()
+    {
+        // Simplified version of existing helper for focused testing
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var baseReferences = references.Add(loggerReference);
+
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        // Logger project - minimal LoggerMessage
+        var loggerCode = @"using Microsoft.Extensions.Logging;
+
+namespace LoggerLib
+{
+    public static partial class UserLogger
+    {
+        [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = ""User {UserId} action"")]
+        public static partial void LogUserAction(ILogger logger, int userId);
+    }
+}
+
+// Generated implementation
+namespace LoggerLib
+{
+    partial class UserLogger
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogUserAction(ILogger logger, int userId) { }
+    }
+}";
+
+        // Consumer project - calls the LoggerMessage
+        var consumerCode = @"using Microsoft.Extensions.Logging;
+using LoggerLib;
+
+namespace Consumer
+{
+    public class Service
+    {
+        private readonly ILogger<Service> _logger;
+        public Service(ILogger<Service> logger) => _logger = logger;
+
+        public void DoWork() => UserLogger.LogUserAction(_logger, 123);
+    }
+}";
+
+        // Create projects
+        var loggerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences);
+        solution = solution.AddProject(loggerProjectInfo);
+
+        var consumerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+        solution = solution.AddProject(consumerProjectInfo);
+
+        // Add documents
+        solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(loggerCode), VersionStamp.Create())));
+        solution = solution.AddDocument(DocumentId.CreateNewId(consumerProjectInfo.Id), "Service.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(consumerCode), VersionStamp.Create())));
+
+        return (solution, loggerProjectInfo.Id, consumerProjectInfo.Id);
+    }
+
+    private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithMultipleInvocations()
+    {
+        // Consumer project with multiple invocations of the same LoggerMessage method
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var baseReferences = references.Add(loggerReference);
+
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        var loggerCode = @"using Microsoft.Extensions.Logging;
+namespace LoggerLib
+{
+    public static partial class UserLogger
+    {
+        [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = ""User {UserId} action"")]
+        public static partial void LogUserAction(ILogger logger, int userId);
+    }
+}
+namespace LoggerLib
+{
+    partial class UserLogger
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogUserAction(ILogger logger, int userId) { }
+    }
+}";
+
+        var consumerCode = @"using Microsoft.Extensions.Logging;
+using LoggerLib;
+
+namespace Consumer
+{
+    public class Service1
+    {
+        private readonly ILogger<Service1> _logger;
+        public Service1(ILogger<Service1> logger) => _logger = logger;
+        public void DoWork() => UserLogger.LogUserAction(_logger, 1);
+    }
+
+    public class Service2
+    {
+        private readonly ILogger<Service2> _logger;
+        public Service2(ILogger<Service2> logger) => _logger = logger;
+        public void DoWork() => UserLogger.LogUserAction(_logger, 2);
+        public void DoMoreWork() => UserLogger.LogUserAction(_logger, 3);
+    }
+}";
+
+        var loggerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences);
+        solution = solution.AddProject(loggerProjectInfo);
+
+        var consumerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+        solution = solution.AddProject(consumerProjectInfo);
+
+        solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(loggerCode), VersionStamp.Create())));
+        solution = solution.AddDocument(DocumentId.CreateNewId(consumerProjectInfo.Id), "Services.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(consumerCode), VersionStamp.Create())));
+
+        return (solution, loggerProjectInfo.Id, consumerProjectInfo.Id);
+    }
+
+    private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumer1Id, ProjectId consumer2Id)> CreateCrossProjectWithTwoConsumers()
+    {
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var baseReferences = references.Add(loggerReference);
+
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        var loggerCode = @"using Microsoft.Extensions.Logging;
+namespace LoggerLib
+{
+    public static partial class UserLogger
+    {
+        [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = ""User {UserId} action"")]
+        public static partial void LogUserAction(ILogger logger, int userId);
+    }
+}
+namespace LoggerLib
+{
+    partial class UserLogger
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogUserAction(ILogger logger, int userId) { }
+    }
+}";
+
+        var consumer1Code = @"using Microsoft.Extensions.Logging;
+using LoggerLib;
+namespace Consumer1
+{
+    public class Service1
+    {
+        private readonly ILogger<Service1> _logger;
+        public Service1(ILogger<Service1> logger) => _logger = logger;
+        public void DoWork() => UserLogger.LogUserAction(_logger, 100);
+    }
+}";
+
+        var consumer2Code = @"using Microsoft.Extensions.Logging;
+using LoggerLib;
+namespace Consumer2
+{
+    public class Service2
+    {
+        private readonly ILogger<Service2> _logger;
+        public Service2(ILogger<Service2> logger) => _logger = logger;
+        public void ProcessData() => UserLogger.LogUserAction(_logger, 200);
+    }
+}";
+
+        var loggerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences);
+        solution = solution.AddProject(loggerProjectInfo);
+
+        var consumer1ProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("Consumer1"), VersionStamp.Create(), "Consumer1", "Consumer1",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+        solution = solution.AddProject(consumer1ProjectInfo);
+
+        var consumer2ProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("Consumer2"), VersionStamp.Create(), "Consumer2", "Consumer2",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+        solution = solution.AddProject(consumer2ProjectInfo);
+
+        solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(loggerCode), VersionStamp.Create())));
+        solution = solution.AddDocument(DocumentId.CreateNewId(consumer1ProjectInfo.Id), "Service1.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(consumer1Code), VersionStamp.Create())));
+        solution = solution.AddDocument(DocumentId.CreateNewId(consumer2ProjectInfo.Id), "Service2.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(consumer2Code), VersionStamp.Create())));
+
+        return (solution, loggerProjectInfo.Id, consumer1ProjectInfo.Id, consumer2ProjectInfo.Id);
+    }
+
+    private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithDifferentInvocationStyles()
+    {
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var baseReferences = references.Add(loggerReference);
+
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        var loggerCode = @"using Microsoft.Extensions.Logging;
+namespace LoggerLib
+{
+    public static partial class UserLogger
+    {
+        [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = ""User {UserId} action"")]
+        public static partial void LogUserAction(ILogger logger, int userId);
+    }
+}
+namespace LoggerLib
+{
+    partial class UserLogger
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogUserAction(ILogger logger, int userId) { }
+    }
+}";
+
+        var consumerCode = @"using Microsoft.Extensions.Logging;
+using LoggerLib;
+using static LoggerLib.UserLogger;
+
+namespace Consumer
+{
+    public class ServiceWithQualified
+    {
+        private readonly ILogger<ServiceWithQualified> _logger;
+        public ServiceWithQualified(ILogger<ServiceWithQualified> logger) => _logger = logger;
+        public void DoWork() => UserLogger.LogUserAction(_logger, 1); // Qualified call
+    }
+
+    public class ServiceWithStaticUsing
+    {
+        private readonly ILogger<ServiceWithStaticUsing> _logger;
+        public ServiceWithStaticUsing(ILogger<ServiceWithStaticUsing> logger) => _logger = logger;
+        public void DoWork() => LogUserAction(_logger, 2); // Static using call
+    }
+}";
+
+        var loggerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences);
+        solution = solution.AddProject(loggerProjectInfo);
+
+        var consumerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+        solution = solution.AddProject(consumerProjectInfo);
+
+        solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(loggerCode), VersionStamp.Create())));
+        solution = solution.AddDocument(DocumentId.CreateNewId(consumerProjectInfo.Id), "Services.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(consumerCode), VersionStamp.Create())));
+
+        return (solution, loggerProjectInfo.Id, consumerProjectInfo.Id);
+    }
+
+    private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithSimilarMethodNames()
+    {
+        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
+        var baseReferences = references.Add(loggerReference);
+
+        var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution;
+
+        var loggerCode = @"using Microsoft.Extensions.Logging;
+namespace LoggerLib
+{
+    public static partial class UserLogger
+    {
+        [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = ""User {UserId} action"")]
+        public static partial void LogUserAction(ILogger logger, int userId);
+    }
+}
+namespace LoggerLib
+{
+    partial class UserLogger
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute(""Microsoft.Gen.Logging"", ""9.5.0.0"")]
+        public static partial void LogUserAction(ILogger logger, int userId) { }
+    }
+}";
+
+        var consumerCode = @"using Microsoft.Extensions.Logging;
+using LoggerLib;
+
+namespace Consumer
+{
+    public class Service
+    {
+        private readonly ILogger<Service> _logger;
+        public Service(ILogger<Service> logger) => _logger = logger;
+
+        public void DoWork() => UserLogger.LogUserAction(_logger, 1); // Correct call
+
+        // Similar methods that should NOT be found by SymbolFinder
+        public void LogUserAction(string message) { } // Different signature
+
+        public static void SomeOtherLogUserAction() { } // Different method entirely
+    }
+
+    public static class FakeLogger
+    {
+        public static void LogUserAction(ILogger logger, int userId) { } // Different class
+    }
+}";
+
+        var loggerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences);
+        solution = solution.AddProject(loggerProjectInfo);
+
+        var consumerProjectInfo = ProjectInfo.Create(
+            ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
+            LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
+            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+        solution = solution.AddProject(consumerProjectInfo);
+
+        solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(loggerCode), VersionStamp.Create())));
+        solution = solution.AddDocument(DocumentId.CreateNewId(consumerProjectInfo.Id), "Services.cs",
+            TextLoader.From(TextAndVersion.Create(SourceText.From(consumerCode), VersionStamp.Create())));
+
+        return (solution, loggerProjectInfo.Id, consumerProjectInfo.Id);
     }
 
     #endregion
