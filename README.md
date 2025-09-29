@@ -4,13 +4,13 @@
 
 Create a summary of which log messages a project writes and the parameters to improve consistency
 
-[![LoggerUsage](https://img.shields.io/badge/nuget-LoggerUsage-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage) - Core library for analyzing .NET logging usage patterns
+[![LoggerUsage](https://img.shields.io/nuget/v/LoggerUsage?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage) [![LoggerUsage Downloads](https://img.shields.io/nuget/dt/LoggerUsage?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage) - Core library for analyzing .NET logging usage patterns
 
-[![LoggerUsage.Cli](https://img.shields.io/badge/nuget-LoggerUsage.Cli-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage.Cli) - Command-line tool for generating HTML/JSON reports
+[![LoggerUsage.Cli](https://img.shields.io/nuget/v/LoggerUsage.Cli?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.Cli) [![LoggerUsage.Cli Downloads](https://img.shields.io/nuget/dt/LoggerUsage.Cli?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.Cli) - Command-line tool for generating HTML/JSON reports
 
-[![LoggerUsage.Mcp](https://img.shields.io/badge/nuget-LoggerUsage.Mcp-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage.Mcp) - Model Context Protocol server for AI integrations
+[![LoggerUsage.Mcp](https://img.shields.io/nuget/v/LoggerUsage.Mcp?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.Mcp) [![LoggerUsage.Mcp Downloads](https://img.shields.io/nuget/dt/LoggerUsage.Mcp?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.Mcp) - Model Context Protocol server for AI integrations
 
-[![LoggerUsage.MSBuild](https://img.shields.io/badge/nuget-LoggerUsage.MSBuild-blue?logo=nuget)](https://github.com/Meir017/dotnet-logging-usage/pkgs/nuget/LoggerUsage.MSBuild) - MSBuild integration for workspace analysis
+[![LoggerUsage.MSBuild](https://img.shields.io/nuget/v/LoggerUsage.MSBuild?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.MSBuild) [![LoggerUsage.MSBuild Downloads](https://img.shields.io/nuget/dt/LoggerUsage.MSBuild?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.MSBuild) - MSBuild integration for workspace analysis
 
 ## Background
 
