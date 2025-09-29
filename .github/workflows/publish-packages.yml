@@ -2,7 +2,6 @@ name: Publish NuGet Packages
 
 on:
   push:
-    branches: [ main ]
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
@@ -12,41 +11,6 @@ env:
   CONFIGURATION: 'Release'
 
 jobs:
-  publish-github-packages:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build solution
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
-
-    - name: Pack packages
-      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --no-build --output ./packages
-
-    - name: Add GitHub Packages source
-      run: dotnet nuget add source --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-
-    - name: Publish packages to GitHub Packages
-      run: |
-        for package in ./packages/*.nupkg; do
-          echo "Publishing $package..."
-          dotnet nuget push "$package" --source "github" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
-        done
-
   publish-nuget-org:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -57,6 +21,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Extract version from tag
+      id: get-version
+      run: |
+        # Extract version from tag (remove 'v' prefix)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Extracted version: $VERSION"
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -66,10 +38,10 @@ jobs:
       run: dotnet restore
 
     - name: Build solution
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore -p:Version=${{ steps.get-version.outputs.VERSION }}
 
     - name: Pack packages
-      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --no-build --output ./packages
+      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --no-build --output ./packages -p:PackageVersion=${{ steps.get-version.outputs.VERSION }}
 
     - name: NuGet login (OIDC → temp API key)
       uses: NuGet/login@v1
