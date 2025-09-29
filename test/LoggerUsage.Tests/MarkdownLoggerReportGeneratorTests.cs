@@ -1,12 +1,19 @@
 using LoggerUsage.Models;
 using LoggerUsage.ReportGenerator;
-using Xunit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LoggerUsage.Tests;
 
 public class MarkdownLoggerReportGeneratorTests
 {
-    private readonly ILoggerReportGeneratorFactory _factory = new LoggerReportGeneratorFactory();
+    private readonly ILoggerReportGeneratorFactory _factory;
+
+    public MarkdownLoggerReportGeneratorTests()
+    {
+        var services = new ServiceCollection();
+        services.AddLoggerUsageExtractor();
+        _factory = services.BuildServiceProvider().GetRequiredService<ILoggerReportGeneratorFactory>();
+    }
 
     [Fact]
     public void GenerateReport_WithEmptyResults_ReturnsValidMarkdown()
