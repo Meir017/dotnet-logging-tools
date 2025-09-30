@@ -10,6 +10,9 @@
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <AnalysisLevel>latest</AnalysisLevel>
         
+        <!-- Package Warnings Suppression -->
+        <NoWarn>$(NoWarn);NU5104</NoWarn> <!-- Suppress warning for preview package dependencies -->
+        
         <!-- Version Management -->
         <Version>1.0.0-preview.2</Version>
         <AssemblyVersion>1.0.0.0</AssemblyVersion>
