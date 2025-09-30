@@ -52,7 +52,7 @@ public class MarkdownLoggerReportGeneratorTests
                     MessageTemplate = "User {UserId} performed action {Action}",
                     Location = new MethodCallLocation
                     {
-                        FilePath = @"C:\Source\MyApp\Controllers\UserController.cs",
+                        FilePath = "/Source/MyApp/Controllers/UserController.cs",
                         StartLineNumber = 42,
                         EndLineNumber = 42
                     },
@@ -142,7 +142,7 @@ public class MarkdownLoggerReportGeneratorTests
                     DeclaringTypeName = "MyApp.Services.UserService",
                     Location = new MethodCallLocation
                     {
-                        FilePath = @"C:\Source\MyApp\Services\UserService.cs",
+                        FilePath = "/Source/MyApp/Services/UserService.cs",
                         StartLineNumber = 25,
                         EndLineNumber = 25
                     },
@@ -157,7 +157,7 @@ public class MarkdownLoggerReportGeneratorTests
                             ContainingType = "MyApp.Controllers.UserController",
                             InvocationLocation = new MethodCallLocation
                             {
-                                FilePath = @"C:\Source\MyApp\Controllers\UserController.cs",
+                                FilePath = "/Source/MyApp/Controllers/UserController.cs",
                                 StartLineNumber = 45,
                                 EndLineNumber = 45
                             },
@@ -214,7 +214,7 @@ public class MarkdownLoggerReportGeneratorTests
                     DeclaringTypeName = "MyApp.Services.UserService",
                     Location = new MethodCallLocation
                     {
-                        FilePath = @"C:\Source\MyApp\Services\UserService.cs",
+                        FilePath = "/Source/MyApp/Services/UserService.cs",
                         StartLineNumber = 25,
                         EndLineNumber = 25
                     },
@@ -229,7 +229,7 @@ public class MarkdownLoggerReportGeneratorTests
                             ContainingType = "MyApp.Controllers.UserController",
                             InvocationLocation = new MethodCallLocation
                             {
-                                FilePath = @"C:\Source\MyApp\Controllers\UserController.cs",
+                                FilePath = "/Source/MyApp/Controllers/UserController.cs",
                                 StartLineNumber = 45,
                                 EndLineNumber = 45
                             },
