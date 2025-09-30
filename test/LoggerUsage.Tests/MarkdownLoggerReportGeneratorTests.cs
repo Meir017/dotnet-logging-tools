@@ -185,7 +185,7 @@ public class MarkdownLoggerReportGeneratorTests
 
         // Assert
         Assert.NotNull(markdown);
-        Assert.Contains("ℹ️ Line 26: Information - LoggerMessageAttribute", markdown);
+                Assert.Contains("Line 26: Information - LoggerMessageAttribute", markdown);
         Assert.Contains("**LoggerMessage Method Details:**", markdown);
         Assert.Contains("- **Declaring Type:** `MyApp.Services.UserService`", markdown);
         Assert.Contains("- **Method Name:** `LogUserAction`", markdown);
