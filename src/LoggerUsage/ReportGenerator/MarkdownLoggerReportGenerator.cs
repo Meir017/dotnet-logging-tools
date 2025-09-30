@@ -131,6 +131,16 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         markdown.AppendLine($"#### {levelEmoji} Line {lineNumber}: {logLevel} - {methodType}");
         markdown.AppendLine();
 
+        // Handle LoggerMessage specific information
+        if (usage is LoggerMessageUsageInfo loggerMessageUsage)
+        {
+            markdown.AppendLine("**LoggerMessage Method Details:**");
+            markdown.AppendLine($"- **Declaring Type:** `{loggerMessageUsage.DeclaringTypeName}`");
+            markdown.AppendLine($"- **Method Name:** `{loggerMessageUsage.MethodName}`");
+            markdown.AppendLine($"- **Invocation Count:** {loggerMessageUsage.InvocationCount}");
+            markdown.AppendLine();
+        }
+
         // Message template
         if (!string.IsNullOrEmpty(usage.MessageTemplate))
         {
@@ -168,6 +178,32 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
                 markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} |");
             }
             markdown.AppendLine();
+        }
+
+        // LoggerMessage invocations
+        if (usage is LoggerMessageUsageInfo loggerMessageUsageWithInvocations && loggerMessageUsageWithInvocations.HasInvocations)
+        {
+            markdown.AppendLine("**Invocations:**");
+            markdown.AppendLine();
+            
+            foreach (var invocation in loggerMessageUsageWithInvocations.Invocations)
+            {
+                var invocationLine = invocation.InvocationLocation.StartLineNumber + 1;
+                var invocationFile = Path.GetFileName(invocation.InvocationLocation.FilePath);
+                
+                markdown.AppendLine($"- **{invocationFile}** (Line {invocationLine})");
+                markdown.AppendLine($"  - **Containing Type:** `{invocation.ContainingType}`");
+                
+                if (invocation.Arguments.Count > 0)
+                {
+                    markdown.AppendLine($"  - **Arguments:**");
+                    foreach (var arg in invocation.Arguments)
+                    {
+                        markdown.AppendLine($"    - `{arg.Name}`: `{arg.Type ?? "unknown"}` ({arg.Kind})");
+                    }
+                }
+                markdown.AppendLine();
+            }
         }
 
         // Location details

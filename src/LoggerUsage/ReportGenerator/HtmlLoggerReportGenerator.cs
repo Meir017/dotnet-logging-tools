@@ -37,6 +37,11 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
         .param-type-other { color: #555; }
         .param-kind { color: #888; }
         .code-row { background: #f8fafc; border-left: 4px solid #0078d4; transition: background 0.2s; }
+        .invocations { max-width: 300px; }
+        .invocations details { margin: 0; }
+        .invocations summary { font-size: 0.9em; }
+        .invocations ul { font-size: 0.85em; }
+        .invocations code { background: #f0f0f0; padding: 1px 3px; border-radius: 2px; }
         .code-summary { font-size: 0.95em; color: #1565c0; cursor: pointer; padding: 4px 0 4px 12px; background: #e3eafc; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; gap: 8px; }
         .code-icon { font-family: monospace; font-size: 1.1em; color: #0078d4; }
         .code-block-container { padding-left: 32px; overflow-x: auto; max-width: 100vw; background: #fff; }
@@ -63,6 +68,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
         html.dark-theme .param-type-other { color: #b0bec5; }
         html.dark-theme .param-kind { color: #b0bec5; }
         html.dark-theme .code-row { background: #23272e; border-left: 4px solid #42a5f5; }
+        html.dark-theme .invocations code { background: #263238; color: #90caf9; }
         html.dark-theme .code-summary { background: #263238; color: #90caf9; }
         html.dark-theme .code-icon { color: #42a5f5; }
         html.dark-theme .code-block-container { background: #181a1b !important; }
@@ -240,6 +246,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             <th data-sort='message' style='cursor:pointer;'>Message <span class='sort-arrow'></span></th>
             <th data-sort='parameters' style='cursor:pointer;'>Parameters <span class='sort-arrow'></span></th>
             <th data-sort='eventid' style='cursor:pointer;'>EventId <span class='sort-arrow'></span></th>
+            <th data-sort='invocations' style='cursor:pointer;'>Invocations <span class='sort-arrow'></span></th>
         </tr>";
 
         foreach (var usage in loggerUsage.Results)
@@ -292,16 +299,50 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                     })) +
                     "</ul>";
             }
+
+            // Handle LoggerMessage-specific information
+            string invocationsHtml = "";
+            string declaringTypeInfo = "";
+            if (usage is LoggerMessageUsageInfo loggerMessageUsage)
+            {
+                declaringTypeInfo = $"<div style='font-size:0.9em;color:#666;margin-top:4px;'><strong>Type:</strong> <code>{WebUtility.HtmlEncode(loggerMessageUsage.DeclaringTypeName)}</code></div>";
+
+                if (loggerMessageUsage.HasInvocations)
+                {
+                    invocationsHtml = $@"<div style='font-size:0.95em;'>
+                        <strong>{loggerMessageUsage.InvocationCount} invocation{(loggerMessageUsage.InvocationCount > 1 ? "s" : "")}</strong>
+                        <details style='margin-top:4px;'>
+                            <summary style='cursor:pointer;color:#0078d4;font-size:0.9em;'>Show Details</summary>
+                            <ul style='margin:8px 0 0 0;padding-left:1.2em;font-size:0.9em;'>
+                                {string.Join("", loggerMessageUsage.Invocations.Select(inv =>
+                                    $@"<li style='margin:4px 0;'>
+                                        <div><strong>{WebUtility.HtmlEncode(Path.GetFileName(inv.InvocationLocation.FilePath))}:{inv.InvocationLocation.StartLineNumber + 1}</strong></div>
+                                        <div style='color:#666;font-size:0.95em;'>in <code>{WebUtility.HtmlEncode(inv.ContainingType)}</code></div>
+                                        {(inv.Arguments.Count > 0 ?
+                                            $"<div style='margin-top:2px;'><em>Args:</em> {string.Join(", ", inv.Arguments.Select(arg => $"<code>{WebUtility.HtmlEncode(arg.Name)}</code>"))}</div>"
+                                            : "")}
+                                    </li>"))}
+                            </ul>
+                        </details>
+                    </div>";
+                }
+                else
+                {
+                    invocationsHtml = "<span style='color:#888;font-size:0.9em;'>No invocations found</span>";
+                }
+            }
+
             html += $@"
         <tr class='log-row' data-loglevel='{logLevel}' data-methodtype='{WebUtility.HtmlEncode(methodType.ToString())}' data-message='{WebUtility.HtmlEncode(rawMessage)}' data-filepath='{WebUtility.HtmlEncode(filePath)}'>
             <td class='loglevel-{logLevel}'>{logLevel}</td>
-            <td>{WebUtility.HtmlEncode(methodType.ToString())}</td>
+            <td>{WebUtility.HtmlEncode(methodType.ToString())}{declaringTypeInfo}</td>
             <td>{message}</td>
             <td class='params'>{parameters}</td>
             <td>{WebUtility.HtmlEncode(eventId)}</td>
+            <td class='invocations'>{invocationsHtml}</td>
         </tr>
         <tr class='code-row' data-logrow>
-            <td colspan='5' style='padding:0;'>
+            <td colspan='6' style='padding:0;'>
                 <details style='margin:0;'>
                     <summary class='code-summary' style='display:flex;align-items:center;gap:10px;'>
                         <span class='code-icon'>&lt;/&gt;</span>
