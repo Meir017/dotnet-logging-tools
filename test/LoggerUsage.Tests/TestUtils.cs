@@ -14,7 +14,7 @@ internal static class TestUtils
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
         var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
         references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
-        references = references.Add(MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location));
+        references = references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.Logging.LogPropertiesAttribute).Assembly.Location));
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             [syntaxTree],
@@ -27,6 +27,8 @@ internal static class TestUtils
                     ["CS0219"] = ReportDiagnostic.Suppress, // Suppress assigned but unused variable warning
                     ["CS0414"] = ReportDiagnostic.Suppress, // Suppress unassigned field warning
                     ["CS8602"] = ReportDiagnostic.Suppress, // Suppress dereference of a possibly null reference warning
+                    ["CS8632"] = ReportDiagnostic.Suppress, // Suppress nullable reference types annotation warning
+                    ["EXTEXP0003"] = ReportDiagnostic.Suppress, // Suppress experimental API warning
                 }
             )
         );
