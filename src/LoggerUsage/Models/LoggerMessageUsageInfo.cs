@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace LoggerUsage.Models;
 
 /// <summary>
@@ -16,6 +18,11 @@ public class LoggerMessageUsageInfo : LoggerUsageInfo
     public required string DeclaringTypeName { get; set; }
 
     /// <summary>
+    /// Gets or sets the list of parameters decorated with [LogProperties] attribute.
+    /// </summary>
+    public List<LogPropertiesParameterInfo> LogPropertiesParameters { get; set; } = [];
+
+    /// <summary>
     /// Indicates whether this LoggerMessage method has any invocations.
     /// </summary>
     public bool HasInvocations => Invocations.Count > 0;
@@ -24,4 +31,14 @@ public class LoggerMessageUsageInfo : LoggerUsageInfo
     /// The total number of invocations found for this LoggerMessage method.
     /// </summary>
     public int InvocationCount => Invocations.Count;
+
+    /// <summary>
+    /// Gets whether this LoggerMessage method uses LogProperties parameters.
+    /// </summary>
+    public bool HasLogProperties => LogPropertiesParameters.Count > 0;
+
+    /// <summary>
+    /// Gets the total number of structured properties that will be logged from all LogProperties parameters.
+    /// </summary>
+    public int TotalLogPropertiesCount => LogPropertiesParameters.Sum(p => p.Properties.Count);
 }

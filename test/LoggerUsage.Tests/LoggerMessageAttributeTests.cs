@@ -1064,6 +1064,421 @@ namespace ConsumerProject.Services
 
     #endregion
 
+    #region LogProperties Tests
+
+    [Fact]
+    public async Task LoggerMessage_WithBasicLogProperties_ExtractsPropertiesCorrectly()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User logged in""
+    )]
+    public static partial void LogUserLogin(ILogger logger, [LogProperties] UserInfo user);
+}
+
+public class UserInfo
+{
+    public int UserId { get; set; }
+    public string UserName { get; set; }
+    public string Email { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogUserLogin(ILogger logger, UserInfo user)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
+
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.Equal("user", logPropsParam.ParameterName);
+        Assert.Equal("UserInfo", logPropsParam.ParameterType);
+        Assert.Equal(3, logPropsParam.Properties.Count);
+        Assert.Equal(3, usage.TotalLogPropertiesCount);
+
+        // Verify individual properties
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "UserId" && p.Type == "int");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "UserName" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Email" && p.Type == "string");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithMultipleLogPropertiesParameters_ExtractsAllParameters()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Warning,
+        Message = ""Order processing failed""
+    )]
+    public static partial void LogOrderFailure(ILogger logger, [LogProperties] UserInfo user, [LogProperties] OrderInfo order);
+}
+
+public class UserInfo
+{
+    public int UserId { get; set; }
+    public string UserName { get; set; }
+}
+
+public class OrderInfo
+{
+    public int OrderId { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogOrderFailure(ILogger logger, UserInfo user, OrderInfo order)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Equal(2, usage.LogPropertiesParameters.Count);
+        Assert.Equal(5, usage.TotalLogPropertiesCount); // 2 user + 3 order properties
+
+        var userParam = usage.LogPropertiesParameters.FirstOrDefault(p => p.ParameterName == "user");
+        var orderParam = usage.LogPropertiesParameters.FirstOrDefault(p => p.ParameterName == "order");
+
+        Assert.NotNull(userParam);
+        Assert.NotNull(orderParam);
+        Assert.Equal(2, userParam.Properties.Count);
+        Assert.Equal(3, orderParam.Properties.Count);
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithLogPropertiesConfiguration_ExtractsConfiguration()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Error,
+        Message = ""Configuration test""
+    )]
+    public static partial void LogWithConfig(
+        ILogger logger,
+        [LogProperties(OmitReferenceName = true, SkipNullProperties = true)] UserInfo user);
+}
+
+public class UserInfo
+{
+    public int UserId { get; set; }
+    public string UserName { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogWithConfig(ILogger logger, UserInfo user)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
+
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.True(logPropsParam.Configuration.OmitReferenceName);
+        Assert.True(logPropsParam.Configuration.SkipNullProperties);
+        Assert.False(logPropsParam.Configuration.Transitive); // Default value
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithLogPropertiesAndRegularParameters_BothAreExtracted()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+using System;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Information,
+        Message = ""User {userId} performed {action}""
+    )]
+    public static partial void LogUserAction(
+        ILogger logger,
+        int userId,
+        string action,
+        [LogProperties] UserInfo user);
+}
+
+public class UserInfo
+{
+    public string Email { get; set; }
+    public DateTime LastLogin { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogUserAction(ILogger logger, int userId, string action, UserInfo user)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+
+        // Regular message parameters should still be extracted
+        Assert.Equal(2, usage.MessageParameters.Count);
+        Assert.Contains(usage.MessageParameters, p => p.Name == "userId" && p.Type == "int");
+        Assert.Contains(usage.MessageParameters, p => p.Name == "action" && p.Type == "string");
+
+        // LogProperties should also be extracted
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
+        Assert.Equal(2, usage.TotalLogPropertiesCount);
+
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.Equal("user", logPropsParam.ParameterName);
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Email" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "LastLogin" && p.Type == "DateTime");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithEmptyClass_HandlesNoProperties()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Debug,
+        Message = ""Empty class test""
+    )]
+    public static partial void LogEmptyClass(ILogger logger, [LogProperties] EmptyClass empty);
+}
+
+public class EmptyClass
+{
+    // No public properties
+    private int privateField;
+    internal string InternalProperty { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogEmptyClass(ILogger logger, EmptyClass empty)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties); // Has LogProperties parameter
+        Assert.Single(usage.LogPropertiesParameters);
+        Assert.Equal(0, usage.TotalLogPropertiesCount); // But no actual properties
+
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.Equal("empty", logPropsParam.ParameterName);
+        Assert.Empty(logPropsParam.Properties); // No public properties to extract
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithNullableProperties_CorrectlyIdentifiesNullability()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Information,
+        Message = ""Nullable test""
+    )]
+    public static partial void LogNullableTest(ILogger logger, [LogProperties] NullableClass data);
+}
+
+public class NullableClass
+{
+    public int NonNullableInt { get; set; }
+    public int? NullableInt { get; set; }
+    public string NonNullableString { get; set; }
+    public string? NullableString { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogNullableTest(ILogger logger, NullableClass data)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Equal(4, usage.TotalLogPropertiesCount);
+
+        var properties = usage.LogPropertiesParameters[0].Properties;
+
+        var nonNullableInt = properties.FirstOrDefault(p => p.Name == "NonNullableInt");
+        var nullableInt = properties.FirstOrDefault(p => p.Name == "NullableInt");
+        var nonNullableString = properties.FirstOrDefault(p => p.Name == "NonNullableString");
+        var nullableString = properties.FirstOrDefault(p => p.Name == "NullableString");
+
+        Assert.NotNull(nonNullableInt);
+        Assert.NotNull(nullableInt);
+        Assert.NotNull(nonNullableString);
+        Assert.NotNull(nullableString);
+
+        Assert.False(nonNullableInt.IsNullable);
+        Assert.True(nullableInt.IsNullable);
+        Assert.False(nonNullableString.IsNullable); // Non-nullable reference type
+        Assert.True(nullableString.IsNullable);     // Nullable reference type
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithoutLogProperties_HasLogPropertiesReturnsFalse()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Information,
+        Message = ""No LogProperties here""
+    )]
+    public static partial void LogWithoutProperties(ILogger logger, int userId, string action);
+}" + CreateMockGeneratedCode("Log", "LogWithoutProperties(ILogger logger, int userId, string action)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.False(usage.HasLogProperties);
+        Assert.Empty(usage.LogPropertiesParameters);
+        Assert.Equal(0, usage.TotalLogPropertiesCount);
+
+        // No message template parameters since template has no placeholders
+        Assert.Empty(usage.MessageParameters);
+    }
+
+    public static TheoryData<string, bool, bool, bool> LogPropertiesConfigurationScenarios() => new()
+    {
+        { "", false, false, false }, // Default values
+        { "OmitReferenceName = true", true, false, false },
+        { "SkipNullProperties = true", false, true, false },
+        { "Transitive = true", false, false, true },
+        { "OmitReferenceName = true, SkipNullProperties = true", true, true, false },
+        { "OmitReferenceName = true, Transitive = true", true, false, true },
+        { "SkipNullProperties = true, Transitive = true", false, true, true },
+        { "OmitReferenceName = true, SkipNullProperties = true, Transitive = true", true, true, true },
+    };
+
+    [Theory]
+    [MemberData(nameof(LogPropertiesConfigurationScenarios))]
+    public async Task LoggerMessage_LogPropertiesConfiguration_Scenarios(string configArgs, bool expectedOmitRef, bool expectedSkipNull, bool expectedTransitive)
+    {
+        // Arrange
+        var code = $@"using Microsoft.Extensions.Logging;
+
+
+namespace TestNamespace;
+
+public static partial class Log
+{{
+    [LoggerMessage(
+        EventId = 8,
+        Level = LogLevel.Information,
+        Message = ""Config test""
+    )]
+    public static partial void LogConfigTest(ILogger logger, [LogProperties({configArgs})] UserInfo user);
+}}
+
+public class UserInfo
+{{
+    public int UserId {{ get; set; }}
+}}" + CreateMockGeneratedCode("Log", "LogConfigTest(ILogger logger, UserInfo user)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+
+        var config = usage.LogPropertiesParameters[0].Configuration;
+        Assert.Equal(expectedOmitRef, config.OmitReferenceName);
+        Assert.Equal(expectedSkipNull, config.SkipNullProperties);
+        Assert.Equal(expectedTransitive, config.Transitive);
+    }
+
+    #endregion
+
     #region Test Helper Methods for SymbolFinder Validation
 
     private static IMethodSymbol? FindLoggerMessageMethodSymbol(Compilation compilation, string methodName)

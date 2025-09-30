@@ -40,6 +40,9 @@ namespace LoggerUsage.Analyzers
             {
                 var invocations = await FindLoggerMessageInvocations(declaration, context);
 
+                // Extract LogProperties information
+                var logPropertiesParameters = ExtractLogPropertiesParameters(declaration.MethodSymbol, context.LoggingTypes);
+
                 // Create LoggerMessageUsageInfo with invocation data
                 var loggerMessageUsage = new LoggerMessageUsageInfo
                 {
@@ -51,7 +54,8 @@ namespace LoggerUsage.Analyzers
                     EventId = declaration.BaseUsageInfo.EventId,
                     MessageParameters = declaration.BaseUsageInfo.MessageParameters,
                     DeclaringTypeName = declaration.ContainingTypeName,
-                    Invocations = invocations
+                    Invocations = invocations,
+                    LogPropertiesParameters = logPropertiesParameters
                 };
 
                 logger.LogTrace("Analyzed LoggerMessage method {MethodName} with {InvocationCount} invocations",
@@ -430,6 +434,152 @@ namespace LoggerUsage.Analyzers
             // Use MethodSignatureParameterExtractor from the strategy pattern
             return ParameterExtraction.MethodSignatureParameterExtractor.TryExtractFromMethodSignature(
                 methodSymbol, messageTemplate, loggingTypes, out messageParameters);
+        }
+
+        /// <summary>
+        /// Extracts LogProperties parameters from a method's parameter list
+        /// </summary>
+        private List<LogPropertiesParameterInfo> ExtractLogPropertiesParameters(IMethodSymbol methodSymbol, LoggingTypes loggingTypes)
+        {
+            var logPropertiesParameters = new List<LogPropertiesParameterInfo>();
+
+            foreach (var parameter in methodSymbol.Parameters)
+            {
+                // Skip ILogger parameters
+                if (SymbolEqualityComparer.Default.Equals(parameter.Type, loggingTypes.ILogger))
+                {
+                    continue;
+                }
+
+                // Look for LogProperties attribute on this parameter
+                var logPropertiesAttribute = parameter.GetAttributes()
+                    .FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, loggingTypes.LogPropertiesAttribute));
+
+                if (logPropertiesAttribute != null)
+                {
+                    // Extract LogProperties configuration
+                    var configuration = ExtractLogPropertiesConfiguration(logPropertiesAttribute);
+                    
+                    // Extract properties from the parameter type
+                    var properties = ExtractPropertiesFromType(parameter.Type);
+
+                    var logPropertiesParameter = new LogPropertiesParameterInfo(
+                        parameter.Name,
+                        parameter.Type.Name,
+                        configuration,
+                        properties);
+
+                    logPropertiesParameters.Add(logPropertiesParameter);
+
+                    logger.LogTrace("Found LogProperties parameter {ParameterName} of type {ParameterType} with {PropertyCount} properties",
+                        parameter.Name, parameter.Type.ToDisplayString(), properties.Count);
+                }
+            }
+
+            return logPropertiesParameters;
+        }
+
+        /// <summary>
+        /// Extracts LogProperties configuration from the attribute
+        /// </summary>
+        private static LogPropertiesConfiguration ExtractLogPropertiesConfiguration(AttributeData logPropertiesAttribute)
+        {
+            bool omitReferenceName = false;
+            bool skipNullProperties = false;
+            bool transitive = false;
+
+            // Extract named arguments (properties of the attribute)
+            foreach (var namedArg in logPropertiesAttribute.NamedArguments)
+            {
+                switch (namedArg.Key)
+                {
+                    case nameof(LogPropertiesConfiguration.OmitReferenceName):
+                        if (namedArg.Value.Value is bool omitRefValue)
+                        {
+                            omitReferenceName = omitRefValue;
+                        }
+                        break;
+                    case nameof(LogPropertiesConfiguration.SkipNullProperties):
+                        if (namedArg.Value.Value is bool skipNullValue)
+                        {
+                            skipNullProperties = skipNullValue;
+                        }
+                        break;
+                    case nameof(LogPropertiesConfiguration.Transitive):
+                        if (namedArg.Value.Value is bool transitiveValue)
+                        {
+                            transitive = transitiveValue;
+                        }
+                        break;
+                }
+            }
+
+            return new LogPropertiesConfiguration
+            {
+                OmitReferenceName = omitReferenceName,
+                SkipNullProperties = skipNullProperties,
+                Transitive = transitive
+            };
+        }
+
+        /// <summary>
+        /// Extracts properties from a type for LogProperties analysis
+        /// </summary>
+        private static List<LogPropertyInfo> ExtractPropertiesFromType(ITypeSymbol typeSymbol)
+        {
+            var properties = new List<LogPropertyInfo>();
+
+            if (typeSymbol is INamedTypeSymbol namedType)
+            {
+                // Get all public properties
+                var publicProperties = namedType.GetMembers()
+                    .OfType<IPropertySymbol>()
+                    .Where(prop => prop.DeclaredAccessibility == Accessibility.Public && prop.GetMethod != null);
+
+                foreach (var property in publicProperties)
+                {
+                    // Check if property has LogPropertyIgnore attribute
+                    bool hasIgnoreAttribute = property.GetAttributes()
+                        .Any(attr => attr.AttributeClass?.Name == "LogPropertyIgnoreAttribute");
+
+                    if (!hasIgnoreAttribute)
+                    {
+                        var logProperty = new LogPropertyInfo(
+                            property.Name,
+                            property.Name,
+                            GetSimpleTypeName(property.Type),
+                            property.Type.CanBeReferencedByName && property.Type.NullableAnnotation == NullableAnnotation.Annotated);
+
+                        properties.Add(logProperty);
+                    }
+                }
+            }
+
+            return properties;
+        }
+
+        private static string GetSimpleTypeName(ITypeSymbol typeSymbol)
+        {
+            // Handle common built-in types
+            return typeSymbol.SpecialType switch
+            {
+                SpecialType.System_Boolean => "bool",
+                SpecialType.System_Byte => "byte",
+                SpecialType.System_SByte => "sbyte",
+                SpecialType.System_Int16 => "short",
+                SpecialType.System_UInt16 => "ushort",
+                SpecialType.System_Int32 => "int",
+                SpecialType.System_UInt32 => "uint",
+                SpecialType.System_Int64 => "long",
+                SpecialType.System_UInt64 => "ulong",
+                SpecialType.System_Decimal => "decimal",
+                SpecialType.System_Single => "float",
+                SpecialType.System_Double => "double",
+                SpecialType.System_Char => "char",
+                SpecialType.System_String => "string",
+                SpecialType.System_Object => "object",
+                _ => typeSymbol.Name // Use simple name for other types
+            };
         }
     }
 }
