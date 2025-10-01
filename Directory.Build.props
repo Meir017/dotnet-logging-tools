@@ -3,40 +3,37 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        
+
         <!-- Code Analysis and Style Enforcement -->
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <AnalysisLevel>latest</AnalysisLevel>
-        
-        <!-- Package Warnings Suppression -->
-        <NoWarn>$(NoWarn);NU5104</NoWarn> <!-- Suppress warning for preview package dependencies -->
-        
+
         <!-- Version Management -->
-        <Version>1.0.0-preview.2</Version>
+        <Version>1.0.0-preview3</Version>
         <AssemblyVersion>1.0.0.0</AssemblyVersion>
         <FileVersion>1.0.0.0</FileVersion>
-        
+
         <!-- Package-specific version overrides -->
         <!-- All packages use the same preview version for initial release -->
-        
+
         <!-- Package Metadata -->
         <Authors>Meir017</Authors>
         <Company>Meir017</Company>
         <Product>dotnet-logging-usage</Product>
         <Copyright>Copyright © Meir017 $([System.DateTime]::Now.Year)</Copyright>
-        
+
         <!-- Repository Information -->
         <RepositoryUrl>https://github.com/Meir017/dotnet-logging-usage</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <RepositoryBranch>main</RepositoryBranch>
-        
+
         <!-- Documentation -->
         <PackageProjectUrl>https://github.com/Meir017/dotnet-logging-usage</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        
+
         <!-- Package Properties -->
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageTags>logging;dotnet;analysis;csharp;msbuild;cli;mcp</PackageTags>
