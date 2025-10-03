@@ -569,6 +569,21 @@ namespace LoggerUsage.Analyzers
 
                     if (!hasIgnoreAttribute)
                     {
+                        // Check for TagName attribute on the property
+                        string? customTagName = null;
+                        if (loggingTypes.TagNameAttribute != null)
+                        {
+                            var tagNameAttribute = property.GetAttributes()
+                                .FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, loggingTypes.TagNameAttribute));
+                            
+                            if (tagNameAttribute != null && 
+                                tagNameAttribute.ConstructorArguments.Length > 0 &&
+                                tagNameAttribute.ConstructorArguments[0].Value is string tagName)
+                            {
+                                customTagName = tagName;
+                            }
+                        }
+
                         List<LogPropertyInfo>? nestedProperties = null;
 
                         // If Transitive is enabled, analyze nested properties for complex types
@@ -604,6 +619,7 @@ namespace LoggerUsage.Analyzers
                             property.Name,
                             GetSimpleTypeName(property.Type),
                             property.Type.CanBeReferencedByName && property.Type.NullableAnnotation == NullableAnnotation.Annotated,
+                            customTagName,
                             nestedProperties);
 
                         properties.Add(logProperty);

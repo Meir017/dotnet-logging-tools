@@ -296,12 +296,12 @@ public class MarkdownLoggerReportGeneratorTests
                             "UserDetails",
                             new LogPropertiesConfiguration(OmitReferenceName: false, SkipNullProperties: false, Transitive: true),
                             [
-                                new LogPropertyInfo("Name", "Name", "string", false, null),
-                                new LogPropertyInfo("Age", "Age", "int", false, null),
-                                new LogPropertyInfo("Address", "Address", "Address", false, [
-                                    new LogPropertyInfo("Street", "Street", "string", false, null),
-                                    new LogPropertyInfo("City", "City", "string", false, null),
-                                    new LogPropertyInfo("ZipCode", "ZipCode", "string", false, null)
+                                new LogPropertyInfo("Name", "Name", "string", false, NestedProperties: null),
+                                new LogPropertyInfo("Age", "Age", "int", false, NestedProperties: null),
+                                new LogPropertyInfo("Address", "Address", "Address", false, NestedProperties: [
+                                    new LogPropertyInfo("Street", "Street", "string", false, NestedProperties: null),
+                                    new LogPropertyInfo("City", "City", "string", false, NestedProperties: null),
+                                    new LogPropertyInfo("ZipCode", "ZipCode", "string", false, NestedProperties: null)
                                 ])
                             ]
                         )
@@ -361,10 +361,10 @@ public class MarkdownLoggerReportGeneratorTests
                             "Team",
                             new LogPropertiesConfiguration(OmitReferenceName: false, SkipNullProperties: false, Transitive: true),
                             [
-                                new LogPropertyInfo("TeamName", "TeamName", "string", false, null),
-                                new LogPropertyInfo("Members", "Members", "List", false, [
-                                    new LogPropertyInfo("Name", "Name", "string", false, null),
-                                    new LogPropertyInfo("Role", "Role", "string", false, null)
+                                new LogPropertyInfo("TeamName", "TeamName", "string", false, NestedProperties: null),
+                                new LogPropertyInfo("Members", "Members", "List", false, NestedProperties: [
+                                    new LogPropertyInfo("Name", "Name", "string", false, NestedProperties: null),
+                                    new LogPropertyInfo("Role", "Role", "string", false, NestedProperties: null)
                                 ])
                             ]
                         )

@@ -14,6 +14,7 @@ namespace LoggerUsage
             ILogger = loggerInterface;
             LoggerMessageAttribute = compilation.GetTypeByMetadataName(typeof(LoggerMessageAttribute).FullName!)!;
             LogPropertiesAttribute = compilation.GetTypeByMetadataName(typeof(LogPropertiesAttribute).FullName!)!;
+            TagNameAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.TagNameAttribute");
             EventId = compilation.GetTypeByMetadataName(typeof(EventId).FullName!)!;
             LogLevel = compilation.GetTypeByMetadataName(typeof(LogLevel).FullName!)!;
             LoggerExtensions = compilation.GetTypeByMetadataName(typeof(LoggerExtensions).FullName!)!;
@@ -83,6 +84,12 @@ namespace LoggerUsage
         /// Gets the LogPropertiesAttribute type symbol from Microsoft.Extensions.Logging.
         /// </summary>
         public INamedTypeSymbol LogPropertiesAttribute { get; }
+
+        /// <summary>
+        /// Gets the TagNameAttribute type symbol from Microsoft.Extensions.Logging.
+        /// Returns null if the attribute is not available in the compilation.
+        /// </summary>
+        public INamedTypeSymbol? TagNameAttribute { get; }
 
         /// <summary>
         /// Gets a KeyValuePair&lt;string, object?&gt; type symbol used for structured logging parameters.

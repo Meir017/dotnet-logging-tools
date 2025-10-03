@@ -61,8 +61,25 @@ internal class MethodSignatureParameterExtractor : IParameterExtractor
 
         for (int i = 0; i < parameters.Count && i < formatter.ValueNames.Count; i++)
         {
+            var parameter = parameters[i];
             var parameterName = formatter.ValueNames[i];
-            messageParameters.Add(new MessageParameter(parameterName, parameters[i].Type.ToPrettyDisplayString(), null));
+            
+            // Check for TagName attribute on the parameter
+            string? customTagName = null;
+            if (loggingTypes.TagNameAttribute != null)
+            {
+                var tagNameAttribute = parameter.GetAttributes()
+                    .FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, loggingTypes.TagNameAttribute));
+                
+                if (tagNameAttribute != null && 
+                    tagNameAttribute.ConstructorArguments.Length > 0 &&
+                    tagNameAttribute.ConstructorArguments[0].Value is string tagName)
+                {
+                    customTagName = tagName;
+                }
+            }
+            
+            messageParameters.Add(new MessageParameter(parameterName, parameter.Type.ToPrettyDisplayString(), null, customTagName));
         }
 
         return messageParameters.Count > 0;
