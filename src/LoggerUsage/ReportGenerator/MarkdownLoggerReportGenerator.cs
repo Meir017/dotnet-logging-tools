@@ -217,6 +217,23 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             {
                 markdown.AppendLine($"- **Parameter:** `{logPropsParam.ParameterName}` (`{logPropsParam.ParameterType}`)");
                 
+                // TagProvider information
+                if (logPropsParam.TagProvider != null)
+                {
+                    var statusIcon = logPropsParam.TagProvider.IsValid ? "✓" : "✗";
+                    markdown.AppendLine($"  - **Tag Provider:** `{logPropsParam.TagProvider.ProviderTypeName}.{logPropsParam.TagProvider.ProviderMethodName}` {statusIcon}");
+                    
+                    if (logPropsParam.TagProvider.OmitReferenceName)
+                    {
+                        markdown.AppendLine("    - OmitReferenceName: true");
+                    }
+                    
+                    if (!logPropsParam.TagProvider.IsValid && !string.IsNullOrEmpty(logPropsParam.TagProvider.ValidationMessage))
+                    {
+                        markdown.AppendLine($"    - ⚠️ **Validation Error:** {logPropsParam.TagProvider.ValidationMessage}");
+                    }
+                }
+                
                 // Configuration
                 var configOptions = new List<string>();
                 if (logPropsParam.Configuration.OmitReferenceName)

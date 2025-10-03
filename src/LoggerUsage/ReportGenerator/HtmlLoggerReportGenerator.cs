@@ -472,6 +472,31 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                 <div style='margin:8px 0;padding:8px;background:#f8f9fa;border-left:3px solid #0078d4;'>
                     <div style='font-weight:bold;'>{WebUtility.HtmlEncode(param.ParameterName)} <span style='color:#666;font-weight:normal;'>({WebUtility.HtmlEncode(param.ParameterType)})</span></div>";
 
+            // TagProvider information
+            if (param.TagProvider != null)
+            {
+                var statusIcon = param.TagProvider.IsValid ? "✓" : "✗";
+                var statusColor = param.TagProvider.IsValid ? "#4caf50" : "#f44336";
+                html += $@"
+                    <div style='margin:4px 0 2px 0;padding:4px 8px;background:#fff;border:1px solid #ddd;border-radius:4px;'>
+                        <div style='font-size:0.9em;'>
+                            <strong>Tag Provider:</strong> {WebUtility.HtmlEncode(param.TagProvider.ProviderTypeName)}.{WebUtility.HtmlEncode(param.TagProvider.ProviderMethodName)}
+                            <span style='color:{statusColor};font-weight:bold;margin-left:8px;'>{statusIcon} {(param.TagProvider.IsValid ? "Valid" : "Invalid")}</span>
+                        </div>";
+                
+                if (param.TagProvider.OmitReferenceName)
+                {
+                    html += "<div style='font-size:0.85em;color:#666;margin-top:2px;'><em>OmitReferenceName: true</em></div>";
+                }
+                
+                if (!param.TagProvider.IsValid && !string.IsNullOrEmpty(param.TagProvider.ValidationMessage))
+                {
+                    html += $"<div style='font-size:0.85em;color:#f44336;margin-top:2px;'>⚠ {WebUtility.HtmlEncode(param.TagProvider.ValidationMessage)}</div>";
+                }
+                
+                html += "</div>";
+            }
+
             // Configuration
             var configOptions = new List<string>();
             if (param.Configuration.OmitReferenceName)
