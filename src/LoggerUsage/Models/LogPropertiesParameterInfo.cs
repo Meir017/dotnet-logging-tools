@@ -15,8 +15,10 @@ public record class LogPropertiesConfiguration(
 /// <param name="ParameterType">The type of the parameter.</param>
 /// <param name="Configuration">The LogProperties attribute configuration.</param>
 /// <param name="Properties">The list of properties extracted from the parameter type.</param>
+/// <param name="TagProvider">Optional TagProvider information if the parameter has a TagProvider attribute.</param>
 public record class LogPropertiesParameterInfo(
     string ParameterName,
     string ParameterType,
     LogPropertiesConfiguration Configuration,
-    List<LogPropertyInfo> Properties);
+    List<LogPropertyInfo> Properties,
+    TagProviderInfo? TagProvider = null);
