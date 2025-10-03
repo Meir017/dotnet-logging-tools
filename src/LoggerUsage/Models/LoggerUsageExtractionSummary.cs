@@ -31,6 +31,11 @@ public class LoggerUsageExtractionSummary
     public int TotalParameterUsageCount { get; set; }
 
     /// <summary>
+    /// Gets or sets classification statistics for parameters and properties.
+    /// </summary>
+    public ClassificationStatistics ClassificationStats { get; set; } = new();
+
+    /// <summary>
     /// Represents a parameter name and its associated type.
     /// </summary>
     /// <param name="Name">The parameter name.</param>
@@ -51,4 +56,35 @@ public class LoggerUsageExtractionSummary
     /// <param name="Count">The number of times this parameter name is used.</param>
     /// <param name="MostCommonType">The most frequently used type for this parameter name.</param>
     public record struct CommonParameterNameInfo(string Name, int Count, string MostCommonType);
+
+    /// <summary>
+    /// Contains classification statistics for parameters and properties.
+    /// </summary>
+    public class ClassificationStatistics
+    {
+        /// <summary>
+        /// Gets or sets the total number of parameters with data classification.
+        /// </summary>
+        public int TotalClassifiedParameters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the total number of properties with data classification.
+        /// </summary>
+        public int TotalClassifiedProperties { get; set; }
+
+        /// <summary>
+        /// Gets or sets the breakdown of classifications by level.
+        /// </summary>
+        public Dictionary<DataClassificationLevel, int> ByLevel { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets the percentage of parameters with sensitive classification (Private or Sensitive levels).
+        /// </summary>
+        public double SensitiveParameterPercentage { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether any data classifications were found in the analysis.
+        /// </summary>
+        public bool HasClassifications => TotalClassifiedParameters > 0 || TotalClassifiedProperties > 0;
+    }
 }

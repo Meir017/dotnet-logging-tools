@@ -36,6 +36,13 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
         .param-type-builtin { color: #00796b; font-weight: bold; }
         .param-type-other { color: #555; }
         .param-kind { color: #888; }
+        .classification-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 500; margin-left: 6px; }
+        .classification-public { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .classification-internal { background: #fff3e0; color: #ef6c00; border: 1px solid #ffb74d; }
+        .classification-private { background: #fce4ec; color: #c2185b; border: 1px solid #f48fb1; }
+        .classification-sensitive { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .classification-custom { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+        .security-warning { background: #ffebee; color: #c62828; padding: 8px 12px; border-radius: 6px; border-left: 4px solid #c62828; margin-top: 8px; font-size: 0.9em; }
         .code-row { background: #f8fafc; border-left: 4px solid #0078d4; transition: background 0.2s; }
         .invocations { max-width: 300px; }
         .invocations details { margin: 0; }
@@ -67,6 +74,12 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
         html.dark-theme .param-type-builtin { color: #80cbc4; }
         html.dark-theme .param-type-other { color: #b0bec5; }
         html.dark-theme .param-kind { color: #b0bec5; }
+        html.dark-theme .classification-public { background: #2d3f2d; color: #81c784; border-color: #4caf50; }
+        html.dark-theme .classification-internal { background: #3a2e1c; color: #ffb74d; border-color: #ef6c00; }
+        html.dark-theme .classification-private { background: #3a1f2e; color: #f48fb1; border-color: #c2185b; }
+        html.dark-theme .classification-sensitive { background: #3a1f1f; color: #ef9a9a; border-color: #c62828; }
+        html.dark-theme .classification-custom { background: #2e1f3a; color: #ce93d8; border-color: #6a1b9a; }
+        html.dark-theme .security-warning { background: #3a1f1f; color: #ef9a9a; border-color: #c62828; }
         html.dark-theme .code-row { background: #23272e; border-left: 4px solid #42a5f5; }
         html.dark-theme .invocations code { background: #263238; color: #90caf9; }
         html.dark-theme .code-summary { background: #263238; color: #90caf9; }
@@ -145,6 +158,34 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
         summaryBuilder.AppendLine($"      <div><div style='font-size:1.2em;font-weight:bold;'>{loggerUsage.Summary.InconsistentParameterNames.Count}</div><div style='font-size:0.95em;color:#555;'>Parameter Name Inconsistencies</div></div>");
         summaryBuilder.AppendLine("    </div>");
         summaryBuilder.AppendLine("  </div>");
+        // Data Classification Summary (if any)
+        if (loggerUsage.Summary.ClassificationStats.HasClassifications)
+        {
+            summaryBuilder.AppendLine("  <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.5em;margin-bottom:1.5em;'>");
+            summaryBuilder.AppendLine("    <h3 style='margin-top:0;margin-bottom:0.8em;font-size:1.2em;color:#c62828;'><span style='font-size:1.3em;'>🔒</span> Data Classification Summary</h3>");
+            summaryBuilder.AppendLine("    <div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1em;margin-bottom:0.8em;'>");
+            summaryBuilder.AppendLine($"      <div><strong>Classified Parameters:</strong> {loggerUsage.Summary.ClassificationStats.TotalClassifiedParameters}</div>");
+            summaryBuilder.AppendLine($"      <div><strong>Classified Properties:</strong> {loggerUsage.Summary.ClassificationStats.TotalClassifiedProperties}</div>");
+            summaryBuilder.AppendLine($"      <div><strong>Sensitive Data:</strong> {loggerUsage.Summary.ClassificationStats.SensitiveParameterPercentage:F1}%</div>");
+            summaryBuilder.AppendLine("    </div>");
+            if (loggerUsage.Summary.ClassificationStats.ByLevel.Count > 0)
+            {
+                summaryBuilder.AppendLine("    <div style='margin-top:0.8em;'><strong>Classification Breakdown:</strong></div>");
+                summaryBuilder.AppendLine("    <div style='display:flex;flex-wrap:wrap;gap:0.5em;margin-top:0.5em;'>");
+                foreach (var kvp in loggerUsage.Summary.ClassificationStats.ByLevel.OrderBy(x => x.Key))
+                {
+                    var cssClass = GetClassificationCssClass(kvp.Key);
+                    var icon = GetClassificationIcon(kvp.Key);
+                    summaryBuilder.AppendLine($"      <span class='classification-badge {cssClass}'>{icon} {kvp.Key}: {kvp.Value}</span>");
+                }
+                summaryBuilder.AppendLine("    </div>");
+            }
+            if (loggerUsage.Summary.ClassificationStats.SensitiveParameterPercentage > 0)
+            {
+                summaryBuilder.AppendLine("    <div class='security-warning' style='margin-top:1em;'>⚠️ <strong>Compliance Note:</strong> Some parameters contain sensitive data and may be redacted at runtime if redaction is enabled.</div>");
+            }
+            summaryBuilder.AppendLine("  </div>");
+        }
         // Most Common Parameter Names
         summaryBuilder.AppendLine("  <div class='summary-mostcommon' style='font-size:1.1em;color:#555;'><div style='margin-bottom:0.5em;'><b>Most Common Parameter Names:</b></div><div style='display:flex;flex-wrap:wrap;gap:0.5em 1em;margin-top:0.5em;'>");
         var topParams = loggerUsage.Summary.CommonParameterNames.Take(8).ToList();
@@ -298,9 +339,20 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                         var customTagHtml = !string.IsNullOrEmpty(p.CustomTagName) 
                             ? $" <span style='color:#666;'>→ <code>{WebUtility.HtmlEncode(p.CustomTagName)}</code></span>" 
                             : "";
-                        return $"<li><span class='param-name'>{WebUtility.HtmlEncode(p.Name)}</span>: <span class='{typeClass}'>{WebUtility.HtmlEncode(type)}</span> [<span class='param-kind'>{WebUtility.HtmlEncode(p.Kind)}</span>]{customTagHtml}</li>";
+                        var classificationHtml = p.DataClassification != null
+                            ? $" <span class='classification-badge {GetClassificationCssClass(p.DataClassification.Level)}'>{GetClassificationIcon(p.DataClassification.Level)} {p.DataClassification.Level}</span>"
+                            : "";
+                        return $"<li><span class='param-name'>{WebUtility.HtmlEncode(p.Name)}</span>: <span class='{typeClass}'>{WebUtility.HtmlEncode(type)}</span> [<span class='param-kind'>{WebUtility.HtmlEncode(p.Kind)}</span>]{customTagHtml}{classificationHtml}</li>";
                     })) +
                     "</ul>";
+                    
+                // Add security warning if any parameters are sensitive
+                if (usage.MessageParameters.Any(p => p.DataClassification != null && 
+                    (p.DataClassification.Level == DataClassificationLevel.Private || 
+                     p.DataClassification.Level == DataClassificationLevel.Sensitive)))
+                {
+                    parameters += "<div class='security-warning'>🔒 <strong>Security Note:</strong> This log contains sensitive data that may be redacted at runtime.</div>";
+                }
             }
 
             // Handle LoggerMessage-specific information
@@ -548,6 +600,12 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                 html += $" <span style='color:#666;'>→ <code>{WebUtility.HtmlEncode(property.CustomTagName)}</code></span>";
             }
 
+            // Show data classification if present
+            if (property.DataClassification != null)
+            {
+                html += $" <span class='classification-badge {GetClassificationCssClass(property.DataClassification.Level)}'>{GetClassificationIcon(property.DataClassification.Level)} {property.DataClassification.Level}</span>";
+            }
+
             if (property.NestedProperties != null && property.NestedProperties.Count > 0)
             {
                 html += " ⮑";
@@ -561,4 +619,25 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
 
         return html;
     }
+
+    private static string GetClassificationCssClass(DataClassificationLevel level) => level switch
+    {
+        DataClassificationLevel.Public => "classification-public",
+        DataClassificationLevel.Internal => "classification-internal",
+        DataClassificationLevel.Private => "classification-private",
+        DataClassificationLevel.Sensitive => "classification-sensitive",
+        DataClassificationLevel.Custom => "classification-custom",
+        _ => ""
+    };
+
+    private static string GetClassificationIcon(DataClassificationLevel level) => level switch
+    {
+        DataClassificationLevel.Public => "🌐",
+        DataClassificationLevel.Internal => "🏢",
+        DataClassificationLevel.Private => "🔒",
+        DataClassificationLevel.Sensitive => "🔐",
+        DataClassificationLevel.Custom => "🏷️",
+        DataClassificationLevel.None => "⚪",
+        _ => "❓"
+    };
 }

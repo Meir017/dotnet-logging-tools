@@ -124,6 +124,80 @@ public class LoggerUsageSummarizer
                     MostCommonType = mostCommonType
                 };
             })];
+
+        // Calculate classification statistics
+        PopulateClassificationStatistics(extractionResult);
+    }
+
+    /// <summary>
+    /// Populates classification statistics from the extraction results.
+    /// </summary>
+    private void PopulateClassificationStatistics(LoggerUsageExtractionResult extractionResult)
+    {
+        var stats = extractionResult.Summary.ClassificationStats;
+        var classificationCounts = new Dictionary<DataClassificationLevel, int>();
+
+        // Count classified parameters
+        foreach (var usage in extractionResult.Results)
+        {
+            if (usage.MessageParameters != null)
+            {
+                foreach (var param in usage.MessageParameters)
+                {
+                    if (param.DataClassification != null)
+                    {
+                        stats.TotalClassifiedParameters++;
+                        var level = param.DataClassification.Level;
+                        classificationCounts[level] = classificationCounts.GetValueOrDefault(level) + 1;
+                    }
+                }
+            }
+
+            // Count classified properties in LogProperties
+            if (usage is LoggerMessageUsageInfo loggerMessageUsage)
+            {
+                foreach (var logPropsParam in loggerMessageUsage.LogPropertiesParameters)
+                {
+                    CountClassifiedProperties(logPropsParam.Properties, classificationCounts, stats);
+                }
+            }
+        }
+
+        stats.ByLevel = classificationCounts;
+
+        // Calculate sensitive parameter percentage
+        var totalParams = stats.TotalClassifiedParameters + stats.TotalClassifiedProperties;
+        if (totalParams > 0)
+        {
+            var sensitiveCount = classificationCounts.GetValueOrDefault(DataClassificationLevel.Private) +
+                                classificationCounts.GetValueOrDefault(DataClassificationLevel.Sensitive);
+            stats.SensitiveParameterPercentage = (double)sensitiveCount / totalParams * 100.0;
+        }
+    }
+
+    /// <summary>
+    /// Recursively counts classified properties including nested ones.
+    /// </summary>
+    private void CountClassifiedProperties(
+        List<LogPropertyInfo> properties,
+        Dictionary<DataClassificationLevel, int> classificationCounts,
+        LoggerUsageExtractionSummary.ClassificationStatistics stats)
+    {
+        foreach (var property in properties)
+        {
+            if (property.DataClassification != null)
+            {
+                stats.TotalClassifiedProperties++;
+                var level = property.DataClassification.Level;
+                classificationCounts[level] = classificationCounts.GetValueOrDefault(level) + 1;
+            }
+
+            // Recursively count nested properties
+            if (property.NestedProperties != null && property.NestedProperties.Count > 0)
+            {
+                CountClassifiedProperties(property.NestedProperties, classificationCounts, stats);
+            }
+        }
     }
 
     // Compares two lists of NameTypePair for set equality (order-insensitive, unique pairs)
