@@ -79,6 +79,57 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             }
         }
 
+        // Telemetry features statistics (if any)
+        if (summary.TelemetryStats.HasTelemetryFeatures)
+        {
+            markdown.AppendLine("### 🏷️ Telemetry Features Summary");
+            markdown.AppendLine();
+            markdown.AppendLine("| Metric | Value |");
+            markdown.AppendLine("|--------|-------|");
+            markdown.AppendLine($"| Parameters with Custom Tag Names | {summary.TelemetryStats.ParametersWithCustomTagNames} |");
+            markdown.AppendLine($"| Properties with Custom Tag Names | {summary.TelemetryStats.PropertiesWithCustomTagNames} |");
+            markdown.AppendLine($"| Parameters with Tag Providers | {summary.TelemetryStats.ParametersWithTagProviders} |");
+            markdown.AppendLine($"| Transitive Properties | {summary.TelemetryStats.TotalTransitiveProperties} |");
+            markdown.AppendLine();
+
+            // Custom tag name mappings
+            if (summary.TelemetryStats.CustomTagNameMappings.Count > 0)
+            {
+                markdown.AppendLine("**Custom Tag Name Mappings:**");
+                markdown.AppendLine();
+                markdown.AppendLine("| Original Name | Custom Tag Name | Context |");
+                markdown.AppendLine("|---------------|-----------------|---------|");
+                foreach (var mapping in summary.TelemetryStats.CustomTagNameMappings.Take(20))
+                {
+                    markdown.AppendLine($"| `{mapping.OriginalName}` | `{mapping.CustomTagName}` | {mapping.Context} |");
+                }
+                if (summary.TelemetryStats.CustomTagNameMappings.Count > 20)
+                {
+                    markdown.AppendLine($"| ... | ... | *{summary.TelemetryStats.CustomTagNameMappings.Count - 20} more mappings* |");
+                }
+                markdown.AppendLine();
+            }
+
+            // Tag providers
+            if (summary.TelemetryStats.TagProviders.Count > 0)
+            {
+                markdown.AppendLine("**Tag Providers:**");
+                markdown.AppendLine();
+                markdown.AppendLine("| Parameter | Provider Type | Provider Method | Omit Name | Valid |");
+                markdown.AppendLine("|-----------|---------------|-----------------|-----------|-------|");
+                foreach (var provider in summary.TelemetryStats.TagProviders)
+                {
+                    var validIcon = provider.IsValid ? "✓" : "⚠️";
+                    markdown.AppendLine($"| `{provider.ParameterName}` | `{provider.ProviderTypeName}` | `{provider.ProviderMethodName}` | {provider.OmitReferenceName} | {validIcon} |");
+                    if (!provider.IsValid && !string.IsNullOrEmpty(provider.ValidationMessage))
+                    {
+                        markdown.AppendLine($"| | **Validation:** {provider.ValidationMessage} | | | |");
+                    }
+                }
+                markdown.AppendLine();
+            }
+        }
+
         // Most common parameter names
         if (summary.CommonParameterNames.Count > 0)
         {
