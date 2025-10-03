@@ -267,4 +267,122 @@ public class MarkdownLoggerReportGeneratorTests
         Assert.Contains("Invocations", html);
         Assert.Contains("colspan='6'", html); // Verify we updated the colspan for the new column
     }
+
+    [Fact]
+    public void GenerateReport_WithLogPropertiesTransitive_IncludesNestedProperties()
+    {
+        // Arrange
+        var generator = _factory.GetReportGenerator(".md");
+        var result = new LoggerUsageExtractionResult
+        {
+            Results = [
+                new LoggerMessageUsageInfo
+                {
+                    MethodName = "LogUserDetails",
+                    MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
+                    DeclaringTypeName = "MyApp.Logging.UserLogger",
+                    LogLevel = Microsoft.Extensions.Logging.LogLevel.Information,
+                    MessageTemplate = "User details logged",
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "/Source/MyApp/Logging/UserLogger.cs",
+                        StartLineNumber = 10,
+                        EndLineNumber = 10
+                    },
+                    EventId = new EventIdDetails(ConstantOrReference.Constant(100), ConstantOrReference.Constant("UserDetails")),
+                    LogPropertiesParameters = [
+                        new LogPropertiesParameterInfo(
+                            "user",
+                            "UserDetails",
+                            new LogPropertiesConfiguration(OmitReferenceName: false, SkipNullProperties: false, Transitive: true),
+                            [
+                                new LogPropertyInfo("Name", "Name", "string", false, null),
+                                new LogPropertyInfo("Age", "Age", "int", false, null),
+                                new LogPropertyInfo("Address", "Address", "Address", false, [
+                                    new LogPropertyInfo("Street", "Street", "string", false, null),
+                                    new LogPropertyInfo("City", "City", "string", false, null),
+                                    new LogPropertyInfo("ZipCode", "ZipCode", "string", false, null)
+                                ])
+                            ]
+                        )
+                    ]
+                }
+            ],
+            Summary = new LoggerUsageExtractionSummary()
+        };
+
+        // Act
+        var markdown = generator.GenerateReport(result);
+
+        // Assert
+        Assert.NotNull(markdown);
+        Assert.Contains("# Logger Usage Report", markdown);
+        Assert.Contains("**LogProperties Parameters:**", markdown);
+        Assert.Contains("**Parameter:** `user` (`UserDetails`)", markdown);
+        Assert.Contains("**Configuration:** Transitive", markdown);
+        Assert.Contains("**Properties:** 3 properties extracted", markdown);
+        
+        // Verify hierarchical structure
+        Assert.Contains("- `Name`: `string`", markdown);
+        Assert.Contains("- `Age`: `int`", markdown);
+        Assert.Contains("- `Address`: `Address` ⮑", markdown);
+        
+        // Verify nested properties with indentation
+        Assert.Contains("    - `Street`: `string`", markdown);
+        Assert.Contains("    - `City`: `string`", markdown);
+        Assert.Contains("    - `ZipCode`: `string`", markdown);
+    }
+
+    [Fact]
+    public void GenerateReport_WithLogPropertiesCollections_ShowsCollectionTypes()
+    {
+        // Arrange
+        var generator = _factory.GetReportGenerator(".md");
+        var result = new LoggerUsageExtractionResult
+        {
+            Results = [
+                new LoggerMessageUsageInfo
+                {
+                    MethodName = "LogTeam",
+                    MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
+                    DeclaringTypeName = "MyApp.Logging.TeamLogger",
+                    LogLevel = Microsoft.Extensions.Logging.LogLevel.Information,
+                    MessageTemplate = "Team logged",
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "/Source/MyApp/Logging/TeamLogger.cs",
+                        StartLineNumber = 20,
+                        EndLineNumber = 20
+                    },
+                    EventId = new EventIdDetails(ConstantOrReference.Constant(200), ConstantOrReference.Constant("TeamDetails")),
+                    LogPropertiesParameters = [
+                        new LogPropertiesParameterInfo(
+                            "team",
+                            "Team",
+                            new LogPropertiesConfiguration(OmitReferenceName: false, SkipNullProperties: false, Transitive: true),
+                            [
+                                new LogPropertyInfo("TeamName", "TeamName", "string", false, null),
+                                new LogPropertyInfo("Members", "Members", "List", false, [
+                                    new LogPropertyInfo("Name", "Name", "string", false, null),
+                                    new LogPropertyInfo("Role", "Role", "string", false, null)
+                                ])
+                            ]
+                        )
+                    ]
+                }
+            ],
+            Summary = new LoggerUsageExtractionSummary()
+        };
+
+        // Act
+        var markdown = generator.GenerateReport(result);
+
+        // Assert
+        Assert.NotNull(markdown);
+        Assert.Contains("**LogProperties Parameters:**", markdown);
+        Assert.Contains("- `TeamName`: `string`", markdown);
+        Assert.Contains("- `Members`: `List` ⮑", markdown);
+        Assert.Contains("    - `Name`: `string`", markdown);
+        Assert.Contains("    - `Role`: `string`", markdown);
+    }
 }
