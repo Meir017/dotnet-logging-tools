@@ -170,12 +170,13 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         {
             markdown.AppendLine("**Parameters:**");
             markdown.AppendLine();
-            markdown.AppendLine("| Name | Type | Kind |");
-            markdown.AppendLine("|------|------|------|");
+            markdown.AppendLine("| Name | Type | Kind | Custom Tag Name |");
+            markdown.AppendLine("|------|------|------|-----------------|");
 
             foreach (var param in usage.MessageParameters)
             {
-                markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} |");
+                var customTag = !string.IsNullOrEmpty(param.CustomTagName) ? $"`{param.CustomTagName}`" : "-";
+                markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} | {customTag} |");
             }
             markdown.AppendLine();
         }
@@ -319,6 +320,12 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         {
             var nullableIndicator = property.IsNullable ? "?" : "";
             markdown.Append($"{indent}- `{property.Name}`: `{property.Type}{nullableIndicator}`");
+            
+            // Show custom tag name if present
+            if (!string.IsNullOrEmpty(property.CustomTagName))
+            {
+                markdown.Append($" → `{property.CustomTagName}`");
+            }
             
             // If there are nested properties, indicate collection or complex type
             if (property.NestedProperties != null && property.NestedProperties.Count > 0)

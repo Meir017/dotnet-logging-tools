@@ -7,10 +7,12 @@ namespace LoggerUsage.Models;
 /// <param name="OriginalName">The original property name from the source code.</param>
 /// <param name="Type">The type of the property.</param>
 /// <param name="IsNullable">Whether the property type is nullable.</param>
+/// <param name="CustomTagName">The custom tag name specified by TagNameAttribute, if any.</param>
 /// <param name="NestedProperties">Optional list of nested properties for transitive analysis. Null for primitive types.</param>
 public record class LogPropertyInfo(
     string Name,
     string OriginalName,
     string Type,
     bool IsNullable,
+    string? CustomTagName = null,
     List<LogPropertyInfo>? NestedProperties = null);
