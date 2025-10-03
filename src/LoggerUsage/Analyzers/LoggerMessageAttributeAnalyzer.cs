@@ -682,25 +682,15 @@ namespace LoggerUsage.Analyzers
                 return true;
             }
 
-            // Handle generic collections (List<T>, IEnumerable<T>, etc.)
+            // Check if the type implements IEnumerable<T>
             if (typeSymbol is INamedTypeSymbol namedType)
             {
-                // Check if the type itself is a generic collection interface
-                if (namedType.IsGenericType)
+                // Check if the type itself is IEnumerable<T>
+                if (namedType.IsGenericType && 
+                    SymbolEqualityComparer.Default.Equals(namedType.OriginalDefinition, loggingTypes.IEnumerableGeneric))
                 {
-                    var originalDefinition = namedType.OriginalDefinition;
-                    
-                    // Check for common collection types using symbol comparison
-                    if (SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.ListGeneric) ||
-                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IListGeneric) ||
-                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.ICollectionGeneric) ||
-                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IEnumerableGeneric) ||
-                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IReadOnlyListGeneric) ||
-                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IReadOnlyCollectionGeneric))
-                    {
-                        elementType = namedType.TypeArguments[0];
-                        return true;
-                    }
+                    elementType = namedType.TypeArguments[0];
+                    return true;
                 }
 
                 // Check if any of the interfaces implement IEnumerable<T>

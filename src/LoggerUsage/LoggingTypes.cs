@@ -35,13 +35,8 @@ namespace LoggerUsage
             Guid = compilation.GetTypeByMetadataName(typeof(Guid).FullName!)!;
             Uri = compilation.GetTypeByMetadataName(typeof(Uri).FullName!)!;
 
-            // Generic collection interfaces
+            // Generic collection interface for LogProperties analysis
             IEnumerableGeneric = compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T);
-            IListGeneric = compilation.GetTypeByMetadataName("System.Collections.Generic.IList`1")!;
-            ICollectionGeneric = compilation.GetTypeByMetadataName("System.Collections.Generic.ICollection`1")!;
-            IReadOnlyListGeneric = compilation.GetTypeByMetadataName("System.Collections.Generic.IReadOnlyList`1")!;
-            IReadOnlyCollectionGeneric = compilation.GetTypeByMetadataName("System.Collections.Generic.IReadOnlyCollection`1")!;
-            ListGeneric = compilation.GetTypeByMetadataName("System.Collections.Generic.List`1")!;
         }
 
         /// <summary>
@@ -138,30 +133,5 @@ namespace LoggerUsage
         /// Gets the generic IEnumerable&lt;T&gt; type symbol from System.Collections.Generic.
         /// </summary>
         public INamedTypeSymbol IEnumerableGeneric { get; }
-
-        /// <summary>
-        /// Gets the generic IList&lt;T&gt; type symbol from System.Collections.Generic.
-        /// </summary>
-        public INamedTypeSymbol IListGeneric { get; }
-
-        /// <summary>
-        /// Gets the generic ICollection&lt;T&gt; type symbol from System.Collections.Generic.
-        /// </summary>
-        public INamedTypeSymbol ICollectionGeneric { get; }
-
-        /// <summary>
-        /// Gets the generic IReadOnlyList&lt;T&gt; type symbol from System.Collections.Generic.
-        /// </summary>
-        public INamedTypeSymbol IReadOnlyListGeneric { get; }
-
-        /// <summary>
-        /// Gets the generic IReadOnlyCollection&lt;T&gt; type symbol from System.Collections.Generic.
-        /// </summary>
-        public INamedTypeSymbol IReadOnlyCollectionGeneric { get; }
-
-        /// <summary>
-        /// Gets the generic List&lt;T&gt; type symbol from System.Collections.Generic.
-        /// </summary>
-        public INamedTypeSymbol ListGeneric { get; }
     }
 }
