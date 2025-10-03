@@ -79,7 +79,10 @@ internal class MethodSignatureParameterExtractor : IParameterExtractor
                 }
             }
             
-            messageParameters.Add(new MessageParameter(parameterName, parameter.Type.ToPrettyDisplayString(), null, customTagName));
+            // Extract data classification information
+            var dataClassification = Utilities.DataClassificationExtractor.ExtractDataClassification(parameter, loggingTypes);
+            
+            messageParameters.Add(new MessageParameter(parameterName, parameter.Type.ToPrettyDisplayString(), null, customTagName, dataClassification));
         }
 
         return messageParameters.Count > 0;

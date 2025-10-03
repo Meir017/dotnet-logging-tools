@@ -731,6 +731,9 @@ namespace LoggerUsage.Analyzers
                             }
                         }
 
+                        // Extract data classification information
+                        var dataClassification = Utilities.DataClassificationExtractor.ExtractDataClassification(property, loggingTypes);
+
                         List<LogPropertyInfo>? nestedProperties = null;
 
                         // If Transitive is enabled, analyze nested properties for complex types
@@ -767,6 +770,7 @@ namespace LoggerUsage.Analyzers
                             GetSimpleTypeName(property.Type),
                             property.Type.CanBeReferencedByName && property.Type.NullableAnnotation == NullableAnnotation.Annotated,
                             customTagName,
+                            dataClassification,
                             nestedProperties);
 
                         properties.Add(logProperty);
