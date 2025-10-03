@@ -399,3 +399,5 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+# Temporary .NET 9 build files
+Directory.Build.props.bak
