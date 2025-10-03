@@ -30,6 +30,21 @@ The tool helps identify:
 - Log level distribution across your codebase
 - Template patterns and message structures
 
+### Advanced Telemetry Features
+
+The tool also provides advanced telemetry analysis capabilities:
+
+- **Custom Tag Names**: Detects and tracks custom tag names defined via `[TagName]` attribute for enhanced structured logging
+- **Tag Providers**: Analyzes tag providers using `[TagProvider]` attribute for dynamic tag generation and validates their configuration
+- **Data Classification**: Identifies data classification attributes (Public, Internal, Private, Sensitive) for compliance and redaction analysis
+- **Transitive Properties**: Analyzes nested properties when using `[LogProperties(Transitive = true)]` to track deep object hierarchies
+
+These features enable:
+- Better observability through standardized tag naming
+- Compliance validation for sensitive data logging
+- Understanding of nested property structures in logs
+- Identification of tag provider validation issues
+
 ## Usage
 
 ### CLI
@@ -52,6 +67,28 @@ dotnet run --project src/LoggerUsage.Cli -- src/LoggerUsage.Cli/LoggerUsage.Cli.
 and in dark mode:
 
 ![Logger Usage Report in dark mode, showing summary cards, most common parameter names, and parameter name inconsistencies, with a dark background and light text for accessibility.](assets/report-dark.png)
+
+### Report Features
+
+The generated reports include:
+
+**Summary Statistics:**
+- Total log usages and parameter counts
+- Classification breakdown (Public, Internal, Private, Sensitive)
+- Telemetry features usage (custom tag names, tag providers, transitive properties)
+- Parameter name inconsistencies
+
+**Detailed Analysis:**
+- Individual log usage details with file locations
+- Custom tag name mappings
+- Tag provider configurations and validation status
+- Nested property hierarchies for transitive analysis
+- Data classification annotations
+
+**Output Formats:**
+- **HTML**: Interactive report with collapsible sections, dark mode support, and filtering capabilities
+- **JSON**: Structured data with schema version 2.0 for programmatic analysis
+- **Markdown**: Human-readable report suitable for documentation
 
 ## Running the MCP Server Locally
 
