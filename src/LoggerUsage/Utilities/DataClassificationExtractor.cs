@@ -111,27 +111,25 @@ internal static class DataClassificationExtractor
     /// </summary>
     private static DataClassificationLevel DetermineClassificationLevel(string classificationValue, string attributeTypeName)
     {
-        // Normalize the value for comparison
-        var normalizedValue = classificationValue.ToLowerInvariant();
-
-        // Check for well-known classification levels
-        if (normalizedValue.Contains("public"))
+        // Check for well-known classification levels using the original value
+        if (classificationValue.Contains("Public", StringComparison.OrdinalIgnoreCase))
         {
             return DataClassificationLevel.Public;
         }
-        if (normalizedValue.Contains("internal"))
+        if (classificationValue.Contains("Internal", StringComparison.OrdinalIgnoreCase))
         {
             return DataClassificationLevel.Internal;
         }
-        if (normalizedValue.Contains("private"))
+        if (classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase))
         {
             return DataClassificationLevel.Private;
         }
-        if (normalizedValue.Contains("sensitive") || normalizedValue.Contains("confidential"))
+        if (classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) || 
+            classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase))
         {
             return DataClassificationLevel.Sensitive;
         }
-        if (normalizedValue.Contains("none") || normalizedValue == "0")
+        if (classificationValue.Contains("None", StringComparison.OrdinalIgnoreCase) || classificationValue == "0")
         {
             return DataClassificationLevel.None;
         }
