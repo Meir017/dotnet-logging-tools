@@ -48,6 +48,37 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         markdown.AppendLine($"| Parameter Name Inconsistencies | {summary.InconsistentParameterNames.Count} |");
         markdown.AppendLine();
 
+        // Classification statistics (if any)
+        if (summary.ClassificationStats.HasClassifications)
+        {
+            markdown.AppendLine("### 🔒 Data Classification Summary");
+            markdown.AppendLine();
+            markdown.AppendLine("| Metric | Value |");
+            markdown.AppendLine("|--------|-------|");
+            markdown.AppendLine($"| Classified Parameters | {summary.ClassificationStats.TotalClassifiedParameters} |");
+            markdown.AppendLine($"| Classified Properties | {summary.ClassificationStats.TotalClassifiedProperties} |");
+            markdown.AppendLine($"| Sensitive Data Percentage | {summary.ClassificationStats.SensitiveParameterPercentage:F1}% |");
+            markdown.AppendLine();
+
+            if (summary.ClassificationStats.ByLevel.Count > 0)
+            {
+                markdown.AppendLine("**Classification Breakdown:**");
+                markdown.AppendLine();
+                foreach (var kvp in summary.ClassificationStats.ByLevel.OrderBy(x => x.Key))
+                {
+                    var icon = GetClassificationIcon(kvp.Key);
+                    markdown.AppendLine($"- {icon} **{kvp.Key}**: {kvp.Value}");
+                }
+                markdown.AppendLine();
+            }
+
+            if (summary.ClassificationStats.SensitiveParameterPercentage > 0)
+            {
+                markdown.AppendLine("> ⚠️ **Compliance Note:** Some parameters contain sensitive data and may be redacted at runtime if redaction is enabled.");
+                markdown.AppendLine();
+            }
+        }
+
         // Most common parameter names
         if (summary.CommonParameterNames.Count > 0)
         {
@@ -68,6 +99,17 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             markdown.AppendLine();
         }
     }
+
+    private static string GetClassificationIcon(DataClassificationLevel level) => level switch
+    {
+        DataClassificationLevel.Public => "🌐",
+        DataClassificationLevel.Internal => "🏢",
+        DataClassificationLevel.Private => "🔒",
+        DataClassificationLevel.Sensitive => "🔐",
+        DataClassificationLevel.Custom => "🏷️",
+        DataClassificationLevel.None => "⚪",
+        _ => "❓"
+    };
 
     private static void GenerateTableOfContents(StringBuilder markdown, LoggerUsageExtractionResult loggerUsage)
     {
@@ -170,15 +212,27 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         {
             markdown.AppendLine("**Parameters:**");
             markdown.AppendLine();
-            markdown.AppendLine("| Name | Type | Kind | Custom Tag Name |");
-            markdown.AppendLine("|------|------|------|-----------------|");
+            markdown.AppendLine("| Name | Type | Kind | Custom Tag Name | Classification |");
+            markdown.AppendLine("|------|------|------|-----------------|----------------|");
 
             foreach (var param in usage.MessageParameters)
             {
                 var customTag = !string.IsNullOrEmpty(param.CustomTagName) ? $"`{param.CustomTagName}`" : "-";
-                markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} | {customTag} |");
+                var classification = param.DataClassification != null 
+                    ? $"{GetClassificationIcon(param.DataClassification.Level)} {param.DataClassification.Level}" 
+                    : "-";
+                markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} | {customTag} | {classification} |");
             }
             markdown.AppendLine();
+
+            // Add security note if any parameters are classified as sensitive
+            if (usage.MessageParameters.Any(p => p.DataClassification != null && 
+                (p.DataClassification.Level == DataClassificationLevel.Private || 
+                 p.DataClassification.Level == DataClassificationLevel.Sensitive)))
+            {
+                markdown.AppendLine("> 🔒 **Security Note:** This log contains sensitive data that may be redacted at runtime.");
+                markdown.AppendLine();
+            }
         }
 
         // LoggerMessage invocations
@@ -342,6 +396,13 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             if (!string.IsNullOrEmpty(property.CustomTagName))
             {
                 markdown.Append($" → `{property.CustomTagName}`");
+            }
+            
+            // Show data classification if present
+            if (property.DataClassification != null)
+            {
+                var icon = GetClassificationIcon(property.DataClassification.Level);
+                markdown.Append($" {icon} *{property.DataClassification.Level}*");
             }
             
             // If there are nested properties, indicate collection or complex type
