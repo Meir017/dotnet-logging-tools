@@ -1,3 +1,5 @@
+using FluentAssertions;
+
 namespace LoggerUsage.Cli.Tests;
 
 public class ProgramTests
@@ -20,7 +22,7 @@ public class ProgramTests
         var result = await worker.RunAsync();
 
         // Assert
-        Assert.Equal(-1, result);
+        result.Should().Be(-1);
     }
 
     [Theory]
@@ -36,7 +38,7 @@ public class ProgramTests
         var result = await worker.RunAsync();
 
         // Assert
-        Assert.Equal(0, result);
+        result.Should().Be(0);
     }
 
     [Theory]
@@ -62,8 +64,8 @@ public class ProgramTests
         var result = await worker.RunAsync();
 
         // Assert
-        Assert.Equal(0, result);
-        Assert.True(File.Exists(outputPath));
+        result.Should().Be(0);
+        File.Exists(outputPath).Should().BeTrue();
     }
 
     private static string FindPathFromGitRoot(params string[] paths)
