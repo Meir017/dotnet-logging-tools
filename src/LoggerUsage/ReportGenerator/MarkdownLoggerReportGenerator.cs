@@ -206,6 +206,45 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             }
         }
 
+        // LogProperties parameters
+        if (usage is LoggerMessageUsageInfo loggerMessageUsageWithLogProperties && loggerMessageUsageWithLogProperties.HasLogProperties)
+        {
+            markdown.AppendLine("**LogProperties Parameters:**");
+            markdown.AppendLine();
+            
+            foreach (var logPropsParam in loggerMessageUsageWithLogProperties.LogPropertiesParameters)
+            {
+                markdown.AppendLine($"- **Parameter:** `{logPropsParam.ParameterName}` (`{logPropsParam.ParameterType}`)");
+                
+                // Configuration
+                var configOptions = new List<string>();
+                if (logPropsParam.Configuration.OmitReferenceName)
+                {
+                    configOptions.Add("OmitReferenceName");
+                }
+                if (logPropsParam.Configuration.SkipNullProperties)
+                {
+                    configOptions.Add("SkipNullProperties");
+                }
+                if (logPropsParam.Configuration.Transitive)
+                {
+                    configOptions.Add("Transitive");
+                }
+                
+                if (configOptions.Count > 0)
+                {
+                    markdown.AppendLine($"  - **Configuration:** {string.Join(", ", configOptions)}");
+                }
+                
+                markdown.AppendLine($"  - **Properties:** {logPropsParam.Properties.Count} properties extracted");
+                
+                // Display properties in a tree structure
+                GeneratePropertyTree(markdown, logPropsParam.Properties, 2);
+                
+                markdown.AppendLine();
+            }
+        }
+
         // Location details
         var startPos = $"{usage.Location.StartLineNumber + 1}";
         var endPos = $"{usage.Location.EndLineNumber + 1}";
@@ -268,6 +307,31 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         "None" => "⚪",
         _ => "📝"
     };
+
+    /// <summary>
+    /// Generates a hierarchical tree structure for LogProperties
+    /// </summary>
+    private static void GeneratePropertyTree(StringBuilder markdown, List<LogPropertyInfo> properties, int indentLevel)
+    {
+        var indent = new string(' ', indentLevel * 2);
+        
+        foreach (var property in properties)
+        {
+            var nullableIndicator = property.IsNullable ? "?" : "";
+            markdown.Append($"{indent}- `{property.Name}`: `{property.Type}{nullableIndicator}`");
+            
+            // If there are nested properties, indicate collection or complex type
+            if (property.NestedProperties != null && property.NestedProperties.Count > 0)
+            {
+                markdown.AppendLine(" ⮑");
+                GeneratePropertyTree(markdown, property.NestedProperties, indentLevel + 1);
+            }
+            else
+            {
+                markdown.AppendLine();
+            }
+        }
+    }
 
     private static int GetLogLevelOrder(string logLevel) => logLevel switch
     {

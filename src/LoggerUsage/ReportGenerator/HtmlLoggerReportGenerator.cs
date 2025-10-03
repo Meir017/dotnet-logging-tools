@@ -330,6 +330,13 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                 {
                     invocationsHtml = "<span style='color:#888;font-size:0.9em;'>No invocations found</span>";
                 }
+
+                // Add LogProperties information
+                if (loggerMessageUsage.HasLogProperties)
+                {
+                    var logPropsHtml = GenerateLogPropertiesHtml(loggerMessageUsage.LogPropertiesParameters);
+                    invocationsHtml += logPropsHtml;
+                }
             }
 
             html += $@"
@@ -446,6 +453,78 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
 </script>
 </body>
 </html>";
+        return html;
+    }
+
+    private static string GenerateLogPropertiesHtml(List<LogPropertiesParameterInfo> logPropertiesParams)
+    {
+        var html = @"<div style='font-size:0.95em;margin-top:8px;'>
+            <strong>LogProperties</strong>
+            <details style='margin-top:4px;'>
+                <summary style='cursor:pointer;color:#0078d4;font-size:0.9em;'>Show Properties</summary>";
+
+        foreach (var param in logPropertiesParams)
+        {
+            html += $@"
+                <div style='margin:8px 0;padding:8px;background:#f8f9fa;border-left:3px solid #0078d4;'>
+                    <div style='font-weight:bold;'>{WebUtility.HtmlEncode(param.ParameterName)} <span style='color:#666;font-weight:normal;'>({WebUtility.HtmlEncode(param.ParameterType)})</span></div>";
+
+            // Configuration
+            var configOptions = new List<string>();
+            if (param.Configuration.OmitReferenceName)
+            {
+                configOptions.Add("OmitReferenceName");
+            }
+            if (param.Configuration.SkipNullProperties)
+            {
+                configOptions.Add("SkipNullProperties");
+            }
+            if (param.Configuration.Transitive)
+            {
+                configOptions.Add("Transitive");
+            }
+
+            if (configOptions.Count > 0)
+            {
+                html += $"<div style='font-size:0.85em;color:#666;margin-top:2px;'><em>{string.Join(", ", configOptions)}</em></div>";
+            }
+
+            html += "<ul style='margin:4px 0 0 0;padding-left:1.2em;font-size:0.9em;'>";
+            html += GeneratePropertyTreeHtml(param.Properties, 0);
+            html += "</ul>";
+            html += "</div>";
+        }
+
+        html += @"
+            </details>
+        </div>";
+
+        return html;
+    }
+
+    private static string GeneratePropertyTreeHtml(List<LogPropertyInfo> properties, int level)
+    {
+        var html = "";
+        var indent = level * 16;
+
+        foreach (var property in properties)
+        {
+            var nullableIndicator = property.IsNullable ? "?" : "";
+            html += $"<li style='margin-left:{indent}px;'>";
+            html += $"<code>{WebUtility.HtmlEncode(property.Name)}</code>: ";
+            html += $"<span style='color:#00796b;'>{WebUtility.HtmlEncode(property.Type)}{nullableIndicator}</span>";
+
+            if (property.NestedProperties != null && property.NestedProperties.Count > 0)
+            {
+                html += " ⮑";
+                html += "<ul style='margin:2px 0 0 0;padding-left:1em;'>";
+                html += GeneratePropertyTreeHtml(property.NestedProperties, level + 1);
+                html += "</ul>";
+            }
+
+            html += "</li>";
+        }
+
         return html;
     }
 }

@@ -28,6 +28,15 @@ namespace LoggerUsage
             KeyValuePairOfStringNullableObject = KeyValuePairGeneric.Construct(compilation.GetSpecialType(SpecialType.System_String), nullableObjectType);
             IEnumerableOfKeyValuePair = compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T).Construct(KeyValuePairOfStringNullableObject);
 
+            // Well-known simple types for LogProperties analysis
+            DateTime = compilation.GetTypeByMetadataName(typeof(DateTime).FullName!)!;
+            DateTimeOffset = compilation.GetTypeByMetadataName(typeof(DateTimeOffset).FullName!)!;
+            TimeSpan = compilation.GetTypeByMetadataName(typeof(TimeSpan).FullName!)!;
+            Guid = compilation.GetTypeByMetadataName(typeof(Guid).FullName!)!;
+            Uri = compilation.GetTypeByMetadataName(typeof(Uri).FullName!)!;
+
+            // Generic collection interface for LogProperties analysis
+            IEnumerableGeneric = compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T);
         }
 
         /// <summary>
@@ -94,5 +103,35 @@ namespace LoggerUsage
         /// Gets the logger extension modeler used for analyzing logger extension methods.
         /// </summary>
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
+
+        /// <summary>
+        /// Gets the DateTime type symbol from System.
+        /// </summary>
+        public INamedTypeSymbol DateTime { get; }
+
+        /// <summary>
+        /// Gets the DateTimeOffset type symbol from System.
+        /// </summary>
+        public INamedTypeSymbol DateTimeOffset { get; }
+
+        /// <summary>
+        /// Gets the TimeSpan type symbol from System.
+        /// </summary>
+        public INamedTypeSymbol TimeSpan { get; }
+
+        /// <summary>
+        /// Gets the Guid type symbol from System.
+        /// </summary>
+        public INamedTypeSymbol Guid { get; }
+
+        /// <summary>
+        /// Gets the Uri type symbol from System.
+        /// </summary>
+        public INamedTypeSymbol Uri { get; }
+
+        /// <summary>
+        /// Gets the generic IEnumerable&lt;T&gt; type symbol from System.Collections.Generic.
+        /// </summary>
+        public INamedTypeSymbol IEnumerableGeneric { get; }
     }
 }

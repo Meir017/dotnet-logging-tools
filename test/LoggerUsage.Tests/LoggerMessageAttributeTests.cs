@@ -1875,4 +1875,577 @@ namespace Consumer
     }
 
     #endregion
+
+    #region Transitive LogProperties Tests
+
+    [Fact]
+    public async Task LoggerMessage_WithTransitiveLogProperties_ExtractsNestedProperties()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User details logged""
+    )]
+    public static partial void LogUserDetails(ILogger logger, [LogProperties(Transitive = true)] UserDetails user);
+}
+
+public class UserDetails
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+    public Address Address { get; set; }
+}
+
+public class Address
+{
+    public string Street { get; set; }
+    public string City { get; set; }
+    public string ZipCode { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogUserDetails(ILogger logger, UserDetails user)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
+
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.True(logPropsParam.Configuration.Transitive);
+        Assert.Equal(3, logPropsParam.Properties.Count);
+
+        // Verify top-level properties
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Name" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Age" && p.Type == "int");
+        
+        // Verify nested Address property
+        var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Address");
+        Assert.NotNull(addressProp);
+        Assert.Equal("Address", addressProp.Type);
+        Assert.NotNull(addressProp.NestedProperties);
+        Assert.Equal(3, addressProp.NestedProperties.Count);
+        
+        // Verify nested Address properties
+        Assert.Contains(addressProp.NestedProperties, p => p.Name == "Street" && p.Type == "string");
+        Assert.Contains(addressProp.NestedProperties, p => p.Name == "City" && p.Type == "string");
+        Assert.Contains(addressProp.NestedProperties, p => p.Name == "ZipCode" && p.Type == "string");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithTransitiveFalse_DoesNotExtractNestedProperties()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""User details logged""
+    )]
+    public static partial void LogUserDetails(ILogger logger, [LogProperties(Transitive = false)] UserDetails user);
+}
+
+public class UserDetails
+{
+    public string Name { get; set; }
+    public Address Address { get; set; }
+}
+
+public class Address
+{
+    public string Street { get; set; }
+    public string City { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogUserDetails(ILogger logger, UserDetails user)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
+
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.False(logPropsParam.Configuration.Transitive);
+        Assert.Equal(2, logPropsParam.Properties.Count);
+
+        // Verify Address property has no nested properties
+        var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Address");
+        Assert.NotNull(addressProp);
+        Assert.Null(addressProp.NestedProperties);
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithMultiLevelNesting_ExtractsAllLevels()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Organization logged""
+    )]
+    public static partial void LogOrganization(ILogger logger, [LogProperties(Transitive = true)] Organization org);
+}
+
+public class Organization
+{
+    public string Name { get; set; }
+    public Department Department { get; set; }
+}
+
+public class Department
+{
+    public string DepartmentName { get; set; }
+    public Employee Manager { get; set; }
+}
+
+public class Employee
+{
+    public string EmployeeName { get; set; }
+    public int EmployeeId { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogOrganization(ILogger logger, Organization org)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.True(logPropsParam.Configuration.Transitive);
+
+        // Level 1: Organization
+        Assert.Equal(2, logPropsParam.Properties.Count);
+        var deptProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Department");
+        Assert.NotNull(deptProp);
+        Assert.NotNull(deptProp.NestedProperties);
+
+        // Level 2: Department
+        Assert.Equal(2, deptProp.NestedProperties.Count);
+        var managerProp = deptProp.NestedProperties.FirstOrDefault(p => p.Name == "Manager");
+        Assert.NotNull(managerProp);
+        Assert.NotNull(managerProp.NestedProperties);
+
+        // Level 3: Employee
+        Assert.Equal(2, managerProp.NestedProperties.Count);
+        Assert.Contains(managerProp.NestedProperties, p => p.Name == "EmployeeName" && p.Type == "string");
+        Assert.Contains(managerProp.NestedProperties, p => p.Name == "EmployeeId" && p.Type == "int");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithCircularReference_PreventInfiniteLoop()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Node logged""
+    )]
+    public static partial void LogNode(ILogger logger, [LogProperties(Transitive = true)] Node node);
+}
+
+public class Node
+{
+    public string Name { get; set; }
+    public Node Parent { get; set; }
+    public Node Child { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogNode(ILogger logger, Node node)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert - Should complete without infinite loop
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        Assert.True(logPropsParam.Configuration.Transitive);
+        
+        // Should have 3 properties: Name, Parent, Child
+        Assert.Equal(3, logPropsParam.Properties.Count);
+        
+        // Parent and Child should not have nested properties (circular reference detected)
+        var parentProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Parent");
+        var childProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Child");
+        Assert.NotNull(parentProp);
+        Assert.NotNull(childProp);
+        
+        // The circular reference detection should prevent nested properties
+        Assert.Null(parentProp.NestedProperties);
+        Assert.Null(childProp.NestedProperties);
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithArrayCollection_ExtractsElementType()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Team logged""
+    )]
+    public static partial void LogTeam(ILogger logger, [LogProperties(Transitive = true)] Team team);
+}
+
+public class Team
+{
+    public string TeamName { get; set; }
+    public Member[] Members { get; set; }
+}
+
+public class Member
+{
+    public string Name { get; set; }
+    public string Role { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogTeam(ILogger logger, Team team)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        
+        Assert.Equal(2, logPropsParam.Properties.Count);
+        
+        var membersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Members");
+        Assert.NotNull(membersProp);
+        Assert.Equal("Member[]", membersProp.Type);
+        
+        // Should extract properties from the element type
+        Assert.NotNull(membersProp.NestedProperties);
+        Assert.Equal(2, membersProp.NestedProperties.Count);
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "Name" && p.Type == "string");
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "Role" && p.Type == "string");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithListCollection_ExtractsElementType()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Team logged""
+    )]
+    public static partial void LogTeam(ILogger logger, [LogProperties(Transitive = true)] Team team);
+}
+
+public class Team
+{
+    public string TeamName { get; set; }
+    public List<Member> Members { get; set; }
+}
+
+public class Member
+{
+    public string Name { get; set; }
+    public int MemberId { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogTeam(ILogger logger, Team team)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        
+        var membersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Members");
+        Assert.NotNull(membersProp);
+        Assert.Equal("List", membersProp.Type);
+        
+        // Should extract properties from the element type
+        Assert.NotNull(membersProp.NestedProperties);
+        Assert.Equal(2, membersProp.NestedProperties.Count);
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "Name" && p.Type == "string");
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "MemberId" && p.Type == "int");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithIEnumerableCollection_ExtractsElementType()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Items logged""
+    )]
+    public static partial void LogItems(ILogger logger, [LogProperties(Transitive = true)] Container container);
+}
+
+public class Container
+{
+    public string ContainerName { get; set; }
+    public IEnumerable<Item> Items { get; set; }
+}
+
+public class Item
+{
+    public string ItemName { get; set; }
+    public decimal Price { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogItems(ILogger logger, Container container)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        
+        var itemsProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Items");
+        Assert.NotNull(itemsProp);
+        Assert.Equal("IEnumerable", itemsProp.Type);
+        
+        // Should extract properties from the element type
+        Assert.NotNull(itemsProp.NestedProperties);
+        Assert.Equal(2, itemsProp.NestedProperties.Count);
+        Assert.Contains(itemsProp.NestedProperties, p => p.Name == "ItemName" && p.Type == "string");
+        Assert.Contains(itemsProp.NestedProperties, p => p.Name == "Price" && p.Type == "decimal");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithInterfaceProperty_HandledGracefully()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Service logged""
+    )]
+    public static partial void LogService(ILogger logger, [LogProperties(Transitive = true)] Service service);
+}
+
+public class Service
+{
+    public string ServiceName { get; set; }
+    public IConfiguration Config { get; set; }
+}
+
+public interface IConfiguration
+{
+    string Setting { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogService(ILogger logger, Service service)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        
+        Assert.Equal(2, logPropsParam.Properties.Count);
+        
+        var configProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Config");
+        Assert.NotNull(configProp);
+        Assert.Equal("IConfiguration", configProp.Type);
+        
+        // Interface properties should have nested properties extracted
+        Assert.NotNull(configProp.NestedProperties);
+        Assert.Single(configProp.NestedProperties);
+        Assert.Contains(configProp.NestedProperties, p => p.Name == "Setting" && p.Type == "string");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithAbstractTypeProperty_HandledGracefully()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Entity logged""
+    )]
+    public static partial void LogEntity(ILogger logger, [LogProperties(Transitive = true)] Container container);
+}
+
+public class Container
+{
+    public string ContainerName { get; set; }
+    public BaseEntity Entity { get; set; }
+}
+
+public abstract class BaseEntity
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogEntity(ILogger logger, Container container)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        
+        Assert.Equal(2, logPropsParam.Properties.Count);
+        
+        var entityProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Entity");
+        Assert.NotNull(entityProp);
+        Assert.Equal("BaseEntity", entityProp.Type);
+        
+        // Abstract type properties should have nested properties extracted
+        Assert.NotNull(entityProp.NestedProperties);
+        Assert.Equal(2, entityProp.NestedProperties.Count);
+        Assert.Contains(entityProp.NestedProperties, p => p.Name == "Id" && p.Type == "int");
+        Assert.Contains(entityProp.NestedProperties, p => p.Name == "Name" && p.Type == "string");
+    }
+
+    [Fact]
+    public async Task LoggerMessage_WithPrimitiveCollections_NoNestedProperties()
+    {
+        // Arrange
+        var code = @"using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+
+namespace TestNamespace;
+
+public static partial class Log
+{
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = ""Data logged""
+    )]
+    public static partial void LogData(ILogger logger, [LogProperties(Transitive = true)] DataContainer data);
+}
+
+public class DataContainer
+{
+    public string Name { get; set; }
+    public List<string> Tags { get; set; }
+    public int[] Numbers { get; set; }
+}" + CreateMockGeneratedCode("Log", "LogData(ILogger logger, DataContainer data)");
+
+        var compilation = await TestUtils.CreateCompilationAsync(code);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        // Act
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        // Assert
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        var logPropsParam = usage.LogPropertiesParameters[0];
+        
+        Assert.Equal(3, logPropsParam.Properties.Count);
+        
+        // Primitive collections should not have nested properties
+        var tagsProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Tags");
+        var numbersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Numbers");
+        
+        Assert.NotNull(tagsProp);
+        Assert.NotNull(numbersProp);
+        Assert.Null(tagsProp.NestedProperties);
+        Assert.Null(numbersProp.NestedProperties);
+    }
+
+    #endregion
 }
