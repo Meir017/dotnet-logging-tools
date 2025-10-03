@@ -385,4 +385,99 @@ public class MarkdownLoggerReportGeneratorTests
         Assert.Contains("    - `Name`: `string`", markdown);
         Assert.Contains("    - `Role`: `string`", markdown);
     }
+
+    [Fact]
+    public void GenerateReport_WithTelemetryFeatures_IncludesTelemetrySection()
+    {
+        // Arrange
+        var generator = _factory.GetReportGenerator(".md");
+        var result = new LoggerUsageExtractionResult
+        {
+            Results = [],
+            Summary = new LoggerUsageExtractionSummary
+            {
+                TelemetryStats = new LoggerUsageExtractionSummary.TelemetryStatistics
+                {
+                    ParametersWithCustomTagNames = 3,
+                    PropertiesWithCustomTagNames = 5,
+                    ParametersWithTagProviders = 2,
+                    TotalTransitiveProperties = 10,
+                    CustomTagNameMappings =
+                    [
+                        new LoggerUsageExtractionSummary.CustomTagNameMapping("userId", "user.id", "Parameter"),
+                        new LoggerUsageExtractionSummary.CustomTagNameMapping("userName", "user.name", "Parameter"),
+                        new LoggerUsageExtractionSummary.CustomTagNameMapping("Id", "user.identifier", "Property")
+                    ],
+                    TagProviders =
+                    [
+                        new TagProviderInfo(
+                            "request",
+                            "MyApp.Providers.RequestProvider",
+                            "ProvideTags",
+                            OmitReferenceName: false,
+                            IsValid: true
+                        )
+                    ]
+                }
+            }
+        };
+
+        // Act
+        var markdown = generator.GenerateReport(result);
+
+        // Assert
+        Assert.NotNull(markdown);
+        Assert.Contains("### 🏷️ Telemetry Features Summary", markdown);
+        Assert.Contains("| Parameters with Custom Tag Names | 3 |", markdown);
+        Assert.Contains("| Properties with Custom Tag Names | 5 |", markdown);
+        Assert.Contains("| Parameters with Tag Providers | 2 |", markdown);
+        Assert.Contains("| Transitive Properties | 10 |", markdown);
+        
+        // Custom tag mappings
+        Assert.Contains("**Custom Tag Name Mappings:**", markdown);
+        Assert.Contains("| `userId` | `user.id` | Parameter |", markdown);
+        Assert.Contains("| `userName` | `user.name` | Parameter |", markdown);
+        
+        // Tag providers
+        Assert.Contains("**Tag Providers:**", markdown);
+        Assert.Contains("| `request` | `MyApp.Providers.RequestProvider` | `ProvideTags` | False | ✓ |", markdown);
+    }
+
+    [Fact]
+    public void GenerateReport_WithInvalidTagProvider_ShowsValidationWarning()
+    {
+        // Arrange
+        var generator = _factory.GetReportGenerator(".md");
+        var result = new LoggerUsageExtractionResult
+        {
+            Results = [],
+            Summary = new LoggerUsageExtractionSummary
+            {
+                TelemetryStats = new LoggerUsageExtractionSummary.TelemetryStatistics
+                {
+                    ParametersWithTagProviders = 1,
+                    TagProviders =
+                    [
+                        new TagProviderInfo(
+                            "data",
+                            "MyApp.InvalidProvider",
+                            "GetTags",
+                            OmitReferenceName: false,
+                            IsValid: false,
+                            ValidationMessage: "Provider method not found"
+                        )
+                    ]
+                }
+            }
+        };
+
+        // Act
+        var markdown = generator.GenerateReport(result);
+
+        // Assert
+        Assert.NotNull(markdown);
+        Assert.Contains("**Tag Providers:**", markdown);
+        Assert.Contains("| `data` | `MyApp.InvalidProvider` | `GetTags` | False | ⚠️ |", markdown);
+        Assert.Contains("**Validation:** Provider method not found", markdown);
+    }
 }
