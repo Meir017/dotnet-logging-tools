@@ -295,7 +295,10 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                         string[] builtInTypes = ["bool", "byte", "sbyte", "char", "decimal", "double", "float", "int", "uint", "long", "ulong", "object", "short", "ushort", "string", "void"];
                         bool isBuiltIn = builtInTypes.Contains(type) || type.StartsWith("System.");
                         var typeClass = isBuiltIn ? "param-type-builtin" : "param-type-other";
-                        return $"<li><span class='param-name'>{WebUtility.HtmlEncode(p.Name)}</span>: <span class='{typeClass}'>{WebUtility.HtmlEncode(type)}</span> [<span class='param-kind'>{WebUtility.HtmlEncode(p.Kind)}</span>]</li>";
+                        var customTagHtml = !string.IsNullOrEmpty(p.CustomTagName) 
+                            ? $" <span style='color:#666;'>→ <code>{WebUtility.HtmlEncode(p.CustomTagName)}</code></span>" 
+                            : "";
+                        return $"<li><span class='param-name'>{WebUtility.HtmlEncode(p.Name)}</span>: <span class='{typeClass}'>{WebUtility.HtmlEncode(type)}</span> [<span class='param-kind'>{WebUtility.HtmlEncode(p.Kind)}</span>]{customTagHtml}</li>";
                     })) +
                     "</ul>";
             }
@@ -513,6 +516,12 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             html += $"<li style='margin-left:{indent}px;'>";
             html += $"<code>{WebUtility.HtmlEncode(property.Name)}</code>: ";
             html += $"<span style='color:#00796b;'>{WebUtility.HtmlEncode(property.Type)}{nullableIndicator}</span>";
+            
+            // Show custom tag name if present
+            if (!string.IsNullOrEmpty(property.CustomTagName))
+            {
+                html += $" <span style='color:#666;'>→ <code>{WebUtility.HtmlEncode(property.CustomTagName)}</code></span>";
+            }
 
             if (property.NestedProperties != null && property.NestedProperties.Count > 0)
             {
