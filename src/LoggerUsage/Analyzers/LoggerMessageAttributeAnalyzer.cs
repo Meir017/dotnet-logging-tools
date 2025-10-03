@@ -461,7 +461,7 @@ namespace LoggerUsage.Analyzers
                     var configuration = ExtractLogPropertiesConfiguration(logPropertiesAttribute);
                     
                     // Extract properties from the parameter type with transitive support
-                    var properties = ExtractPropertiesFromType(parameter.Type, configuration, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
+                    var properties = ExtractPropertiesFromType(parameter.Type, configuration, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default), loggingTypes);
 
                     var logPropertiesParameter = new LogPropertiesParameterInfo(
                         parameter.Name,
@@ -528,11 +528,13 @@ namespace LoggerUsage.Analyzers
         /// <param name="typeSymbol">The type to extract properties from</param>
         /// <param name="configuration">LogProperties configuration including Transitive setting</param>
         /// <param name="visitedTypes">Set of already visited types to prevent circular references</param>
+        /// <param name="loggingTypes">Logging types for symbol comparison</param>
         /// <param name="depth">Current depth level for nested analysis</param>
         private static List<LogPropertyInfo> ExtractPropertiesFromType(
             ITypeSymbol typeSymbol, 
             LogPropertiesConfiguration configuration,
             HashSet<ITypeSymbol> visitedTypes,
+            LoggingTypes loggingTypes,
             int depth = 0)
         {
             var properties = new List<LogPropertyInfo>();
@@ -570,24 +572,24 @@ namespace LoggerUsage.Analyzers
                         List<LogPropertyInfo>? nestedProperties = null;
 
                         // If Transitive is enabled, analyze nested properties for complex types
-                        if (configuration.Transitive && IsComplexType(property.Type))
+                        if (configuration.Transitive && IsComplexType(property.Type, loggingTypes))
                         {
                             // Create a new visited set for this branch to allow the same type in different branches
                             var branchVisitedTypes = new HashSet<ITypeSymbol>(visitedTypes, SymbolEqualityComparer.Default);
                             
                             // Handle collection types
-                            if (IsCollectionType(property.Type, out var elementType) && elementType != null)
+                            if (IsCollectionType(property.Type, loggingTypes, out var elementType) && elementType != null)
                             {
                                 // Only add nested properties if the element type is complex
-                                if (IsComplexType(elementType))
+                                if (IsComplexType(elementType, loggingTypes))
                                 {
-                                    nestedProperties = ExtractPropertiesFromType(elementType, configuration, branchVisitedTypes, depth + 1);
+                                    nestedProperties = ExtractPropertiesFromType(elementType, configuration, branchVisitedTypes, loggingTypes, depth + 1);
                                 }
                             }
                             // Handle regular complex types
                             else
                             {
-                                nestedProperties = ExtractPropertiesFromType(property.Type, configuration, branchVisitedTypes, depth + 1);
+                                nestedProperties = ExtractPropertiesFromType(property.Type, configuration, branchVisitedTypes, loggingTypes, depth + 1);
                             }
 
                             // Only include nested properties if we found any
@@ -618,7 +620,7 @@ namespace LoggerUsage.Analyzers
         /// <summary>
         /// Determines if a type is a complex type (not a primitive or string)
         /// </summary>
-        private static bool IsComplexType(ITypeSymbol typeSymbol)
+        private static bool IsComplexType(ITypeSymbol typeSymbol, LoggingTypes loggingTypes)
         {
             // Unwrap nullable types
             if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated && typeSymbol is INamedTypeSymbol { IsGenericType: true } nullableType)
@@ -630,7 +632,7 @@ namespace LoggerUsage.Analyzers
             }
 
             // Check if it's a collection - collections are treated separately
-            if (IsCollectionType(typeSymbol, out _))
+            if (IsCollectionType(typeSymbol, loggingTypes, out _))
             {
                 return true; // Collections are complex so they get analyzed for nested properties
             }
@@ -647,13 +649,12 @@ namespace LoggerUsage.Analyzers
                 return false;
             }
 
-            // Check for well-known simple types
-            var fullName = typeSymbol.ToDisplayString();
-            if (fullName == "System.DateTime" || 
-                fullName == "System.DateTimeOffset" ||
-                fullName == "System.TimeSpan" ||
-                fullName == "System.Guid" ||
-                fullName == "System.Uri")
+            // Check for well-known simple types using symbol comparison
+            if (SymbolEqualityComparer.Default.Equals(typeSymbol, loggingTypes.DateTime) ||
+                SymbolEqualityComparer.Default.Equals(typeSymbol, loggingTypes.DateTimeOffset) ||
+                SymbolEqualityComparer.Default.Equals(typeSymbol, loggingTypes.TimeSpan) ||
+                SymbolEqualityComparer.Default.Equals(typeSymbol, loggingTypes.Guid) ||
+                SymbolEqualityComparer.Default.Equals(typeSymbol, loggingTypes.Uri))
             {
                 return false;
             }
@@ -664,9 +665,15 @@ namespace LoggerUsage.Analyzers
         /// <summary>
         /// Determines if a type is a collection type and extracts the element type
         /// </summary>
-        private static bool IsCollectionType(ITypeSymbol typeSymbol, out ITypeSymbol? elementType)
+        private static bool IsCollectionType(ITypeSymbol typeSymbol, LoggingTypes loggingTypes, out ITypeSymbol? elementType)
         {
             elementType = null;
+
+            // String is not considered a collection for our purposes
+            if (typeSymbol.SpecialType == SpecialType.System_String)
+            {
+                return false;
+            }
 
             // Handle arrays
             if (typeSymbol is IArrayTypeSymbol arrayType)
@@ -676,20 +683,35 @@ namespace LoggerUsage.Analyzers
             }
 
             // Handle generic collections (List<T>, IEnumerable<T>, etc.)
-            if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
+            if (typeSymbol is INamedTypeSymbol namedType)
             {
-                var originalDefinition = namedType.OriginalDefinition.ToDisplayString();
-                
-                // Check for common collection types
-                if (originalDefinition.StartsWith("System.Collections.Generic.List<") ||
-                    originalDefinition.StartsWith("System.Collections.Generic.IList<") ||
-                    originalDefinition.StartsWith("System.Collections.Generic.ICollection<") ||
-                    originalDefinition.StartsWith("System.Collections.Generic.IEnumerable<") ||
-                    originalDefinition.StartsWith("System.Collections.Generic.IReadOnlyList<") ||
-                    originalDefinition.StartsWith("System.Collections.Generic.IReadOnlyCollection<"))
+                // Check if the type itself is a generic collection interface
+                if (namedType.IsGenericType)
                 {
-                    elementType = namedType.TypeArguments[0];
-                    return true;
+                    var originalDefinition = namedType.OriginalDefinition;
+                    
+                    // Check for common collection types using symbol comparison
+                    if (SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.ListGeneric) ||
+                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IListGeneric) ||
+                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.ICollectionGeneric) ||
+                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IEnumerableGeneric) ||
+                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IReadOnlyListGeneric) ||
+                        SymbolEqualityComparer.Default.Equals(originalDefinition, loggingTypes.IReadOnlyCollectionGeneric))
+                    {
+                        elementType = namedType.TypeArguments[0];
+                        return true;
+                    }
+                }
+
+                // Check if any of the interfaces implement IEnumerable<T>
+                foreach (var iface in namedType.AllInterfaces)
+                {
+                    if (iface.IsGenericType && 
+                        SymbolEqualityComparer.Default.Equals(iface.OriginalDefinition, loggingTypes.IEnumerableGeneric))
+                    {
+                        elementType = iface.TypeArguments[0];
+                        return true;
+                    }
                 }
             }
 
