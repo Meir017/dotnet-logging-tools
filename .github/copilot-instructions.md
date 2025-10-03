@@ -5,7 +5,7 @@ This document provides comprehensive guidelines for developing and maintaining t
 
 ## Project Overview
 
-The LoggerUsage library is a sophisticated static code analysis tool that extracts and analyzes logging patterns from .NET projects. It focuses on Microsoft.Extensions.Logging patterns and provides insights into logging consistency and usage.
+The LoggerUsage library is a sophisticated static code analysis tool that extracts and analyzes logging patterns from .NET projects. It targets .NET 10 and focuses on Microsoft.Extensions.Logging patterns, providing insights into logging consistency and usage.
 
 ### Key Components
 
