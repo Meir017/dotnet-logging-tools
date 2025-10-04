@@ -127,6 +127,9 @@ public class LoggerUsageSummarizer
 
         // Calculate classification statistics
         PopulateClassificationStatistics(extractionResult);
+
+        // Calculate telemetry statistics
+        PopulateTelemetryStatistics(extractionResult);
     }
 
     /// <summary>
@@ -196,6 +199,89 @@ public class LoggerUsageSummarizer
             if (property.NestedProperties != null && property.NestedProperties.Count > 0)
             {
                 CountClassifiedProperties(property.NestedProperties, classificationCounts, stats);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Populates telemetry statistics from the extraction results.
+    /// </summary>
+    private void PopulateTelemetryStatistics(LoggerUsageExtractionResult extractionResult)
+    {
+        var stats = extractionResult.Summary.TelemetryStats;
+        var customTagNameMappings = new HashSet<LoggerUsageExtractionSummary.CustomTagNameMapping>();
+        var tagProviders = new Dictionary<string, TagProviderInfo>();
+
+        foreach (var usage in extractionResult.Results)
+        {
+            // Count parameters with custom tag names
+            if (usage.MessageParameters != null)
+            {
+                foreach (var param in usage.MessageParameters)
+                {
+                    if (!string.IsNullOrEmpty(param.CustomTagName))
+                    {
+                        stats.ParametersWithCustomTagNames++;
+                        customTagNameMappings.Add(new LoggerUsageExtractionSummary.CustomTagNameMapping(
+                            param.Name,
+                            param.CustomTagName,
+                            "Parameter"
+                        ));
+                    }
+                }
+            }
+
+            // Process LogProperties parameters for tag names, providers, and transitive properties
+            if (usage is LoggerMessageUsageInfo loggerMessageUsage && loggerMessageUsage.LogPropertiesParameters != null)
+            {
+                foreach (var logPropertiesParam in loggerMessageUsage.LogPropertiesParameters)
+                {
+                    // Count tag providers
+                    if (logPropertiesParam.TagProvider != null)
+                    {
+                        stats.ParametersWithTagProviders++;
+                        var key = $"{logPropertiesParam.TagProvider.ParameterName}:{logPropertiesParam.TagProvider.ProviderTypeName}";
+                        if (!tagProviders.ContainsKey(key))
+                        {
+                            tagProviders[key] = logPropertiesParam.TagProvider;
+                        }
+                    }
+
+                    // Count properties with custom tag names and transitive properties
+                    CountPropertiesWithTelemetryFeatures(logPropertiesParam.Properties, stats, customTagNameMappings);
+                }
+            }
+        }
+
+        stats.CustomTagNameMappings = [.. customTagNameMappings.OrderBy(m => m.OriginalName)];
+        stats.TagProviders = [.. tagProviders.Values.OrderBy(tp => tp.ParameterName)];
+    }
+
+    /// <summary>
+    /// Recursively counts properties with custom tag names and transitive properties.
+    /// </summary>
+    private void CountPropertiesWithTelemetryFeatures(
+        List<LogPropertyInfo> properties,
+        LoggerUsageExtractionSummary.TelemetryStatistics stats,
+        HashSet<LoggerUsageExtractionSummary.CustomTagNameMapping> customTagNameMappings)
+    {
+        foreach (var property in properties)
+        {
+            if (!string.IsNullOrEmpty(property.CustomTagName))
+            {
+                stats.PropertiesWithCustomTagNames++;
+                customTagNameMappings.Add(new LoggerUsageExtractionSummary.CustomTagNameMapping(
+                    property.OriginalName,
+                    property.CustomTagName,
+                    "Property"
+                ));
+            }
+
+            // Count transitive properties (nested properties)
+            if (property.NestedProperties != null && property.NestedProperties.Count > 0)
+            {
+                stats.TotalTransitiveProperties += property.NestedProperties.Count;
+                CountPropertiesWithTelemetryFeatures(property.NestedProperties, stats, customTagNameMappings);
             }
         }
     }

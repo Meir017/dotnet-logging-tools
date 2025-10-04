@@ -36,6 +36,11 @@ public class LoggerUsageExtractionSummary
     public ClassificationStatistics ClassificationStats { get; set; } = new();
 
     /// <summary>
+    /// Gets or sets telemetry statistics for custom tag names, tag providers, and transitive properties.
+    /// </summary>
+    public TelemetryStatistics TelemetryStats { get; set; } = new();
+
+    /// <summary>
     /// Represents a parameter name and its associated type.
     /// </summary>
     /// <param name="Name">The parameter name.</param>
@@ -87,4 +92,57 @@ public class LoggerUsageExtractionSummary
         /// </summary>
         public bool HasClassifications => TotalClassifiedParameters > 0 || TotalClassifiedProperties > 0;
     }
+
+    /// <summary>
+    /// Contains telemetry statistics for custom tag names, tag providers, and transitive properties.
+    /// </summary>
+    public class TelemetryStatistics
+    {
+        /// <summary>
+        /// Gets or sets the total number of parameters with custom tag names.
+        /// </summary>
+        public int ParametersWithCustomTagNames { get; set; }
+
+        /// <summary>
+        /// Gets or sets the total number of properties with custom tag names.
+        /// </summary>
+        public int PropertiesWithCustomTagNames { get; set; }
+
+        /// <summary>
+        /// Gets or sets the total number of parameters with tag providers.
+        /// </summary>
+        public int ParametersWithTagProviders { get; set; }
+
+        /// <summary>
+        /// Gets or sets the total number of transitive properties extracted.
+        /// </summary>
+        public int TotalTransitiveProperties { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of unique custom tag name mappings found (original name -> custom tag name).
+        /// </summary>
+        public List<CustomTagNameMapping> CustomTagNameMappings { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets the list of tag provider information found.
+        /// </summary>
+        public List<TagProviderInfo> TagProviders { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets whether any telemetry features were found in the analysis.
+        /// </summary>
+        public bool HasTelemetryFeatures => 
+            ParametersWithCustomTagNames > 0 || 
+            PropertiesWithCustomTagNames > 0 || 
+            ParametersWithTagProviders > 0 || 
+            TotalTransitiveProperties > 0;
+    }
+
+    /// <summary>
+    /// Represents a custom tag name mapping.
+    /// </summary>
+    /// <param name="OriginalName">The original parameter or property name.</param>
+    /// <param name="CustomTagName">The custom tag name specified by TagNameAttribute.</param>
+    /// <param name="Context">The context where this mapping was found (e.g., "Parameter", "Property").</param>
+    public record struct CustomTagNameMapping(string OriginalName, string CustomTagName, string Context);
 }

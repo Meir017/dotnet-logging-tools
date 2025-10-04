@@ -186,6 +186,71 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             }
             summaryBuilder.AppendLine("  </div>");
         }
+        
+        // Telemetry Features Summary (if any)
+        if (loggerUsage.Summary.TelemetryStats.HasTelemetryFeatures)
+        {
+            summaryBuilder.AppendLine("  <div style='background:#fff;border-radius:8px;box-shadow:0 1px 4px #0001;padding:1em 1.5em;margin-bottom:1.5em;'>");
+            summaryBuilder.AppendLine("    <h3 style='margin-top:0;margin-bottom:0.8em;font-size:1.2em;color:#6a1b9a;'><span style='font-size:1.3em;'>🏷️</span> Telemetry Features Summary</h3>");
+            summaryBuilder.AppendLine("    <div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1em;margin-bottom:0.8em;'>");
+            summaryBuilder.AppendLine($"      <div><strong>Parameters with Custom Tags:</strong> {loggerUsage.Summary.TelemetryStats.ParametersWithCustomTagNames}</div>");
+            summaryBuilder.AppendLine($"      <div><strong>Properties with Custom Tags:</strong> {loggerUsage.Summary.TelemetryStats.PropertiesWithCustomTagNames}</div>");
+            summaryBuilder.AppendLine($"      <div><strong>Tag Providers:</strong> {loggerUsage.Summary.TelemetryStats.ParametersWithTagProviders}</div>");
+            summaryBuilder.AppendLine($"      <div><strong>Transitive Properties:</strong> {loggerUsage.Summary.TelemetryStats.TotalTransitiveProperties}</div>");
+            summaryBuilder.AppendLine("    </div>");
+            
+            // Custom Tag Name Mappings
+            if (loggerUsage.Summary.TelemetryStats.CustomTagNameMappings.Count > 0)
+            {
+                summaryBuilder.AppendLine("    <details style='margin-top:1em;'>");
+                summaryBuilder.AppendLine("      <summary style='cursor:pointer;font-weight:600;color:#6a1b9a;margin-bottom:0.5em;'>Custom Tag Name Mappings</summary>");
+                summaryBuilder.AppendLine("      <div style='display:flex;flex-wrap:wrap;gap:0.5em;margin-top:0.5em;max-height:200px;overflow-y:auto;'>");
+                foreach (var mapping in loggerUsage.Summary.TelemetryStats.CustomTagNameMappings.Take(30))
+                {
+                    summaryBuilder.AppendLine($"        <span style='background:#f3e5f5;color:#6a1b9a;border-radius:4px;padding:4px 10px;font-size:0.9em;border:1px solid #ce93d8;'>");
+                    summaryBuilder.AppendLine($"          <code>{WebUtility.HtmlEncode(mapping.OriginalName)}</code> → <code>{WebUtility.HtmlEncode(mapping.CustomTagName)}</code>");
+                    summaryBuilder.AppendLine($"          <span style='color:#9c27b0;font-size:0.85em;margin-left:4px;'>({mapping.Context})</span>");
+                    summaryBuilder.AppendLine("        </span>");
+                }
+                if (loggerUsage.Summary.TelemetryStats.CustomTagNameMappings.Count > 30)
+                {
+                    summaryBuilder.AppendLine($"        <span style='color:#888;font-size:0.9em;'>+{loggerUsage.Summary.TelemetryStats.CustomTagNameMappings.Count - 30} more</span>");
+                }
+                summaryBuilder.AppendLine("      </div>");
+                summaryBuilder.AppendLine("    </details>");
+            }
+            
+            // Tag Providers
+            if (loggerUsage.Summary.TelemetryStats.TagProviders.Count > 0)
+            {
+                summaryBuilder.AppendLine("    <details style='margin-top:1em;'>");
+                summaryBuilder.AppendLine("      <summary style='cursor:pointer;font-weight:600;color:#6a1b9a;margin-bottom:0.5em;'>Tag Providers</summary>");
+                summaryBuilder.AppendLine("      <table style='width:100%;font-size:0.9em;margin-top:0.5em;'>");
+                summaryBuilder.AppendLine("        <thead><tr><th>Parameter</th><th>Provider</th><th>Method</th><th>Status</th></tr></thead>");
+                summaryBuilder.AppendLine("        <tbody>");
+                foreach (var provider in loggerUsage.Summary.TelemetryStats.TagProviders)
+                {
+                    var statusIcon = provider.IsValid ? "✓" : "⚠️";
+                    var statusColor = provider.IsValid ? "#43a047" : "#f9a825";
+                    summaryBuilder.AppendLine($"          <tr>");
+                    summaryBuilder.AppendLine($"            <td><code>{WebUtility.HtmlEncode(provider.ParameterName)}</code></td>");
+                    summaryBuilder.AppendLine($"            <td><code>{WebUtility.HtmlEncode(provider.ProviderTypeName)}</code></td>");
+                    summaryBuilder.AppendLine($"            <td><code>{WebUtility.HtmlEncode(provider.ProviderMethodName)}</code></td>");
+                    summaryBuilder.AppendLine($"            <td style='color:{statusColor};'>{statusIcon} {(provider.IsValid ? "Valid" : "Invalid")}</td>");
+                    summaryBuilder.AppendLine($"          </tr>");
+                    if (!provider.IsValid && !string.IsNullOrEmpty(provider.ValidationMessage))
+                    {
+                        summaryBuilder.AppendLine($"          <tr><td colspan='4' style='font-size:0.85em;color:#f9a825;padding-left:2em;'>⚠️ {WebUtility.HtmlEncode(provider.ValidationMessage)}</td></tr>");
+                    }
+                }
+                summaryBuilder.AppendLine("        </tbody>");
+                summaryBuilder.AppendLine("      </table>");
+                summaryBuilder.AppendLine("    </details>");
+            }
+            
+            summaryBuilder.AppendLine("  </div>");
+        }
+        
         // Most Common Parameter Names
         summaryBuilder.AppendLine("  <div class='summary-mostcommon' style='font-size:1.1em;color:#555;'><div style='margin-bottom:0.5em;'><b>Most Common Parameter Names:</b></div><div style='display:flex;flex-wrap:wrap;gap:0.5em 1em;margin-top:0.5em;'>");
         var topParams = loggerUsage.Summary.CommonParameterNames.Take(8).ToList();
