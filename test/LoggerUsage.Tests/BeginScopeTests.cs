@@ -1,3 +1,4 @@
+using FluentAssertions;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
 
@@ -37,13 +38,13 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2);
         
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Equal("Processing request {RequestId}", beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().Be("Processing request {RequestId}");
     }
 
     [Fact]
@@ -69,13 +70,13 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2);
         
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
     }
 
     [Theory]
@@ -117,13 +118,13 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
+        loggerUsages.Should().NotBeNull();
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
+        beginScopeUsage.Should().NotBeNull();
         
-        var parameters = beginScopeUsage.MessageParameters;
-        Assert.Equal(expectedParameters.Count, parameters.Count);
-        Assert.Equal(expectedParameters, parameters);
+        var parameters = beginScopeUsage!.MessageParameters;
+        parameters.Should().HaveCount(expectedParameters.Count);
+        parameters.Should().BeEquivalentTo(expectedParameters);
     }
 
     public static TheoryData<string, string[], List<MessageParameter>> BeginScopeMessageParameterCases() => new()
@@ -188,12 +189,11 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal("Processing request {RequestId}", beginScopeUsage.MessageTemplate);
-        Assert.Single(beginScopeUsage.MessageParameters);
-        Assert.Equal("RequestId", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("int", beginScopeUsage.MessageParameters[0].Type);
-        Assert.Equal("Constant", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageTemplate.Should().Be("Processing request {RequestId}");
+        beginScopeUsage!.MessageParameters.Should().ContainSingle()
+            .Which.Should().Match<MessageParameter>(p => 
+                p.Name == "RequestId" && p.Type == "int" && p.Kind == "Constant");
     }
 
     [Fact]
@@ -220,21 +220,21 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal("User {UserId} processing request {RequestId} with status {Status}", beginScopeUsage.MessageTemplate);
-        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageTemplate.Should().Be("User {UserId} processing request {RequestId} with status {Status}");
+        beginScopeUsage!.MessageParameters.Should().HaveCount(3);
         
-        Assert.Equal("UserId", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
-        Assert.Equal("Constant", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage!.MessageParameters[0].Name.Should().Be("UserId");
+        beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
+        beginScopeUsage!.MessageParameters[0].Kind.Should().Be("Constant");
         
-        Assert.Equal("RequestId", beginScopeUsage.MessageParameters[1].Name);
-        Assert.Equal("int", beginScopeUsage.MessageParameters[1].Type);
-        Assert.Equal("Constant", beginScopeUsage.MessageParameters[1].Kind);
+        beginScopeUsage!.MessageParameters[1].Name.Should().Be("RequestId");
+        beginScopeUsage!.MessageParameters[1].Type.Should().Be("int");
+        beginScopeUsage!.MessageParameters[1].Kind.Should().Be("Constant");
         
-        Assert.Equal("Status", beginScopeUsage.MessageParameters[2].Name);
-        Assert.Equal("bool", beginScopeUsage.MessageParameters[2].Type);
-        Assert.Equal("Constant", beginScopeUsage.MessageParameters[2].Kind);
+        beginScopeUsage!.MessageParameters[2].Name.Should().Be("Status");
+        beginScopeUsage!.MessageParameters[2].Type.Should().Be("bool");
+        beginScopeUsage!.MessageParameters[2].Kind.Should().Be("Constant");
     }
 
     [Theory]
@@ -249,22 +249,22 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2);
         
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
 
         // Assert.Skip("TODO: parse KeyValuePair collections correctly");
-        Assert.Equal(expectedParameterCount, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage!.MessageParameters.Should().HaveCount(expectedParameterCount);
         
         for (int i = 0; i < expectedParameters.Count; i++)
         {
-            Assert.Equal(expectedParameters[i].Name, beginScopeUsage.MessageParameters[i].Name);
-            Assert.Equal(expectedParameters[i].Type, beginScopeUsage.MessageParameters[i].Type);
-            Assert.Equal(expectedParameters[i].Kind, beginScopeUsage.MessageParameters[i].Kind);
+            beginScopeUsage!.MessageParameters[i].Name.Should().Be(expectedParameters[i].Name);
+            beginScopeUsage!.MessageParameters[i].Type.Should().Be(expectedParameters[i].Type);
+            beginScopeUsage!.MessageParameters[i].Kind.Should().Be(expectedParameters[i].Kind);
         }
     }
 
@@ -387,27 +387,27 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         
         // Should extract parameters from anonymous object properties
-        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage!.MessageParameters.Should().HaveCount(3);
         
-        var userIdParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "UserId");
-        Assert.NotNull(userIdParam);
-        Assert.Equal("string", userIdParam.Type);
-        Assert.Equal("ParameterReference", userIdParam.Kind);
+        var userIdParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "UserId");
+        userIdParam.Should().NotBeNull();
+        userIdParam!.Type.Should().Be("string");
+        userIdParam!.Kind.Should().Be("ParameterReference");
         
-        var requestIdParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "RequestId");
-        Assert.NotNull(requestIdParam);
-        Assert.Equal("int", requestIdParam.Type);
-        Assert.Equal("ParameterReference", requestIdParam.Kind);
+        var requestIdParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "RequestId");
+        requestIdParam.Should().NotBeNull();
+        requestIdParam!.Type.Should().Be("int");
+        requestIdParam!.Kind.Should().Be("ParameterReference");
         
-        var timestampParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "Timestamp");
-        Assert.NotNull(timestampParam);
-        Assert.Equal("System.DateTime", timestampParam.Type);
-        Assert.Equal("PropertyReference", timestampParam.Kind);
+        var timestampParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "Timestamp");
+        timestampParam.Should().NotBeNull();
+        timestampParam!.Type.Should().Be("System.DateTime");
+        timestampParam!.Kind.Should().Be("PropertyReference");
     }
 
     [Fact]
@@ -444,19 +444,19 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(4, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageParameters.Should().HaveCount(4);
         
-        var operationIdParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "OperationId");
-        Assert.NotNull(operationIdParam);
-        Assert.Equal("System.Guid", operationIdParam.Type);
+        var operationIdParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "OperationId");
+        operationIdParam.Should().NotBeNull();
+        operationIdParam!.Type.Should().Be("System.Guid");
         
-        var dataParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "Data");
-        Assert.NotNull(dataParam);
+        var dataParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "Data");
+        dataParam.Should().NotBeNull();
         
-        var flagsParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "Flags");
-        Assert.NotNull(flagsParam);
-        Assert.Equal("System.Collections.Generic.List<string>", flagsParam.Type);
+        var flagsParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "Flags");
+        flagsParam.Should().NotBeNull();
+        flagsParam!.Type.Should().Be("System.Collections.Generic.List<string>");
     }
 
     [Fact]
@@ -490,20 +490,20 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageParameters.Should().HaveCount(3);
         
-        var optionalParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "OptionalData");
-        Assert.NotNull(optionalParam);
-        Assert.Equal("object", optionalParam.Type);
+        var optionalParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "OptionalData");
+        optionalParam.Should().NotBeNull();
+        optionalParam!.Type.Should().Be("object");
         
-        var requiredParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "RequiredData");
-        Assert.NotNull(requiredParam);
-        Assert.Equal("string", requiredParam.Type);
+        var requiredParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "RequiredData");
+        requiredParam.Should().NotBeNull();
+        requiredParam!.Type.Should().Be("string");
         
-        var nullableParam = beginScopeUsage.MessageParameters.FirstOrDefault(p => p.Name == "NullableInt");
-        Assert.NotNull(nullableParam);
-        Assert.Equal("object", nullableParam.Type);
+        var nullableParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "NullableInt");
+        nullableParam.Should().NotBeNull();
+        nullableParam!.Type.Should().Be("object");
     }
 
     [Fact]
@@ -533,21 +533,21 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal("Processing {Operation} for user {UserId} at {Timestamp}", beginScopeUsage.MessageTemplate);
-        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageTemplate.Should().Be("Processing {Operation} for user {UserId} at {Timestamp}");
+        beginScopeUsage!.MessageParameters.Should().HaveCount(3);
         
-        Assert.Equal("Operation", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
-        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage!.MessageParameters[0].Name.Should().Be("Operation");
+        beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
+        beginScopeUsage!.MessageParameters[0].Kind.Should().Be("ParameterReference");
         
-        Assert.Equal("UserId", beginScopeUsage.MessageParameters[1].Name);
-        Assert.Equal("string", beginScopeUsage.MessageParameters[1].Type);
-        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[1].Kind);
+        beginScopeUsage!.MessageParameters[1].Name.Should().Be("UserId");
+        beginScopeUsage!.MessageParameters[1].Type.Should().Be("string");
+        beginScopeUsage!.MessageParameters[1].Kind.Should().Be("ParameterReference");
         
-        Assert.Equal("Timestamp", beginScopeUsage.MessageParameters[2].Name);
-        Assert.Equal("System.DateTime", beginScopeUsage.MessageParameters[2].Type);
-        Assert.Equal("PropertyReference", beginScopeUsage.MessageParameters[2].Kind);
+        beginScopeUsage!.MessageParameters[2].Name.Should().Be("Timestamp");
+        beginScopeUsage!.MessageParameters[2].Type.Should().Be("System.DateTime");
+        beginScopeUsage!.MessageParameters[2].Kind.Should().Be("PropertyReference");
     }
 
     [Fact]
@@ -576,17 +576,17 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal("Request {RequestId} from {Source}", beginScopeUsage.MessageTemplate);
-        Assert.Equal(2, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageTemplate.Should().Be("Request {RequestId} from {Source}");
+        beginScopeUsage!.MessageParameters.Should().HaveCount(2);
         
-        Assert.Equal("RequestId", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
-        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage!.MessageParameters[0].Name.Should().Be("RequestId");
+        beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
+        beginScopeUsage!.MessageParameters[0].Kind.Should().Be("ParameterReference");
         
-        Assert.Equal("Source", beginScopeUsage.MessageParameters[1].Name);
-        Assert.Equal("string", beginScopeUsage.MessageParameters[1].Type);
-        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[1].Kind);
+        beginScopeUsage!.MessageParameters[1].Name.Should().Be("Source");
+        beginScopeUsage!.MessageParameters[1].Type.Should().Be("string");
+        beginScopeUsage!.MessageParameters[1].Kind.Should().Be("ParameterReference");
     }
 
     [Fact]
@@ -617,16 +617,16 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal("Complex operation {Op} with data {Data} and flags {Flags}", beginScopeUsage.MessageTemplate);
-        Assert.Equal(3, beginScopeUsage.MessageParameters.Count);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageTemplate.Should().Be("Complex operation {Op} with data {Data} and flags {Flags}");
+        beginScopeUsage!.MessageParameters.Should().HaveCount(3);
         
-        Assert.Equal("Op", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("string", beginScopeUsage.MessageParameters[0].Type);
-        Assert.Equal("ParameterReference", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage!.MessageParameters[0].Name.Should().Be("Op");
+        beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
+        beginScopeUsage!.MessageParameters[0].Kind.Should().Be("ParameterReference");
         
-        Assert.Equal("Data", beginScopeUsage.MessageParameters[1].Name);
-        Assert.Equal("Flags", beginScopeUsage.MessageParameters[2].Name);
+        beginScopeUsage!.MessageParameters[1].Name.Should().Be("Data");
+        beginScopeUsage!.MessageParameters[2].Name.Should().Be("Flags");
     }
 
     [Fact]
@@ -657,11 +657,11 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
+        beginScopeUsage.Should().NotBeNull();
         // Message template should be null when not a literal string
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Extension methods with non-literal templates don't extract parameters
-        Assert.Empty(beginScopeUsage.MessageParameters);
+        beginScopeUsage!.MessageParameters.Should().BeEmpty();
     }
 
     [Fact]
@@ -695,13 +695,13 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Parameter extraction from local variable reference
-        Assert.Single(beginScopeUsage.MessageParameters);
-        Assert.Equal("<scopeData>", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("LocalReference", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage!.MessageParameters.Should().ContainSingle()
+            .Which.Should().Match<MessageParameter>(p => 
+                p.Name == "<scopeData>" && p.Kind == "LocalReference");
     }
 
     [Fact]
@@ -733,13 +733,13 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Parameter extraction from field reference
-        Assert.Single(beginScopeUsage.MessageParameters);
-        Assert.Equal("<_defaultScope>", beginScopeUsage.MessageParameters[0].Name);
-        Assert.Equal("FieldReference", beginScopeUsage.MessageParameters[0].Kind);
+        beginScopeUsage!.MessageParameters.Should().ContainSingle()
+            .Which.Should().Match<MessageParameter>(p => 
+                p.Name == "<_defaultScope>" && p.Kind == "FieldReference");
     }
 
     [Fact]
@@ -772,11 +772,11 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Method invocation parameter extraction is not currently implemented
-        Assert.Empty(beginScopeUsage.MessageParameters);
+        beginScopeUsage!.MessageParameters.Should().BeEmpty();
     }
 
     [Fact]
@@ -812,15 +812,15 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal(nameof(ILogger.BeginScope), beginScopeUsage.MethodName);
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Currently extracts the local variable reference, not dictionary contents
-        Assert.Single(beginScopeUsage.MessageParameters);
+        beginScopeUsage!.MessageParameters.Should().ContainSingle();
         
-        var firstParam = beginScopeUsage.MessageParameters[0];
-        Assert.Equal("<scope>", firstParam.Name);
-        Assert.Equal("LocalReference", firstParam.Kind);
+        var firstParam = beginScopeUsage!.MessageParameters[0];
+        firstParam.Name.Should().Be("<scope>");
+        firstParam.Kind.Should().Be("LocalReference");
     }
 
     [Fact]
@@ -848,9 +848,9 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
-        Assert.Equal("", beginScopeUsage.MessageTemplate);
-        Assert.Empty(beginScopeUsage.MessageParameters);
+        beginScopeUsage.Should().NotBeNull();
+        beginScopeUsage!.MessageTemplate.Should().Be("");
+        beginScopeUsage!.MessageParameters.Should().BeEmpty();
     }
 
     [Fact]
@@ -880,11 +880,11 @@ public class TestClass
 
         // Assert
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
-        Assert.NotNull(beginScopeUsage);
+        beginScopeUsage.Should().NotBeNull();
         // Should handle null template gracefully
-        Assert.Null(beginScopeUsage.MessageTemplate);
+        beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Core methods don't extract simple variable references
-        Assert.Empty(beginScopeUsage.MessageParameters);
+        beginScopeUsage!.MessageParameters.Should().BeEmpty();
     }
 
     [Fact]
@@ -915,18 +915,18 @@ public class TestClass
 
         // Assert
         var beginScopeUsages = loggerUsages.Results.Where(r => r.MethodType == LoggerUsageMethodType.BeginScope).ToList();
-        Assert.Equal(2, beginScopeUsages.Count);
+        beginScopeUsages.Should().HaveCount(2);
         
         var userScope = beginScopeUsages.FirstOrDefault(s => s.MessageTemplate?.Contains("UserId") == true);
-        Assert.NotNull(userScope);
-        Assert.Equal("User {UserId}", userScope.MessageTemplate);
-        Assert.Single(userScope.MessageParameters);
-        Assert.Equal("UserId", userScope.MessageParameters[0].Name);
+        userScope.Should().NotBeNull();
+        userScope!.MessageTemplate.Should().Be("User {UserId}");
+        userScope!.MessageParameters.Should().ContainSingle()
+            .Which.Name.Should().Be("UserId");
         
         var requestScope = beginScopeUsages.FirstOrDefault(s => s.MessageTemplate?.Contains("RequestId") == true);
-        Assert.NotNull(requestScope);
-        Assert.Equal("Request {RequestId}", requestScope.MessageTemplate);
-        Assert.Single(requestScope.MessageParameters);
-        Assert.Equal("RequestId", requestScope.MessageParameters[0].Name);
+        requestScope.Should().NotBeNull();
+        requestScope!.MessageTemplate.Should().Be("Request {RequestId}");
+        requestScope!.MessageParameters.Should().ContainSingle()
+            .Which.Name.Should().Be("RequestId");
     }
 }
