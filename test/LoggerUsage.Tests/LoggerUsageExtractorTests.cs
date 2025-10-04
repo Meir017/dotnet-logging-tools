@@ -1,3 +1,5 @@
+using FluentAssertions;
+
 namespace LoggerUsage.Tests;
 
 public class LoggerUsageExtractorTests
@@ -37,8 +39,8 @@ partial class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2);
     }
 
 }
