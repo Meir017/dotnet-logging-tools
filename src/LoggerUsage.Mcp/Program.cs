@@ -26,7 +26,7 @@ public class LoggerUsageExtractorTool(
     LoggerUsageExtractor loggerUsageExtractor,
     ILoggerReportGeneratorFactory loggerReportGeneratorFactory)
 {
-    [McpServerTool]
+    [McpServerTool(Name = "analyze_logger_usages_in_csproj")]
     [Description("Analyze logger usages of C# files in a csproj file.")]
     public async Task<LoggerUsageExtractionResult> AnalyzeLoggerUsagesInCsproj(
         string fullPathToCsproj)
