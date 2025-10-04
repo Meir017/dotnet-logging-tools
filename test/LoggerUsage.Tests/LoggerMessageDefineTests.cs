@@ -1,3 +1,4 @@
+using FluentAssertions;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
 
@@ -26,14 +27,14 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var result = loggerUsages.Results[0];
-        Assert.Equal("Define", result.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, result.MethodType);
-        Assert.Equal(LogLevel.Information, result.LogLevel);
-        Assert.Equal("User {Name} was created", result.MessageTemplate);
-        Assert.NotNull(result.EventId);
+        result.MethodName.Should().Be("Define");
+        result.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
+        result.LogLevel.Should().Be(LogLevel.Information);
+        result.MessageTemplate.Should().Be("User {Name} was created");
+        result.EventId.Should().NotBeNull();
     }
 
     public static TheoryData<string, int?, string?> LoggerMessageDefineEventIdScenarios() => new()
@@ -68,28 +69,28 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.NotNull(usage.EventId);
+        usage.EventId.Should().NotBeNull();
 
-        var details = Assert.IsType<EventIdDetails>(usage.EventId);
+        var details = usage.EventId.Should().BeOfType<EventIdDetails>().Which;
         if (expectedId is not null)
         {
-            Assert.Equal(ConstantOrReference.Constant(expectedId), details.Id);
+            details.Id.Should().Be(ConstantOrReference.Constant(expectedId));
         }
         else
         {
-            Assert.Same(ConstantOrReference.Missing, details.Id);
+            details.Id.Should().BeSameAs(ConstantOrReference.Missing);
         }
 
         if (expectedName is not null)
         {
-            Assert.Equal(ConstantOrReference.Constant(expectedName), details.Name);
+            details.Name.Should().Be(ConstantOrReference.Constant(expectedName));
         }
         else
         {
-            Assert.Same(ConstantOrReference.Missing, details.Name);
+            details.Name.Should().BeSameAs(ConstantOrReference.Missing);
         }
     }
 
@@ -126,9 +127,9 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].LogLevel.Should().Be(expectedLogLevel);
     }
 
     public static TheoryData<string, string> LoggerMessageDefineMessageScenarios() => new()
@@ -163,9 +164,9 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].MessageTemplate.Should().Be(expectedMessage);
     }
 
     public static TheoryData<string, string, List<MessageParameter>> LoggerMessageDefineParameterScenarios() => new()
@@ -212,17 +213,17 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
         if (expectedParameters.Count == 0)
         {
-            Assert.Empty(usage.MessageParameters);
+            usage.MessageParameters.Should().BeEmpty();
         }
         else
         {
-            Assert.Equal(expectedParameters.Count, usage.MessageParameters.Count);
-            Assert.Equal(expectedParameters, usage.MessageParameters);
+            usage.MessageParameters.Count.Should().Be(expectedParameters.Count);
+            usage.MessageParameters.Should().Equal(expectedParameters);
         }
     }
 
@@ -269,12 +270,12 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.Equal("Define", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
-        Assert.Null(usage.MessageTemplate);
+        usage.MethodName.Should().Be("Define");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
+        usage.MessageTemplate.Should().BeNull();
     }
 
     [Fact]
@@ -303,12 +304,12 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
+        loggerUsages.Should().NotBeNull();
         // Should only find the LoggerMessage.Define call, not the non-generic method
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.Equal("Define", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        usage.MethodName.Should().Be("Define");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
     }
 
     [Fact]
@@ -335,16 +336,16 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.Equal("Define", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
-        Assert.Equal("Only one parameter {Param1}", usage.MessageTemplate);
+        usage.MethodName.Should().Be("Define");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
+        usage.MessageTemplate.Should().Be("Only one parameter {Param1}");
         
         // Should extract parameters based on generic types, not just message template
         // The extractor should handle this gracefully
-        Assert.NotEmpty(usage.MessageParameters);
+        usage.MessageParameters.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -376,19 +377,19 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.Equal("Define", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
-        Assert.Equal(LogLevel.Error, usage.LogLevel);
-        Assert.Equal("Operation {OperationId} failed with error", usage.MessageTemplate);
-        Assert.NotNull(usage.EventId);
+        usage.MethodName.Should().Be("Define");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
+        usage.LogLevel.Should().Be(LogLevel.Error);
+        usage.MessageTemplate.Should().Be("Operation {OperationId} failed with error");
+        usage.EventId.Should().NotBeNull();
         
         // Should handle static EventId reference - might be EventIdRef type
         if (usage.EventId is EventIdRef eventIdRef)
         {
-            Assert.Contains("OperationFailure", eventIdRef.Name);
+            eventIdRef.Name.Should().Contain("OperationFailure");
         }
     }
 
@@ -418,11 +419,11 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.Equal("Define", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
+        usage.MethodName.Should().Be("Define");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
         
         // Should handle non-literal message template gracefully
         // The extractor might not be able to extract the template if it's not a literal, so it could be null or empty
@@ -459,18 +460,18 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var usage = loggerUsages.Results[0];
-        Assert.Equal("Define", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageDefine, usage.MethodType);
-        Assert.Equal("Operation {OperationId} took {Duration} with data {CustomData} and items {Items}", usage.MessageTemplate);
+        usage.MethodName.Should().Be("Define");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
+        usage.MessageTemplate.Should().Be("Operation {OperationId} took {Duration} with data {CustomData} and items {Items}");
         
         // Should extract all 4 parameters with correct types
-        Assert.Equal(4, usage.MessageParameters.Count);
-        Assert.Contains(usage.MessageParameters, p => p.Name == "OperationId" && p.Type == "System.Guid");
-        Assert.Contains(usage.MessageParameters, p => p.Name == "Duration" && p.Type == "System.TimeSpan");
-        Assert.Contains(usage.MessageParameters, p => p.Name == "CustomData" && p.Type == "TestNamespace.CustomType");
-        Assert.Contains(usage.MessageParameters, p => p.Name == "Items" && p.Type == "System.Collections.Generic.List<string>");
+        usage.MessageParameters.Count.Should().Be(4);
+        usage.MessageParameters.Should().Contain(p => p.Name == "OperationId" && p.Type == "System.Guid");
+        usage.MessageParameters.Should().Contain(p => p.Name == "Duration" && p.Type == "System.TimeSpan");
+        usage.MessageParameters.Should().Contain(p => p.Name == "CustomData" && p.Type == "TestNamespace.CustomType");
+        usage.MessageParameters.Should().Contain(p => p.Name == "Items" && p.Type == "System.Collections.Generic.List<string>");
     }
 }
