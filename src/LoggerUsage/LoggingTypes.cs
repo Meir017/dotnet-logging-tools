@@ -17,6 +17,7 @@ namespace LoggerUsage
             TagNameAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.TagNameAttribute");
             TagProviderAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.TagProviderAttribute");
             ITagCollector = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.ITagCollector");
+            DataClassificationAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Compliance.Classification.DataClassificationAttribute");
             EventId = compilation.GetTypeByMetadataName(typeof(EventId).FullName!)!;
             LogLevel = compilation.GetTypeByMetadataName(typeof(LogLevel).FullName!)!;
             LoggerExtensions = compilation.GetTypeByMetadataName(typeof(LoggerExtensions).FullName!)!;
@@ -104,6 +105,12 @@ namespace LoggerUsage
         /// Returns null if the interface is not available in the compilation.
         /// </summary>
         public INamedTypeSymbol? ITagCollector { get; }
+
+        /// <summary>
+        /// Gets the DataClassificationAttribute type symbol from Microsoft.Extensions.Compliance.Classification.
+        /// Returns null if the attribute is not available in the compilation (optional package).
+        /// </summary>
+        public INamedTypeSymbol? DataClassificationAttribute { get; }
 
         /// <summary>
         /// Gets a KeyValuePair&lt;string, object?&gt; type symbol used for structured logging parameters.

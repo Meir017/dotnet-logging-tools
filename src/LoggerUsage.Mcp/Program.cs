@@ -27,7 +27,7 @@ public class LoggerUsageExtractorTool(
     ILoggerReportGeneratorFactory loggerReportGeneratorFactory)
 {
     [McpServerTool(Name = "analyze_logger_usages_in_csproj")]
-    [Description("Analyze logger usages of C# files in a csproj file.")]
+    [Description("Analyze logger usages of C# files in a csproj file. Extracts logging patterns, custom tag names, tag providers, data classifications, and transitive properties from LogProperties parameters.")]
     public async Task<LoggerUsageExtractionResult> AnalyzeLoggerUsagesInCsproj(
         string fullPathToCsproj)
     {
@@ -41,3 +41,6 @@ public class LoggerUsageExtractorTool(
         return loggerUsage;
     }
 }
+
+// Make the implicit Program class public for testing
+public partial class Program { }

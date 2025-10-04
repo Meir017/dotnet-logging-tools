@@ -7,4 +7,5 @@ namespace LoggerUsage.Models;
 /// <param name="Type">The type of the parameter, if determinable.</param>
 /// <param name="Kind">The kind or category of the parameter.</param>
 /// <param name="CustomTagName">The custom tag name specified by TagNameAttribute, if any.</param>
-public record class MessageParameter(string Name, string? Type, string? Kind, string? CustomTagName = null);
+/// <param name="DataClassification">The data classification information for compliance and redaction, if any.</param>
+public record class MessageParameter(string Name, string? Type, string? Kind, string? CustomTagName = null, DataClassificationInfo? DataClassification = null);

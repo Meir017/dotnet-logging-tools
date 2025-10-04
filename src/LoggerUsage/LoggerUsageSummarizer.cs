@@ -124,6 +124,166 @@ public class LoggerUsageSummarizer
                     MostCommonType = mostCommonType
                 };
             })];
+
+        // Calculate classification statistics
+        PopulateClassificationStatistics(extractionResult);
+
+        // Calculate telemetry statistics
+        PopulateTelemetryStatistics(extractionResult);
+    }
+
+    /// <summary>
+    /// Populates classification statistics from the extraction results.
+    /// </summary>
+    private void PopulateClassificationStatistics(LoggerUsageExtractionResult extractionResult)
+    {
+        var stats = extractionResult.Summary.ClassificationStats;
+        var classificationCounts = new Dictionary<DataClassificationLevel, int>();
+
+        // Count classified parameters
+        foreach (var usage in extractionResult.Results)
+        {
+            if (usage.MessageParameters != null)
+            {
+                foreach (var param in usage.MessageParameters)
+                {
+                    if (param.DataClassification != null)
+                    {
+                        stats.TotalClassifiedParameters++;
+                        var level = param.DataClassification.Level;
+                        classificationCounts[level] = classificationCounts.GetValueOrDefault(level) + 1;
+                    }
+                }
+            }
+
+            // Count classified properties in LogProperties
+            if (usage is LoggerMessageUsageInfo loggerMessageUsage)
+            {
+                foreach (var logPropsParam in loggerMessageUsage.LogPropertiesParameters)
+                {
+                    CountClassifiedProperties(logPropsParam.Properties, classificationCounts, stats);
+                }
+            }
+        }
+
+        stats.ByLevel = classificationCounts;
+
+        // Calculate sensitive parameter percentage
+        var totalParams = stats.TotalClassifiedParameters + stats.TotalClassifiedProperties;
+        if (totalParams > 0)
+        {
+            var sensitiveCount = classificationCounts.GetValueOrDefault(DataClassificationLevel.Private) +
+                                classificationCounts.GetValueOrDefault(DataClassificationLevel.Sensitive);
+            stats.SensitiveParameterPercentage = (double)sensitiveCount / totalParams * 100.0;
+        }
+    }
+
+    /// <summary>
+    /// Recursively counts classified properties including nested ones.
+    /// </summary>
+    private void CountClassifiedProperties(
+        List<LogPropertyInfo> properties,
+        Dictionary<DataClassificationLevel, int> classificationCounts,
+        LoggerUsageExtractionSummary.ClassificationStatistics stats)
+    {
+        foreach (var property in properties)
+        {
+            if (property.DataClassification != null)
+            {
+                stats.TotalClassifiedProperties++;
+                var level = property.DataClassification.Level;
+                classificationCounts[level] = classificationCounts.GetValueOrDefault(level) + 1;
+            }
+
+            // Recursively count nested properties
+            if (property.NestedProperties != null && property.NestedProperties.Count > 0)
+            {
+                CountClassifiedProperties(property.NestedProperties, classificationCounts, stats);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Populates telemetry statistics from the extraction results.
+    /// </summary>
+    private void PopulateTelemetryStatistics(LoggerUsageExtractionResult extractionResult)
+    {
+        var stats = extractionResult.Summary.TelemetryStats;
+        var customTagNameMappings = new HashSet<LoggerUsageExtractionSummary.CustomTagNameMapping>();
+        var tagProviders = new Dictionary<string, TagProviderInfo>();
+
+        foreach (var usage in extractionResult.Results)
+        {
+            // Count parameters with custom tag names
+            if (usage.MessageParameters != null)
+            {
+                foreach (var param in usage.MessageParameters)
+                {
+                    if (!string.IsNullOrEmpty(param.CustomTagName))
+                    {
+                        stats.ParametersWithCustomTagNames++;
+                        customTagNameMappings.Add(new LoggerUsageExtractionSummary.CustomTagNameMapping(
+                            param.Name,
+                            param.CustomTagName,
+                            "Parameter"
+                        ));
+                    }
+                }
+            }
+
+            // Process LogProperties parameters for tag names, providers, and transitive properties
+            if (usage is LoggerMessageUsageInfo loggerMessageUsage && loggerMessageUsage.LogPropertiesParameters != null)
+            {
+                foreach (var logPropertiesParam in loggerMessageUsage.LogPropertiesParameters)
+                {
+                    // Count tag providers
+                    if (logPropertiesParam.TagProvider != null)
+                    {
+                        stats.ParametersWithTagProviders++;
+                        var key = $"{logPropertiesParam.TagProvider.ParameterName}:{logPropertiesParam.TagProvider.ProviderTypeName}";
+                        if (!tagProviders.ContainsKey(key))
+                        {
+                            tagProviders[key] = logPropertiesParam.TagProvider;
+                        }
+                    }
+
+                    // Count properties with custom tag names and transitive properties
+                    CountPropertiesWithTelemetryFeatures(logPropertiesParam.Properties, stats, customTagNameMappings);
+                }
+            }
+        }
+
+        stats.CustomTagNameMappings = [.. customTagNameMappings.OrderBy(m => m.OriginalName)];
+        stats.TagProviders = [.. tagProviders.Values.OrderBy(tp => tp.ParameterName)];
+    }
+
+    /// <summary>
+    /// Recursively counts properties with custom tag names and transitive properties.
+    /// </summary>
+    private void CountPropertiesWithTelemetryFeatures(
+        List<LogPropertyInfo> properties,
+        LoggerUsageExtractionSummary.TelemetryStatistics stats,
+        HashSet<LoggerUsageExtractionSummary.CustomTagNameMapping> customTagNameMappings)
+    {
+        foreach (var property in properties)
+        {
+            if (!string.IsNullOrEmpty(property.CustomTagName))
+            {
+                stats.PropertiesWithCustomTagNames++;
+                customTagNameMappings.Add(new LoggerUsageExtractionSummary.CustomTagNameMapping(
+                    property.OriginalName,
+                    property.CustomTagName,
+                    "Property"
+                ));
+            }
+
+            // Count transitive properties (nested properties)
+            if (property.NestedProperties != null && property.NestedProperties.Count > 0)
+            {
+                stats.TotalTransitiveProperties += property.NestedProperties.Count;
+                CountPropertiesWithTelemetryFeatures(property.NestedProperties, stats, customTagNameMappings);
+            }
+        }
     }
 
     // Compares two lists of NameTypePair for set equality (order-insensitive, unique pairs)

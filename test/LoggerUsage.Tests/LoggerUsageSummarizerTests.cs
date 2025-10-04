@@ -228,4 +228,224 @@ public class LoggerUsageSummarizerTests
             && x.Names.Any(pair => pair.Name == "userid")
         );
     }
+
+    [Fact]
+    public void PopulateSummary_WithCustomTagNames_PopulatesTelemetryStats()
+    {
+        // Arrange
+        var extractionResult = new LoggerUsageExtractionResult
+        {
+            Results =
+            [
+                new LoggerUsageInfo
+                {
+                    MethodName = "LogUser",
+                    MethodType = LoggerUsageMethodType.LoggerExtensions,
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "TestClass.cs",
+                        StartLineNumber = 1,
+                        EndLineNumber = 1
+                    },
+                    MessageParameters =
+                    [
+                        new MessageParameter("userId", "string", "Parameter", CustomTagName: "user.id"),
+                        new MessageParameter("userName", "string", "Parameter", CustomTagName: "user.name")
+                    ]
+                },
+                new LoggerMessageUsageInfo
+                {
+                    MethodName = "LogDetails",
+                    MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
+                    DeclaringTypeName = "Test.Logger",
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "Logger.cs",
+                        StartLineNumber = 10,
+                        EndLineNumber = 10
+                    },
+                    LogPropertiesParameters =
+                    [
+                        new LogPropertiesParameterInfo(
+                            "user",
+                            "User",
+                            new LogPropertiesConfiguration(),
+                            [
+                                new LogPropertyInfo("Id", "Id", "int", false, CustomTagName: "user.identifier"),
+                                new LogPropertyInfo("Email", "Email", "string", false, CustomTagName: "user.email")
+                            ]
+                        )
+                    ]
+                }
+            ],
+            Summary = new LoggerUsageExtractionSummary()
+        };
+        var summarizer = new LoggerUsageSummarizer();
+
+        // Act
+        summarizer.PopulateSummary(extractionResult);
+
+        // Assert
+        Assert.True(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
+        Assert.Equal(2, extractionResult.Summary.TelemetryStats.ParametersWithCustomTagNames);
+        Assert.Equal(2, extractionResult.Summary.TelemetryStats.PropertiesWithCustomTagNames);
+        Assert.Equal(4, extractionResult.Summary.TelemetryStats.CustomTagNameMappings.Count);
+        
+        // Verify mappings
+        Assert.Contains(extractionResult.Summary.TelemetryStats.CustomTagNameMappings, 
+            m => m.OriginalName == "userId" && m.CustomTagName == "user.id" && m.Context == "Parameter");
+        Assert.Contains(extractionResult.Summary.TelemetryStats.CustomTagNameMappings, 
+            m => m.OriginalName == "Id" && m.CustomTagName == "user.identifier" && m.Context == "Property");
+    }
+
+    [Fact]
+    public void PopulateSummary_WithTagProviders_PopulatesTelemetryStats()
+    {
+        // Arrange
+        var extractionResult = new LoggerUsageExtractionResult
+        {
+            Results =
+            [
+                new LoggerMessageUsageInfo
+                {
+                    MethodName = "LogWithProvider",
+                    MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
+                    DeclaringTypeName = "Test.Logger",
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "Logger.cs",
+                        StartLineNumber = 20,
+                        EndLineNumber = 20
+                    },
+                    LogPropertiesParameters =
+                    [
+                        new LogPropertiesParameterInfo(
+                            "request",
+                            "HttpRequest",
+                            new LogPropertiesConfiguration(),
+                            [
+                                new LogPropertyInfo("Method", "Method", "string", false),
+                                new LogPropertyInfo("Path", "Path", "string", false)
+                            ],
+                            TagProvider: new TagProviderInfo(
+                                "request",
+                                "MyApp.TagProviders.HttpRequestTagProvider",
+                                "ProvideTags",
+                                OmitReferenceName: false,
+                                IsValid: true
+                            )
+                        )
+                    ]
+                }
+            ],
+            Summary = new LoggerUsageExtractionSummary()
+        };
+        var summarizer = new LoggerUsageSummarizer();
+
+        // Act
+        summarizer.PopulateSummary(extractionResult);
+
+        // Assert
+        Assert.True(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
+        Assert.Equal(1, extractionResult.Summary.TelemetryStats.ParametersWithTagProviders);
+        Assert.Single(extractionResult.Summary.TelemetryStats.TagProviders);
+        
+        var provider = extractionResult.Summary.TelemetryStats.TagProviders[0];
+        Assert.Equal("request", provider.ParameterName);
+        Assert.Equal("MyApp.TagProviders.HttpRequestTagProvider", provider.ProviderTypeName);
+        Assert.Equal("ProvideTags", provider.ProviderMethodName);
+        Assert.True(provider.IsValid);
+    }
+
+    [Fact]
+    public void PopulateSummary_WithTransitiveProperties_CountsThem()
+    {
+        // Arrange
+        var extractionResult = new LoggerUsageExtractionResult
+        {
+            Results =
+            [
+                new LoggerMessageUsageInfo
+                {
+                    MethodName = "LogUserWithAddress",
+                    MethodType = LoggerUsageMethodType.LoggerMessageAttribute,
+                    DeclaringTypeName = "Test.Logger",
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "Logger.cs",
+                        StartLineNumber = 30,
+                        EndLineNumber = 30
+                    },
+                    LogPropertiesParameters =
+                    [
+                        new LogPropertiesParameterInfo(
+                            "user",
+                            "User",
+                            new LogPropertiesConfiguration(Transitive: true),
+                            [
+                                new LogPropertyInfo("Name", "Name", "string", false),
+                                new LogPropertyInfo("Age", "Age", "int", false),
+                                new LogPropertyInfo("Address", "Address", "Address", false, NestedProperties:
+                                [
+                                    new LogPropertyInfo("Street", "Street", "string", false),
+                                    new LogPropertyInfo("City", "City", "string", false),
+                                    new LogPropertyInfo("ZipCode", "ZipCode", "string", false)
+                                ])
+                            ]
+                        )
+                    ]
+                }
+            ],
+            Summary = new LoggerUsageExtractionSummary()
+        };
+        var summarizer = new LoggerUsageSummarizer();
+
+        // Act
+        summarizer.PopulateSummary(extractionResult);
+
+        // Assert
+        Assert.True(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
+        Assert.Equal(3, extractionResult.Summary.TelemetryStats.TotalTransitiveProperties);
+    }
+
+    [Fact]
+    public void PopulateSummary_WithNoTelemetryFeatures_HasTelemetryFeaturesIsFalse()
+    {
+        // Arrange
+        var extractionResult = new LoggerUsageExtractionResult
+        {
+            Results =
+            [
+                new LoggerUsageInfo
+                {
+                    MethodName = "LogSimple",
+                    MethodType = LoggerUsageMethodType.LoggerExtensions,
+                    Location = new MethodCallLocation
+                    {
+                        FilePath = "TestClass.cs",
+                        StartLineNumber = 1,
+                        EndLineNumber = 1
+                    },
+                    MessageParameters =
+                    [
+                        new MessageParameter("message", "string", "Parameter")
+                    ]
+                }
+            ],
+            Summary = new LoggerUsageExtractionSummary()
+        };
+        var summarizer = new LoggerUsageSummarizer();
+
+        // Act
+        summarizer.PopulateSummary(extractionResult);
+
+        // Assert
+        Assert.False(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
+        Assert.Equal(0, extractionResult.Summary.TelemetryStats.ParametersWithCustomTagNames);
+        Assert.Equal(0, extractionResult.Summary.TelemetryStats.PropertiesWithCustomTagNames);
+        Assert.Equal(0, extractionResult.Summary.TelemetryStats.ParametersWithTagProviders);
+        Assert.Equal(0, extractionResult.Summary.TelemetryStats.TotalTransitiveProperties);
+        Assert.Empty(extractionResult.Summary.TelemetryStats.CustomTagNameMappings);
+        Assert.Empty(extractionResult.Summary.TelemetryStats.TagProviders);
+    }
 }
