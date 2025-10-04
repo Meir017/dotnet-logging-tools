@@ -1,4 +1,5 @@
-﻿using LoggerUsage.Models;
+﻿using AwesomeAssertions;
+using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
@@ -26,9 +27,9 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(LoggerUsageMethodType.LoggerExtensions, loggerUsages.Results[0].MethodType);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].MethodType.Should().Be(LoggerUsageMethodType.LoggerExtensions);
     }
 
     [Fact]
@@ -51,12 +52,12 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal("Test message", loggerUsages.Results[0].MessageTemplate);
-        var details = Assert.IsType<EventIdDetails>(loggerUsages.Results[0].EventId);
-        Assert.Equal(6, details.Id.Value);
-        Assert.Same(ConstantOrReference.Missing, details.Name);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].MessageTemplate.Should().Be("Test message");
+        var details = loggerUsages.Results[0].EventId.Should().BeOfType<EventIdDetails>().Which;
+        details.Id.Value.Should().Be(6);
+        details.Name.Should().BeSameAs(ConstantOrReference.Missing);
     }
 
     public static TheoryData<string[]> LoggerLogArguments() =>
@@ -102,9 +103,9 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        // TODO: replace with Assert.Single when the method is fixed
-        Assert.Empty(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        // TODO: replace with Should().ContainSingle() when the method is fixed
+        loggerUsages.Results.Should().BeEmpty();
     }
 
     public static TheoryData<string, string[]> LoggerExtensionMethods()
@@ -175,8 +176,8 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
     }
 
     public static TheoryData<string, LogLevel?> LoggerLogLevelScenarios() => new()
@@ -219,9 +220,9 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].LogLevel.Should().Be(expectedLogLevel);
     }
 
     public static TheoryData<string, string, EventIdRef> LoggerEventIdScenariosReference() => new()
@@ -256,11 +257,11 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.NotNull(loggerUsages.Results[0].EventId);
-        var @ref = Assert.IsType<EventIdRef>(loggerUsages.Results[0].EventId);
-        Assert.Equal(expectedEventIdRef, @ref);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].EventId.Should().NotBeNull();
+        var @ref = loggerUsages.Results[0].EventId.Should().BeOfType<EventIdRef>().Which;
+        @ref.Should().Be(expectedEventIdRef);
     }
 
     public static TheoryData<string, string, ConstantOrReference, ConstantOrReference> LoggerEventIdScenariosValues() => new()
@@ -306,12 +307,12 @@ public class TestClass
         var compilation = await TestUtils.CreateCompilationAsync(code);
         var extractor = TestUtils.CreateLoggerUsageExtractor();
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.NotNull(loggerUsages.Results[0].EventId);
-        var details = Assert.IsType<EventIdDetails>(loggerUsages.Results[0].EventId);
-        Assert.Equal(expectedId, details.Id);
-        Assert.Equal(expectedName, details.Name);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].EventId.Should().NotBeNull();
+        var details = loggerUsages.Results[0].EventId.Should().BeOfType<EventIdDetails>().Which;
+        details.Id.Should().Be(expectedId);
+        details.Name.Should().Be(expectedName);
     }
 
     [Theory]
@@ -337,9 +338,9 @@ public class TestClass
 
         // Act
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Null(loggerUsages.Results[0].EventId);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].EventId.Should().BeNull();
     }
 
     public static TheoryData<string, string[]> LoggerMessageTemplates() => new()
@@ -387,9 +388,9 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(template, loggerUsages.Results[0].MessageTemplate);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
+        loggerUsages.Results[0].MessageTemplate.Should().Be(template);
     }
 
     public static TheoryData<string, string[], string> LoggerInterpolatedTemplateCases() => new()
@@ -426,9 +427,9 @@ public class TestClass
         var result = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result.Results);
-        Assert.Equal(expectedTemplate, result.Results[0].MessageTemplate);
+        result.Should().NotBeNull();
+        result.Results.Should().ContainSingle();
+        result.Results[0].MessageTemplate.Should().Be(expectedTemplate);
     }
 
     public static TheoryData<string, string[], List<MessageParameter>> LoggerMessageParameterCases() => new()
@@ -587,10 +588,10 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
         var parameters = loggerUsages.Results[0].MessageParameters;
-        Assert.Equal(expectedParameters.Count, parameters.Count);
-        Assert.Equal(expectedParameters, parameters);
+        parameters.Count.Should().Be(expectedParameters.Count);
+        parameters.Should().Equal(expectedParameters);
     }
 }
