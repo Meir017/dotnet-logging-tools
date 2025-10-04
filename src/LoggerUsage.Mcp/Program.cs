@@ -1,11 +1,8 @@
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using LoggerUsage;
 using LoggerUsage.Models;
 using LoggerUsage.ReportGenerator;
 using ModelContextProtocol.Server;
-
-[assembly: InternalsVisibleTo("LoggerUsage.Mcp.Tests")]
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,3 +41,6 @@ public class LoggerUsageExtractorTool(
         return loggerUsage;
     }
 }
+
+// Make the implicit Program class public for testing
+public partial class Program { }
