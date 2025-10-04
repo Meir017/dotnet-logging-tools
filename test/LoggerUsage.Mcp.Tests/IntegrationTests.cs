@@ -1,9 +1,11 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AwesomeAssertions;
 using LoggerUsage.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace LoggerUsage.Mcp.Tests;
 
@@ -14,18 +16,18 @@ public class IntegrationTests
     {
         // Arrange
         var factory = new WebApplicationFactory<Program>();
-        var transport = new SseClientTransport(new SseClientTransportOptions
+        var transport = new HttpClientTransport(new HttpClientTransportOptions
         {
             Endpoint = new Uri("http://localhost/sse"),
         }, factory.CreateClient());
-        var mcpClient = await McpClientFactory.CreateAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
+        var mcpClient = await McpClient.CreateAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var response = await mcpClient.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         response.Should().HaveCount(1);
-        response[0].Name.Should().Be(nameof(LoggerUsageExtractorTool.AnalyzeLoggerUsagesInCsproj));
+        response[0].Name.Should().Be("analyze_logger_usages_in_csproj");
     }
 
     [Fact]
@@ -33,14 +35,14 @@ public class IntegrationTests
     {
         // Arrange
         var factory = new WebApplicationFactory<Program>();
-        var transport = new SseClientTransport(new SseClientTransportOptions
+        var transport = new HttpClientTransport(new HttpClientTransportOptions
         {
             Endpoint = new Uri("http://localhost/sse"),
         }, factory.CreateClient());
-        var mcpClient = await McpClientFactory.CreateAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
+        var mcpClient = await McpClient.CreateAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var response = await mcpClient.CallToolAsync(nameof(LoggerUsageExtractorTool.AnalyzeLoggerUsagesInCsproj),
+        var response = await mcpClient.CallToolAsync("analyze_logger_usages_in_csproj",
             new Dictionary<string, object?>
             {
                 { "fullPathToCsproj", GetCliCsprojPath() }
@@ -51,9 +53,15 @@ public class IntegrationTests
         response.Should().NotBeNull();
         response.Content.Should().HaveCount(1);
         response.Content[0].Type.Should().Be("text");
-        response.Content[0].Text.Should().NotBeNull();
+        var text = Assert.IsType<TextContentBlock>(response.Content[0]);
+        text.Text.Should().NotBeNull();
 
-        var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(response.Content[0].Text!, JsonSerializerOptions.Web);
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+        };
+        var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(text.Text!, options);
         loggerUsages.Should().NotBeNull();
         loggerUsages.Results.Should().NotBeNull();
         loggerUsages.Results.Should().NotBeEmpty();
