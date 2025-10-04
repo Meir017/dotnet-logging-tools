@@ -1,3 +1,4 @@
+using FluentAssertions;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -54,9 +55,9 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, loggerUsages.Results[0].MethodType);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle()
+            .Which.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageAttribute);
     }
 
     public static TheoryData<string, int?, string?> LoggerMessageEventIdScenarios() => new()
@@ -107,32 +108,31 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        var usage = loggerUsages.Results[0];
+        loggerUsages.Should().NotBeNull();
+        var usage = loggerUsages.Results.Should().ContainSingle().Which;
         if (expectedId == null && expectedName == null)
         {
-            Assert.Null(usage.EventId);
+            usage.EventId.Should().BeNull();
             return;
         }
 
-        var details = Assert.IsType<EventIdDetails>(usage.EventId);
+        var details = usage.EventId.Should().BeOfType<EventIdDetails>().Which;
         if (expectedId is not null)
         {
-            Assert.Equal(ConstantOrReference.Constant(expectedId), details.Id);
+            details.Id.Should().Be(ConstantOrReference.Constant(expectedId));
         }
         else
         {
-            Assert.Same(ConstantOrReference.Missing, details.Id);
+            details.Id.Should().BeSameAs(ConstantOrReference.Missing);
         }
 
         if (expectedName is not null)
         {
-            Assert.Equal(ConstantOrReference.Constant(expectedName), details.Name);
+            details.Name.Should().Be(ConstantOrReference.Constant(expectedName));
         }
         else
         {
-            Assert.Same(ConstantOrReference.Missing, details.Name);
+            details.Name.Should().BeSameAs(ConstantOrReference.Missing);
         }
     }
 
@@ -187,9 +187,9 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle()
+            .Which.LogLevel.Should().Be(expectedLogLevel);
     }
 
     public static TheoryData<string, string?> LoggerMessageMessageScenarios() => new()
@@ -228,15 +228,15 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        var result = loggerUsages.Results.Should().ContainSingle().Which;
         if (expectedMessage == null)
         {
-            Assert.True(string.IsNullOrEmpty(loggerUsages.Results[0].MessageTemplate));
+            string.IsNullOrEmpty(result.MessageTemplate).Should().BeTrue();
         }
         else
         {
-            Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
+            result.MessageTemplate.Should().Be(expectedMessage);
         }
     }
 
@@ -296,17 +296,16 @@ public class LogData
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-        var usage = loggerUsages.Results[0];
+        loggerUsages.Should().NotBeNull();
+        var usage = loggerUsages.Results.Should().ContainSingle().Which;
         if (expectedParameters.Count == 0)
         {
-            Assert.Empty(usage.MessageParameters);
+            usage.MessageParameters.Should().BeEmpty();
         }
         else
         {
-            Assert.Equal(expectedParameters.Count, usage.MessageParameters.Count);
-            Assert.Equal(expectedParameters, usage.MessageParameters);
+            usage.MessageParameters.Should().HaveCount(expectedParameters.Count);
+            usage.MessageParameters.Should().Equal(expectedParameters);
         }
     }
 
@@ -357,19 +356,19 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        
+        var usage = loggerUsages.Results.Should().ContainSingle()
+            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        usage.MethodName.Should().Be("LogUserLogin");
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageAttribute);
+        usage.DeclaringTypeName.Should().Be("TestNamespace.Log");
+        usage.HasInvocations.Should().BeTrue();
+        usage.InvocationCount.Should().Be(1);
 
-        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        Assert.Equal("LogUserLogin", usage.MethodName);
-        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, usage.MethodType);
-        Assert.Equal("TestNamespace.Log", usage.DeclaringTypeName);
-        Assert.True(usage.HasInvocations);
-        Assert.Equal(1, usage.InvocationCount);
-
-        var invocation = Assert.Single(usage.Invocations);
-        Assert.Equal("TestNamespace.UserService", invocation.ContainingType);
-        Assert.NotNull(invocation.InvocationLocation);
+        var invocation = usage.Invocations.Should().ContainSingle().Which;
+        invocation.ContainingType.Should().Be("TestNamespace.UserService");
+        invocation.InvocationLocation.Should().NotBeNull();
     }
 
     [Fact]
@@ -437,20 +436,20 @@ public class AdminService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-
-        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        Assert.Equal("LogUserLogin", usage.MethodName);
-        Assert.True(usage.HasInvocations);
-        Assert.Equal(3, usage.InvocationCount);
+        loggerUsages.Should().NotBeNull();
+        
+        var usage = loggerUsages.Results.Should().ContainSingle()
+            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        usage.MethodName.Should().Be("LogUserLogin");
+        usage.HasInvocations.Should().BeTrue();
+        usage.InvocationCount.Should().Be(3);
 
         // Verify invocations from different containing types
         var userServiceInvocations = usage.Invocations.Where(i => i.ContainingType == "TestNamespace.UserService").ToList();
         var adminServiceInvocations = usage.Invocations.Where(i => i.ContainingType == "TestNamespace.AdminService").ToList();
 
-        Assert.Equal(2, userServiceInvocations.Count);
-        Assert.Single(adminServiceInvocations);
+        userServiceInvocations.Should().HaveCount(2);
+        adminServiceInvocations.Should().ContainSingle();
     }
 
     [Fact]
@@ -499,16 +498,16 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count); // LoggerMessage + regular logger call
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2); // LoggerMessage + regular logger call
 
         var loggerMessageUsage = loggerUsages.Results
             .OfType<LoggerMessageUsageInfo>()
             .Single(u => u.MethodName == "UnusedMethod");
 
-        Assert.False(loggerMessageUsage.HasInvocations);
-        Assert.Equal(0, loggerMessageUsage.InvocationCount);
-        Assert.Empty(loggerMessageUsage.Invocations);
+        loggerMessageUsage.HasInvocations.Should().BeFalse();
+        loggerMessageUsage.InvocationCount.Should().Be(0);
+        loggerMessageUsage.Invocations.Should().BeEmpty();
     }
 
     [Fact]
@@ -556,26 +555,26 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        
+        var usage = loggerUsages.Results.Should().ContainSingle()
+            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        usage.HasInvocations.Should().BeTrue();
 
-        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        Assert.True(usage.HasInvocations);
-
-        var invocation = Assert.Single(usage.Invocations);
-        Assert.Equal(3, invocation.Arguments.Count); // logger, userId, action
+        var invocation = usage.Invocations.Should().ContainSingle().Which;
+        invocation.Arguments.Should().HaveCount(3); // logger, userId, action
 
         // Verify argument details
         var loggerArg = invocation.Arguments.FirstOrDefault(a => a.Name == "logger");
         var userIdArg = invocation.Arguments.FirstOrDefault(a => a.Name == "userId");
         var actionArg = invocation.Arguments.FirstOrDefault(a => a.Name == "action");
 
-        Assert.NotNull(loggerArg);
-        Assert.NotNull(userIdArg);
-        Assert.NotNull(actionArg);
+        loggerArg.Should().NotBeNull();
+        userIdArg.Should().NotBeNull();
+        actionArg.Should().NotBeNull();
 
-        Assert.Equal("int", userIdArg.Type);
-        Assert.Equal("string", actionArg.Type);
+        userIdArg!.Type.Should().Be("int");
+        actionArg!.Type.Should().Be("string");
     }
 
     [Fact]
@@ -638,16 +637,16 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2);
 
         var loginUsage = loggerUsages.Results.OfType<LoggerMessageUsageInfo>()
             .Single(u => u.MethodName == "LogUserLogin");
         var loginFailedUsage = loggerUsages.Results.OfType<LoggerMessageUsageInfo>()
             .Single(u => u.MethodName == "LogUserLoginFailed");
 
-        Assert.Equal(2, loginUsage.InvocationCount);
-        Assert.Equal(1, loginFailedUsage.InvocationCount);
+        loginUsage.InvocationCount.Should().Be(2);
+        loginFailedUsage.InvocationCount.Should().Be(1);
     }
 
     [Fact]
@@ -703,16 +702,16 @@ namespace TestNamespace.Services
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        
+        var usage = loggerUsages.Results.Should().ContainSingle()
+            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        usage.MethodName.Should().Be("LogApplicationStarted");
+        usage.DeclaringTypeName.Should().Be("TestNamespace.Logging.ApplicationLog");
+        usage.HasInvocations.Should().BeTrue();
 
-        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        Assert.Equal("LogApplicationStarted", usage.MethodName);
-        Assert.Equal("TestNamespace.Logging.ApplicationLog", usage.DeclaringTypeName);
-        Assert.True(usage.HasInvocations);
-
-        var invocation = Assert.Single(usage.Invocations);
-        Assert.Equal("TestNamespace.Services.StartupService", invocation.ContainingType);
+        var invocation = usage.Invocations.Should().ContainSingle().Which;
+        invocation.ContainingType.Should().Be("TestNamespace.Services.StartupService");
     }
 
     [Fact]
@@ -737,25 +736,25 @@ namespace TestNamespace.Services
         var resultsWithoutSolution = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!);
 
         // Assert
-        Assert.NotNull(resultsWithSolution);
-        Assert.Single(resultsWithSolution.Results);
-        Assert.NotNull(resultsWithoutSolution);
-        Assert.Single(resultsWithoutSolution.Results);
+        resultsWithSolution.Should().NotBeNull();
+        resultsWithSolution.Results.Should().ContainSingle();
+        resultsWithoutSolution.Should().NotBeNull();
+        resultsWithoutSolution.Results.Should().ContainSingle();
 
-        var usageWithSolution = Assert.IsType<LoggerMessageUsageInfo>(resultsWithSolution.Results[0]);
-        var usageWithoutSolution = Assert.IsType<LoggerMessageUsageInfo>(resultsWithoutSolution.Results[0]);
+        var usageWithSolution = resultsWithSolution.Results[0].Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        var usageWithoutSolution = resultsWithoutSolution.Results[0].Should().BeOfType<LoggerMessageUsageInfo>().Which;
 
         // Without solution: Should find 0 invocations (no local invocations in logger project)
-        Assert.False(usageWithoutSolution.HasInvocations, "Without solution context, should not find cross-project invocations");
-        Assert.Equal(0, usageWithoutSolution.InvocationCount);
+        usageWithoutSolution.HasInvocations.Should().BeFalse("Without solution context, should not find cross-project invocations");
+        usageWithoutSolution.InvocationCount.Should().Be(0);
 
         // With solution: Should find cross-project invocations using SymbolFinder.FindCallersAsync
-        Assert.True(usageWithSolution.HasInvocations, $"With solution context, should find cross-project invocations but found {usageWithSolution.InvocationCount}");
-        Assert.Equal(2, usageWithSolution.InvocationCount); // Should find 2 invocations from consumer project
+        usageWithSolution.HasInvocations.Should().BeTrue($"With solution context, should find cross-project invocations but found {usageWithSolution.InvocationCount}");
+        usageWithSolution.InvocationCount.Should().Be(2); // Should find 2 invocations from consumer project
 
         // Verify invocations are from the consumer project
-        Assert.All(usageWithSolution.Invocations, invocation =>
-            Assert.Contains("ConsumerProject", invocation.ContainingType));
+        usageWithSolution.Invocations.Should().AllSatisfy(invocation =>
+            invocation.ContainingType.Should().Contain("ConsumerProject"));
     }
 
     [Fact]
@@ -772,23 +771,23 @@ namespace TestNamespace.Services
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!, solution);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        
+        var usage = loggerUsages.Results.Should().ContainSingle()
+            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        usage.MethodName.Should().Be("LogUserActivity");
+        usage.DeclaringTypeName.Should().Be("LoggerProject.UserLogger");
 
-        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        Assert.Equal("LogUserActivity", usage.MethodName);
-        Assert.Equal("LoggerProject.UserLogger", usage.DeclaringTypeName);
-
-        Assert.True(usage.HasInvocations, $"Expected invocations to be found, but got {usage.InvocationCount} invocations");
-        Assert.Equal(2, usage.InvocationCount); // Should find invocations in consumer project
+        usage.HasInvocations.Should().BeTrue($"Expected invocations to be found, but got {usage.InvocationCount} invocations");
+        usage.InvocationCount.Should().Be(2); // Should find invocations in consumer project
 
         // Verify invocations from consumer project
         var consumerInvocations = usage.Invocations.Where(i => i.ContainingType.Contains("ConsumerProject")).ToList();
-        Assert.Equal(2, consumerInvocations.Count);
+        consumerInvocations.Should().HaveCount(2);
 
         // Should find invocations in both services
-        Assert.Contains(usage.Invocations, i => i.ContainingType == "ConsumerProject.Services.UserService");
-        Assert.Contains(usage.Invocations, i => i.ContainingType == "ConsumerProject.Services.ActivityService");
+        usage.Invocations.Should().Contain(i => i.ContainingType == "ConsumerProject.Services.UserService");
+        usage.Invocations.Should().Contain(i => i.ContainingType == "ConsumerProject.Services.ActivityService");
     }
 
     [Fact]
@@ -805,14 +804,14 @@ namespace TestNamespace.Services
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!); // No solution parameter
 
         // Assert - Should still find the LoggerMessage declaration but no cross-project invocations
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
-
-        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        Assert.Equal("LogUserActivity", usage.MethodName);
-        Assert.Equal("LoggerProject.UserLogger", usage.DeclaringTypeName);
-        Assert.False(usage.HasInvocations); // Should not find cross-project invocations
-        Assert.Equal(0, usage.InvocationCount);
+        loggerUsages.Should().NotBeNull();
+        
+        var usage = loggerUsages.Results.Should().ContainSingle()
+            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        usage.MethodName.Should().Be("LogUserActivity");
+        usage.DeclaringTypeName.Should().Be("LoggerProject.UserLogger");
+        usage.HasInvocations.Should().BeFalse(); // Should not find cross-project invocations
+        usage.InvocationCount.Should().Be(0);
     }
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateInMemorySolutionWithLoggerMessageProjects()
