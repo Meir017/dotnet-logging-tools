@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using AwesomeAssertions;
 using LoggerUsage.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using ModelContextProtocol.Client;
@@ -23,8 +24,8 @@ public class IntegrationTests
         var response = await mcpClient.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(response);
-        Assert.Equal(nameof(LoggerUsageExtractorTool.AnalyzeLoggerUsagesInCsproj), response[0].Name);
+        response.Should().HaveCount(1);
+        response[0].Name.Should().Be(nameof(LoggerUsageExtractorTool.AnalyzeLoggerUsagesInCsproj));
     }
 
     [Fact]
@@ -47,16 +48,16 @@ public class IntegrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.NotNull(response);
-        Assert.Single(response.Content);
-        Assert.Equal("text", response.Content[0].Type);
-        Assert.NotNull(response.Content[0].Text);
+        response.Should().NotBeNull();
+        response.Content.Should().HaveCount(1);
+        response.Content[0].Type.Should().Be("text");
+        response.Content[0].Text.Should().NotBeNull();
 
         var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(response.Content[0].Text!, JsonSerializerOptions.Web);
-        Assert.NotNull(loggerUsages);
-        Assert.NotNull(loggerUsages.Results);
-        Assert.NotEmpty(loggerUsages.Results);
-        Assert.NotNull(loggerUsages.Summary);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().NotBeNull();
+        loggerUsages.Results.Should().NotBeEmpty();
+        loggerUsages.Summary.Should().NotBeNull();
     }
 
     private static string GetCliCsprojPath()
