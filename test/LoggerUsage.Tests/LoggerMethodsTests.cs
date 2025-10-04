@@ -1,4 +1,4 @@
-﻿using AwesomeAssertions;
+﻿using FluentAssertions;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
