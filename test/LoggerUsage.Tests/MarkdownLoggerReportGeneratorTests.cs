@@ -84,12 +84,13 @@ public class MarkdownLoggerReportGeneratorTests
         markdown.Should().Contain("## 📊 Summary");
         markdown.Should().Contain("| Total Log Usages | 1 |");
         markdown.Should().Contain("| Unique Parameter Names | 2 |");
-        markdown.Should().Contain("ℹ️ Line 43: Information - LoggerMethod");
+        markdown.Should().Contain("[Line 43]"); // Line number is a link
+        markdown.Should().Contain("Information - LoggerMethod");
         markdown.Should().Contain("User {UserId} performed action {Action}");
         markdown.Should().Contain("| `UserId` | `int` | Argument |");
         markdown.Should().Contain("| `Action` | `string` | Argument |");
         markdown.Should().Contain("1001 (UserAction)");
-        markdown.Should().Contain("UserController.cs");
+        markdown.Should().Contain("[UserController.cs]"); // File name is a link
     }
 
     [Fact]
@@ -186,13 +187,15 @@ public class MarkdownLoggerReportGeneratorTests
 
         // Assert
         markdown.Should().NotBeNull();
-        markdown.Should().Contain("Line 26: Information - LoggerMessageAttribute");
+        markdown.Should().Contain("[Line 26]"); // Line is a link
+        markdown.Should().Contain("Information - LoggerMessageAttribute");
         markdown.Should().Contain("**LoggerMessage Method Details:**");
         markdown.Should().Contain("- **Declaring Type:** `MyApp.Services.UserService`");
         markdown.Should().Contain("- **Method Name:** `LogUserAction`");
         markdown.Should().Contain("- **Invocation Count:** 1");
         markdown.Should().Contain("**Invocations:**");
-        markdown.Should().Contain("- **UserController.cs** (Line 46)");
+        markdown.Should().Contain("[UserController.cs]"); // File is a link
+        markdown.Should().Contain("(Line 46)");
         markdown.Should().Contain("- **Containing Type:** `MyApp.Controllers.UserController`");
         markdown.Should().Contain("- `userId`: `int` (Argument)");
         markdown.Should().Contain("- `userAction`: `string` (Argument)");
@@ -322,12 +325,12 @@ public class MarkdownLoggerReportGeneratorTests
         markdown.Should().Contain("**Parameter:** `user` (`UserDetails`)");
         markdown.Should().Contain("**Configuration:** Transitive");
         markdown.Should().Contain("**Properties:** 3 properties extracted");
-        
+
         // Verify hierarchical structure
         markdown.Should().Contain("- `Name`: `string`");
         markdown.Should().Contain("- `Age`: `int`");
         markdown.Should().Contain("- `Address`: `Address` ⮑");
-        
+
         // Verify nested properties with indentation
         markdown.Should().Contain("    - `Street`: `string`");
         markdown.Should().Contain("    - `City`: `string`");
@@ -433,12 +436,12 @@ public class MarkdownLoggerReportGeneratorTests
         markdown.Should().Contain("| Properties with Custom Tag Names | 5 |");
         markdown.Should().Contain("| Parameters with Tag Providers | 2 |");
         markdown.Should().Contain("| Transitive Properties | 10 |");
-        
+
         // Custom tag mappings
         markdown.Should().Contain("**Custom Tag Name Mappings:**");
         markdown.Should().Contain("| `userId` | `user.id` | Parameter |");
         markdown.Should().Contain("| `userName` | `user.name` | Parameter |");
-        
+
         // Tag providers
         markdown.Should().Contain("**Tag Providers:**");
         markdown.Should().Contain("| `request` | `MyApp.Providers.RequestProvider` | `ProvideTags` | False | ✓ |");
