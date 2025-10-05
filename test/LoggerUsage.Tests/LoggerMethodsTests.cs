@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+﻿using AwesomeAssertions;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -70,7 +70,7 @@ public static void Log(this ILogger logger, LogLevel logLevel, string? message, 
 public static void Log(this ILogger logger, LogLevel logLevel, EventId eventId, string? message, params object?[] args)
 public static void Log(this ILogger logger, LogLevel logLevel, Exception? exception, string? message, params object?[] args)
 public static void Log(this ILogger logger, LogLevel logLevel, EventId eventId, Exception? exception, string? message, params object?[] args)
-        
+
         */
         new[] { "LogLevel.Information", "new EventId(1)", "\"the-state\"", "null", "(state, ex) => state.ToString()" },
         new[] { "LogLevel.Warning", "new EventId(2)", "\"Warning message\"" },
@@ -434,21 +434,21 @@ public class TestClass
 
     public static TheoryData<string, string[], List<MessageParameter>> LoggerMessageParameterCases() => new()
     {
-        { "Test message {arg1}", ["strArg"], [ 
+        { "Test message {arg1}", ["strArg"], [
                 new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference))
         ] },
-        { "Test message {arg1} {arg2}", ["strArg", "intArg"], [ 
-            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
-            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)) 
+        { "Test message {arg1} {arg2}", ["strArg", "intArg"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference))
         ] },
         { "Test message {arg1} {arg2} {arg3}", ["strArg", "intArg", "boolArg"], [
-            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
-            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)), 
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)),
             new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
         ] },
-        { "Test message {arg1} and {arg2} and {arg3}", ["strArg", "intArg", "boolArg"], [ 
-            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)), 
-            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)), 
+        { "Test message {arg1} and {arg2} and {arg3}", ["strArg", "intArg", "boolArg"], [
+            new MessageParameter("arg1", "string", nameof(OperationKind.ParameterReference)),
+            new MessageParameter("arg2", "int", nameof(OperationKind.ParameterReference)),
             new MessageParameter("arg3", "bool", nameof(OperationKind.ParameterReference))
          ] },
         { "Test message with no params", [], [] },
