@@ -168,11 +168,11 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             summaryBuilder.AppendLine($"      <div><strong>Classified Properties:</strong> {loggerUsage.Summary.ClassificationStats.TotalClassifiedProperties}</div>");
             summaryBuilder.AppendLine($"      <div><strong>Sensitive Data:</strong> {loggerUsage.Summary.ClassificationStats.SensitiveParameterPercentage:F1}%</div>");
             summaryBuilder.AppendLine("    </div>");
-            if (loggerUsage.Summary.ClassificationStats.ByLevel.Count > 0)
+            if (loggerUsage.Summary.ClassificationStats.ByValue.Count > 0)
             {
                 summaryBuilder.AppendLine("    <div style='margin-top:0.8em;'><strong>Classification Breakdown:</strong></div>");
                 summaryBuilder.AppendLine("    <div style='display:flex;flex-wrap:wrap;gap:0.5em;margin-top:0.5em;'>");
-                foreach (var kvp in loggerUsage.Summary.ClassificationStats.ByLevel.OrderBy(x => x.Key))
+                foreach (var kvp in loggerUsage.Summary.ClassificationStats.ByValue.OrderBy(x => x.Key))
                 {
                     var cssClass = GetClassificationCssClass(kvp.Key);
                     var icon = GetClassificationIcon(kvp.Key);
@@ -186,7 +186,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             }
             summaryBuilder.AppendLine("  </div>");
         }
-        
+
         // Telemetry Features Summary (if any)
         if (loggerUsage.Summary.TelemetryStats.HasTelemetryFeatures)
         {
@@ -198,7 +198,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             summaryBuilder.AppendLine($"      <div><strong>Tag Providers:</strong> {loggerUsage.Summary.TelemetryStats.ParametersWithTagProviders}</div>");
             summaryBuilder.AppendLine($"      <div><strong>Transitive Properties:</strong> {loggerUsage.Summary.TelemetryStats.TotalTransitiveProperties}</div>");
             summaryBuilder.AppendLine("    </div>");
-            
+
             // Custom Tag Name Mappings
             if (loggerUsage.Summary.TelemetryStats.CustomTagNameMappings.Count > 0)
             {
@@ -219,7 +219,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                 summaryBuilder.AppendLine("      </div>");
                 summaryBuilder.AppendLine("    </details>");
             }
-            
+
             // Tag Providers
             if (loggerUsage.Summary.TelemetryStats.TagProviders.Count > 0)
             {
@@ -247,10 +247,10 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                 summaryBuilder.AppendLine("      </table>");
                 summaryBuilder.AppendLine("    </details>");
             }
-            
+
             summaryBuilder.AppendLine("  </div>");
         }
-        
+
         // Most Common Parameter Names
         summaryBuilder.AppendLine("  <div class='summary-mostcommon' style='font-size:1.1em;color:#555;'><div style='margin-bottom:0.5em;'><b>Most Common Parameter Names:</b></div><div style='display:flex;flex-wrap:wrap;gap:0.5em 1em;margin-top:0.5em;'>");
         var topParams = loggerUsage.Summary.CommonParameterNames.Take(8).ToList();
@@ -401,20 +401,19 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                         string[] builtInTypes = ["bool", "byte", "sbyte", "char", "decimal", "double", "float", "int", "uint", "long", "ulong", "object", "short", "ushort", "string", "void"];
                         bool isBuiltIn = builtInTypes.Contains(type) || type.StartsWith("System.");
                         var typeClass = isBuiltIn ? "param-type-builtin" : "param-type-other";
-                        var customTagHtml = !string.IsNullOrEmpty(p.CustomTagName) 
-                            ? $" <span style='color:#666;'>→ <code>{WebUtility.HtmlEncode(p.CustomTagName)}</code></span>" 
+                        var customTagHtml = !string.IsNullOrEmpty(p.CustomTagName)
+                            ? $" <span style='color:#666;'>→ <code>{WebUtility.HtmlEncode(p.CustomTagName)}</code></span>"
                             : "";
                         var classificationHtml = p.DataClassification != null
-                            ? $" <span class='classification-badge {GetClassificationCssClass(p.DataClassification.Level)}'>{GetClassificationIcon(p.DataClassification.Level)} {p.DataClassification.Level}</span>"
+                            ? $" <span class='classification-badge {GetClassificationCssClass(p.DataClassification.ClassificationValue)}'>{GetClassificationIcon(p.DataClassification.ClassificationValue)} {WebUtility.HtmlEncode(p.DataClassification.ClassificationValue)}</span>"
                             : "";
                         return $"<li><span class='param-name'>{WebUtility.HtmlEncode(p.Name)}</span>: <span class='{typeClass}'>{WebUtility.HtmlEncode(type)}</span> [<span class='param-kind'>{WebUtility.HtmlEncode(p.Kind)}</span>]{customTagHtml}{classificationHtml}</li>";
                     })) +
                     "</ul>";
-                    
+
                 // Add security warning if any parameters are sensitive
-                if (usage.MessageParameters.Any(p => p.DataClassification != null && 
-                    (p.DataClassification.Level == DataClassificationLevel.Private || 
-                     p.DataClassification.Level == DataClassificationLevel.Sensitive)))
+                if (usage.MessageParameters.Any(p => p.DataClassification != null &&
+                    IsSensitiveClassification(p.DataClassification.ClassificationValue)))
                 {
                     parameters += "<div class='security-warning'>🔒 <strong>Security Note:</strong> This log contains sensitive data that may be redacted at runtime.</div>";
                 }
@@ -600,17 +599,17 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
                             <strong>Tag Provider:</strong> {WebUtility.HtmlEncode(param.TagProvider.ProviderTypeName)}.{WebUtility.HtmlEncode(param.TagProvider.ProviderMethodName)}
                             <span style='color:{statusColor};font-weight:bold;margin-left:8px;'>{statusIcon} {(param.TagProvider.IsValid ? "Valid" : "Invalid")}</span>
                         </div>";
-                
+
                 if (param.TagProvider.OmitReferenceName)
                 {
                     html += "<div style='font-size:0.85em;color:#666;margin-top:2px;'><em>OmitReferenceName: true</em></div>";
                 }
-                
+
                 if (!param.TagProvider.IsValid && !string.IsNullOrEmpty(param.TagProvider.ValidationMessage))
                 {
                     html += $"<div style='font-size:0.85em;color:#f44336;margin-top:2px;'>⚠ {WebUtility.HtmlEncode(param.TagProvider.ValidationMessage)}</div>";
                 }
-                
+
                 html += "</div>";
             }
 
@@ -658,7 +657,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             html += $"<li style='margin-left:{indent}px;'>";
             html += $"<code>{WebUtility.HtmlEncode(property.Name)}</code>: ";
             html += $"<span style='color:#00796b;'>{WebUtility.HtmlEncode(property.Type)}{nullableIndicator}</span>";
-            
+
             // Show custom tag name if present
             if (!string.IsNullOrEmpty(property.CustomTagName))
             {
@@ -668,7 +667,7 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
             // Show data classification if present
             if (property.DataClassification != null)
             {
-                html += $" <span class='classification-badge {GetClassificationCssClass(property.DataClassification.Level)}'>{GetClassificationIcon(property.DataClassification.Level)} {property.DataClassification.Level}</span>";
+                html += $" <span class='classification-badge {GetClassificationCssClass(property.DataClassification.ClassificationValue)}'>{GetClassificationIcon(property.DataClassification.ClassificationValue)} {WebUtility.HtmlEncode(property.DataClassification.ClassificationValue)}</span>";
             }
 
             if (property.NestedProperties != null && property.NestedProperties.Count > 0)
@@ -685,24 +684,60 @@ internal class HtmlLoggerReportGenerator : ILoggerReportGenerator
         return html;
     }
 
-    private static string GetClassificationCssClass(DataClassificationLevel level) => level switch
+    private static bool IsSensitiveClassification(string classificationValue)
     {
-        DataClassificationLevel.Public => "classification-public",
-        DataClassificationLevel.Internal => "classification-internal",
-        DataClassificationLevel.Private => "classification-private",
-        DataClassificationLevel.Sensitive => "classification-sensitive",
-        DataClassificationLevel.Custom => "classification-custom",
-        _ => ""
-    };
+        return classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase) ||
+               classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) ||
+               classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase);
+    }
 
-    private static string GetClassificationIcon(DataClassificationLevel level) => level switch
+    private static string GetClassificationCssClass(string classificationValue)
     {
-        DataClassificationLevel.Public => "🌐",
-        DataClassificationLevel.Internal => "🏢",
-        DataClassificationLevel.Private => "🔒",
-        DataClassificationLevel.Sensitive => "🔐",
-        DataClassificationLevel.Custom => "🏷️",
-        DataClassificationLevel.None => "⚪",
-        _ => "❓"
-    };
+        if (classificationValue.Contains("Public", StringComparison.OrdinalIgnoreCase))
+        {
+            return "classification-public";
+        }
+        if (classificationValue.Contains("Internal", StringComparison.OrdinalIgnoreCase))
+        {
+            return "classification-internal";
+        }
+        if (classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase))
+        {
+            return "classification-private";
+        }
+        if (classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) ||
+            classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase))
+        {
+            return "classification-sensitive";
+        }
+
+        return "classification-custom";
+    }
+
+    private static string GetClassificationIcon(string classificationValue)
+    {
+        if (classificationValue.Contains("Public", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🌐";
+        }
+        if (classificationValue.Contains("Internal", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🏢";
+        }
+        if (classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🔒";
+        }
+        if (classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) ||
+            classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🔐";
+        }
+        if (classificationValue.Contains("None", StringComparison.OrdinalIgnoreCase) || classificationValue == "0")
+        {
+            return "⚪";
+        }
+
+        return "🏷️";
+    }
 }

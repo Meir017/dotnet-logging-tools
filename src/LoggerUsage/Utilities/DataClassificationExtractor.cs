@@ -44,7 +44,7 @@ internal static class DataClassificationExtractor
     /// Checks if a type inherits from DataClassificationAttribute.
     /// </summary>
     private static bool InheritsFromDataClassificationAttribute(
-        INamedTypeSymbol attributeClass, 
+        INamedTypeSymbol attributeClass,
         INamedTypeSymbol dataClassificationAttribute)
     {
         // Check direct match
@@ -80,7 +80,7 @@ internal static class DataClassificationExtractor
         if (attribute.ConstructorArguments.Length > 0)
         {
             var arg = attribute.ConstructorArguments[0];
-            
+
             // The argument might be an enum value or other type
             if (arg.Value != null)
             {
@@ -96,45 +96,9 @@ internal static class DataClassificationExtractor
             }
         }
 
-        // Determine the classification level based on the value
-        var level = DetermineClassificationLevel(classificationValue, attributeTypeName);
-
         return new DataClassificationInfo(
             attributeTypeName,
             classificationValue,
-            isCustomAttribute,
-            level);
-    }
-
-    /// <summary>
-    /// Determines the classification level from the classification value.
-    /// </summary>
-    private static DataClassificationLevel DetermineClassificationLevel(string classificationValue, string attributeTypeName)
-    {
-        // Check for well-known classification levels using the original value
-        if (classificationValue.Contains("Public", StringComparison.OrdinalIgnoreCase))
-        {
-            return DataClassificationLevel.Public;
-        }
-        if (classificationValue.Contains("Internal", StringComparison.OrdinalIgnoreCase))
-        {
-            return DataClassificationLevel.Internal;
-        }
-        if (classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase))
-        {
-            return DataClassificationLevel.Private;
-        }
-        if (classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) || 
-            classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase))
-        {
-            return DataClassificationLevel.Sensitive;
-        }
-        if (classificationValue.Contains("None", StringComparison.OrdinalIgnoreCase) || classificationValue == "0")
-        {
-            return DataClassificationLevel.None;
-        }
-
-        // Default to Custom for unknown values
-        return DataClassificationLevel.Custom;
+            isCustomAttribute);
     }
 }

@@ -78,9 +78,9 @@ public class LoggerUsageExtractionSummary
         public int TotalClassifiedProperties { get; set; }
 
         /// <summary>
-        /// Gets or sets the breakdown of classifications by level.
+        /// Gets or sets the breakdown of classifications by value.
         /// </summary>
-        public Dictionary<DataClassificationLevel, int> ByLevel { get; set; } = [];
+        public Dictionary<string, int> ByValue { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the percentage of parameters with sensitive classification (Private or Sensitive levels).
@@ -131,10 +131,10 @@ public class LoggerUsageExtractionSummary
         /// <summary>
         /// Gets or sets whether any telemetry features were found in the analysis.
         /// </summary>
-        public bool HasTelemetryFeatures => 
-            ParametersWithCustomTagNames > 0 || 
-            PropertiesWithCustomTagNames > 0 || 
-            ParametersWithTagProviders > 0 || 
+        public bool HasTelemetryFeatures =>
+            ParametersWithCustomTagNames > 0 ||
+            PropertiesWithCustomTagNames > 0 ||
+            ParametersWithTagProviders > 0 ||
             TotalTransitiveProperties > 0;
     }
 

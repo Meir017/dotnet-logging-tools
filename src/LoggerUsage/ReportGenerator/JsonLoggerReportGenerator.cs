@@ -38,7 +38,7 @@ internal class JsonLoggerReportGenerator : ILoggerReportGenerator
                     ClassifiedParameters = loggerUsage.Summary.ClassificationStats.TotalClassifiedParameters,
                     ClassifiedProperties = loggerUsage.Summary.ClassificationStats.TotalClassifiedProperties,
                     SensitivePercentage = loggerUsage.Summary.ClassificationStats.SensitiveParameterPercentage,
-                    loggerUsage.Summary.ClassificationStats.ByLevel
+                    loggerUsage.Summary.ClassificationStats.ByValue
                 } : null,
                 Telemetry = loggerUsage.Summary.TelemetryStats.HasTelemetryFeatures ? new
                 {
