@@ -1,3 +1,4 @@
+using FluentAssertions;
 using LoggerUsage.Models;
 using LoggerUsage.ReportGenerator;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,10 +31,10 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("# Logger Usage Report", markdown);
-        Assert.Contains("## 📊 Summary", markdown);
-        Assert.Contains("*No logger usages found.*", markdown);
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("# Logger Usage Report");
+        markdown.Should().Contain("## 📊 Summary");
+        markdown.Should().Contain("*No logger usages found.*");
     }
 
     [Fact]
@@ -78,17 +79,18 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("# Logger Usage Report", markdown);
-        Assert.Contains("## 📊 Summary", markdown);
-        Assert.Contains("| Total Log Usages | 1 |", markdown);
-        Assert.Contains("| Unique Parameter Names | 2 |", markdown);
-        Assert.Contains("ℹ️ Line 43: Information - LoggerMethod", markdown);
-        Assert.Contains("User {UserId} performed action {Action}", markdown);
-        Assert.Contains("| `UserId` | `int` | Argument |", markdown);
-        Assert.Contains("| `Action` | `string` | Argument |", markdown);
-        Assert.Contains("1001 (UserAction)", markdown);
-        Assert.Contains("UserController.cs", markdown);
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("# Logger Usage Report");
+        markdown.Should().Contain("## 📊 Summary");
+        markdown.Should().Contain("| Total Log Usages | 1 |");
+        markdown.Should().Contain("| Unique Parameter Names | 2 |");
+        markdown.Should().Contain("[Line 43]"); // Line number is a link
+        markdown.Should().Contain("Information - LoggerMethod");
+        markdown.Should().Contain("User {UserId} performed action {Action}");
+        markdown.Should().Contain("| `UserId` | `int` | Argument |");
+        markdown.Should().Contain("| `Action` | `string` | Argument |");
+        markdown.Should().Contain("1001 (UserAction)");
+        markdown.Should().Contain("[UserController.cs]"); // File name is a link
     }
 
     [Fact]
@@ -117,12 +119,12 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("## ⚠️ Parameter Inconsistencies", markdown);
-        Assert.Contains("| `userId` | `int` |", markdown);
-        Assert.Contains("| `UserId` | `string` |", markdown);
-        Assert.Contains("- Case inconsistency", markdown);
-        Assert.Contains("- Type mismatch", markdown);
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("## ⚠️ Parameter Inconsistencies");
+        markdown.Should().Contain("| `userId` | `int` |");
+        markdown.Should().Contain("| `UserId` | `string` |");
+        markdown.Should().Contain("- Case inconsistency");
+        markdown.Should().Contain("- Type mismatch");
     }
 
     [Fact]
@@ -184,17 +186,19 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("Line 26: Information - LoggerMessageAttribute", markdown);
-        Assert.Contains("**LoggerMessage Method Details:**", markdown);
-        Assert.Contains("- **Declaring Type:** `MyApp.Services.UserService`", markdown);
-        Assert.Contains("- **Method Name:** `LogUserAction`", markdown);
-        Assert.Contains("- **Invocation Count:** 1", markdown);
-        Assert.Contains("**Invocations:**", markdown);
-        Assert.Contains("- **UserController.cs** (Line 46)", markdown);
-        Assert.Contains("- **Containing Type:** `MyApp.Controllers.UserController`", markdown);
-        Assert.Contains("- `userId`: `int` (Argument)", markdown);
-        Assert.Contains("- `userAction`: `string` (Argument)", markdown);
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("[Line 26]"); // Line is a link
+        markdown.Should().Contain("Information - LoggerMessageAttribute");
+        markdown.Should().Contain("**LoggerMessage Method Details:**");
+        markdown.Should().Contain("- **Declaring Type:** `MyApp.Services.UserService`");
+        markdown.Should().Contain("- **Method Name:** `LogUserAction`");
+        markdown.Should().Contain("- **Invocation Count:** 1");
+        markdown.Should().Contain("**Invocations:**");
+        markdown.Should().Contain("[UserController.cs]"); // File is a link
+        markdown.Should().Contain("(Line 46)");
+        markdown.Should().Contain("- **Containing Type:** `MyApp.Controllers.UserController`");
+        markdown.Should().Contain("- `userId`: `int` (Argument)");
+        markdown.Should().Contain("- `userAction`: `string` (Argument)");
     }
 
     [Fact]
@@ -256,16 +260,16 @@ public class MarkdownLoggerReportGeneratorTests
         var html = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(html);
-        Assert.Contains("<title>Logger Usage Report</title>", html);
-        Assert.Contains("LoggerMessageAttribute", html);
-        Assert.Contains("MyApp.Services.UserService", html);
-        Assert.Contains("1 invocation", html);
-        Assert.Contains("Show Details", html);
-        Assert.Contains("UserController.cs:46", html);
-        Assert.Contains("MyApp.Controllers.UserController", html);
-        Assert.Contains("Invocations", html);
-        Assert.Contains("colspan='6'", html); // Verify we updated the colspan for the new column
+        html.Should().NotBeNull();
+        html.Should().Contain("<title>Logger Usage Report</title>");
+        html.Should().Contain("LoggerMessageAttribute");
+        html.Should().Contain("MyApp.Services.UserService");
+        html.Should().Contain("1 invocation");
+        html.Should().Contain("Show Details");
+        html.Should().Contain("UserController.cs:46");
+        html.Should().Contain("MyApp.Controllers.UserController");
+        html.Should().Contain("Invocations");
+        html.Should().Contain("colspan='6'"); // Verify we updated the colspan for the new column
     }
 
     [Fact]
@@ -315,22 +319,22 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("# Logger Usage Report", markdown);
-        Assert.Contains("**LogProperties Parameters:**", markdown);
-        Assert.Contains("**Parameter:** `user` (`UserDetails`)", markdown);
-        Assert.Contains("**Configuration:** Transitive", markdown);
-        Assert.Contains("**Properties:** 3 properties extracted", markdown);
-        
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("# Logger Usage Report");
+        markdown.Should().Contain("**LogProperties Parameters:**");
+        markdown.Should().Contain("**Parameter:** `user` (`UserDetails`)");
+        markdown.Should().Contain("**Configuration:** Transitive");
+        markdown.Should().Contain("**Properties:** 3 properties extracted");
+
         // Verify hierarchical structure
-        Assert.Contains("- `Name`: `string`", markdown);
-        Assert.Contains("- `Age`: `int`", markdown);
-        Assert.Contains("- `Address`: `Address` ⮑", markdown);
-        
+        markdown.Should().Contain("- `Name`: `string`");
+        markdown.Should().Contain("- `Age`: `int`");
+        markdown.Should().Contain("- `Address`: `Address` ⮑");
+
         // Verify nested properties with indentation
-        Assert.Contains("    - `Street`: `string`", markdown);
-        Assert.Contains("    - `City`: `string`", markdown);
-        Assert.Contains("    - `ZipCode`: `string`", markdown);
+        markdown.Should().Contain("    - `Street`: `string`");
+        markdown.Should().Contain("    - `City`: `string`");
+        markdown.Should().Contain("    - `ZipCode`: `string`");
     }
 
     [Fact]
@@ -378,12 +382,12 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("**LogProperties Parameters:**", markdown);
-        Assert.Contains("- `TeamName`: `string`", markdown);
-        Assert.Contains("- `Members`: `List` ⮑", markdown);
-        Assert.Contains("    - `Name`: `string`", markdown);
-        Assert.Contains("    - `Role`: `string`", markdown);
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("**LogProperties Parameters:**");
+        markdown.Should().Contain("- `TeamName`: `string`");
+        markdown.Should().Contain("- `Members`: `List` ⮑");
+        markdown.Should().Contain("    - `Name`: `string`");
+        markdown.Should().Contain("    - `Role`: `string`");
     }
 
     [Fact]
@@ -426,21 +430,21 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("### 🏷️ Telemetry Features Summary", markdown);
-        Assert.Contains("| Parameters with Custom Tag Names | 3 |", markdown);
-        Assert.Contains("| Properties with Custom Tag Names | 5 |", markdown);
-        Assert.Contains("| Parameters with Tag Providers | 2 |", markdown);
-        Assert.Contains("| Transitive Properties | 10 |", markdown);
-        
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("### 🏷️ Telemetry Features Summary");
+        markdown.Should().Contain("| Parameters with Custom Tag Names | 3 |");
+        markdown.Should().Contain("| Properties with Custom Tag Names | 5 |");
+        markdown.Should().Contain("| Parameters with Tag Providers | 2 |");
+        markdown.Should().Contain("| Transitive Properties | 10 |");
+
         // Custom tag mappings
-        Assert.Contains("**Custom Tag Name Mappings:**", markdown);
-        Assert.Contains("| `userId` | `user.id` | Parameter |", markdown);
-        Assert.Contains("| `userName` | `user.name` | Parameter |", markdown);
-        
+        markdown.Should().Contain("**Custom Tag Name Mappings:**");
+        markdown.Should().Contain("| `userId` | `user.id` | Parameter |");
+        markdown.Should().Contain("| `userName` | `user.name` | Parameter |");
+
         // Tag providers
-        Assert.Contains("**Tag Providers:**", markdown);
-        Assert.Contains("| `request` | `MyApp.Providers.RequestProvider` | `ProvideTags` | False | ✓ |", markdown);
+        markdown.Should().Contain("**Tag Providers:**");
+        markdown.Should().Contain("| `request` | `MyApp.Providers.RequestProvider` | `ProvideTags` | False | ✓ |");
     }
 
     [Fact]
@@ -475,9 +479,9 @@ public class MarkdownLoggerReportGeneratorTests
         var markdown = generator.GenerateReport(result);
 
         // Assert
-        Assert.NotNull(markdown);
-        Assert.Contains("**Tag Providers:**", markdown);
-        Assert.Contains("| `data` | `MyApp.InvalidProvider` | `GetTags` | False | ⚠️ |", markdown);
-        Assert.Contains("**Validation:** Provider method not found", markdown);
+        markdown.Should().NotBeNull();
+        markdown.Should().Contain("**Tag Providers:**");
+        markdown.Should().Contain("| `data` | `MyApp.InvalidProvider` | `GetTags` | False | ⚠️ |");
+        markdown.Should().Contain("**Validation:** Provider method not found");
     }
 }

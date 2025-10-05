@@ -197,8 +197,7 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             var fileName = Path.GetFileName(fileGroup.Key);
             var relativePath = GetRelativePath(fileGroup.Key);
 
-            markdown.AppendLine($"### 📄 {fileName}");
-            markdown.AppendLine($"*{relativePath}*");
+            markdown.AppendLine($"### 📄 [{fileName}]({relativePath})");
             markdown.AppendLine();
 
             // Sort by line number within file
@@ -206,14 +205,14 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
 
             foreach (var usage in sortedUsages)
             {
-                GenerateUsageEntry(markdown, usage);
+                GenerateUsageEntry(markdown, usage, relativePath);
             }
 
             markdown.AppendLine();
         }
     }
 
-    private static void GenerateUsageEntry(StringBuilder markdown, LoggerUsageInfo usage)
+    private static void GenerateUsageEntry(StringBuilder markdown, LoggerUsageInfo usage, string relativePath)
     {
         var logLevel = usage.LogLevel?.ToString() ?? "Unknown";
         var methodType = usage.MethodType.ToString();
@@ -221,7 +220,7 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
 
         // Usage header with log level emoji
         var levelEmoji = GetLogLevelEmoji(logLevel);
-        markdown.AppendLine($"#### {levelEmoji} Line {lineNumber}: {logLevel} - {methodType}");
+        markdown.AppendLine($"#### {levelEmoji} [Line {lineNumber}]({relativePath}#L{lineNumber}): {logLevel} - {methodType}");
         markdown.AppendLine();
 
         // Handle LoggerMessage specific information
@@ -269,16 +268,16 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             foreach (var param in usage.MessageParameters)
             {
                 var customTag = !string.IsNullOrEmpty(param.CustomTagName) ? $"`{param.CustomTagName}`" : "-";
-                var classification = param.DataClassification != null 
-                    ? $"{GetClassificationIcon(param.DataClassification.Level)} {param.DataClassification.Level}" 
+                var classification = param.DataClassification != null
+                    ? $"{GetClassificationIcon(param.DataClassification.Level)} {param.DataClassification.Level}"
                     : "-";
                 markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} | {customTag} | {classification} |");
             }
             markdown.AppendLine();
 
             // Add security note if any parameters are classified as sensitive
-            if (usage.MessageParameters.Any(p => p.DataClassification != null && 
-                (p.DataClassification.Level == DataClassificationLevel.Private || 
+            if (usage.MessageParameters.Any(p => p.DataClassification != null &&
+                (p.DataClassification.Level == DataClassificationLevel.Private ||
                  p.DataClassification.Level == DataClassificationLevel.Sensitive)))
             {
                 markdown.AppendLine("> 🔒 **Security Note:** This log contains sensitive data that may be redacted at runtime.");
@@ -291,15 +290,16 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         {
             markdown.AppendLine("**Invocations:**");
             markdown.AppendLine();
-            
+
             foreach (var invocation in loggerMessageUsageWithInvocations.Invocations)
             {
                 var invocationLine = invocation.InvocationLocation.StartLineNumber + 1;
                 var invocationFile = Path.GetFileName(invocation.InvocationLocation.FilePath);
-                
-                markdown.AppendLine($"- **{invocationFile}** (Line {invocationLine})");
+                var invocationRelativePath = GetRelativePath(invocation.InvocationLocation.FilePath);
+
+                markdown.AppendLine($"- **[{invocationFile}]({invocationRelativePath}#L{invocationLine})** (Line {invocationLine})");
                 markdown.AppendLine($"  - **Containing Type:** `{invocation.ContainingType}`");
-                
+
                 if (invocation.Arguments.Count > 0)
                 {
                     markdown.AppendLine($"  - **Arguments:**");
@@ -317,28 +317,28 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         {
             markdown.AppendLine("**LogProperties Parameters:**");
             markdown.AppendLine();
-            
+
             foreach (var logPropsParam in loggerMessageUsageWithLogProperties.LogPropertiesParameters)
             {
                 markdown.AppendLine($"- **Parameter:** `{logPropsParam.ParameterName}` (`{logPropsParam.ParameterType}`)");
-                
+
                 // TagProvider information
                 if (logPropsParam.TagProvider != null)
                 {
                     var statusIcon = logPropsParam.TagProvider.IsValid ? "✓" : "✗";
                     markdown.AppendLine($"  - **Tag Provider:** `{logPropsParam.TagProvider.ProviderTypeName}.{logPropsParam.TagProvider.ProviderMethodName}` {statusIcon}");
-                    
+
                     if (logPropsParam.TagProvider.OmitReferenceName)
                     {
                         markdown.AppendLine("    - OmitReferenceName: true");
                     }
-                    
+
                     if (!logPropsParam.TagProvider.IsValid && !string.IsNullOrEmpty(logPropsParam.TagProvider.ValidationMessage))
                     {
                         markdown.AppendLine($"    - ⚠️ **Validation Error:** {logPropsParam.TagProvider.ValidationMessage}");
                     }
                 }
-                
+
                 // Configuration
                 var configOptions = new List<string>();
                 if (logPropsParam.Configuration.OmitReferenceName)
@@ -353,17 +353,17 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
                 {
                     configOptions.Add("Transitive");
                 }
-                
+
                 if (configOptions.Count > 0)
                 {
                     markdown.AppendLine($"  - **Configuration:** {string.Join(", ", configOptions)}");
                 }
-                
+
                 markdown.AppendLine($"  - **Properties:** {logPropsParam.Properties.Count} properties extracted");
-                
+
                 // Display properties in a tree structure
                 GeneratePropertyTree(markdown, logPropsParam.Properties, 2);
-                
+
                 markdown.AppendLine();
             }
         }
@@ -437,25 +437,25 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
     private static void GeneratePropertyTree(StringBuilder markdown, List<LogPropertyInfo> properties, int indentLevel)
     {
         var indent = new string(' ', indentLevel * 2);
-        
+
         foreach (var property in properties)
         {
             var nullableIndicator = property.IsNullable ? "?" : "";
             markdown.Append($"{indent}- `{property.Name}`: `{property.Type}{nullableIndicator}`");
-            
+
             // Show custom tag name if present
             if (!string.IsNullOrEmpty(property.CustomTagName))
             {
                 markdown.Append($" → `{property.CustomTagName}`");
             }
-            
+
             // Show data classification if present
             if (property.DataClassification != null)
             {
                 var icon = GetClassificationIcon(property.DataClassification.Level);
                 markdown.Append($" {icon} *{property.DataClassification.Level}*");
             }
-            
+
             // If there are nested properties, indicate collection or complex type
             if (property.NestedProperties != null && property.NestedProperties.Count > 0)
             {
