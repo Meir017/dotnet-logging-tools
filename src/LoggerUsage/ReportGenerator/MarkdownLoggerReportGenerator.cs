@@ -60,11 +60,11 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             markdown.AppendLine($"| Sensitive Data Percentage | {summary.ClassificationStats.SensitiveParameterPercentage:F1}% |");
             markdown.AppendLine();
 
-            if (summary.ClassificationStats.ByLevel.Count > 0)
+            if (summary.ClassificationStats.ByValue.Count > 0)
             {
                 markdown.AppendLine("**Classification Breakdown:**");
                 markdown.AppendLine();
-                foreach (var kvp in summary.ClassificationStats.ByLevel.OrderBy(x => x.Key))
+                foreach (var kvp in summary.ClassificationStats.ByValue.OrderBy(x => x.Key))
                 {
                     var icon = GetClassificationIcon(kvp.Key);
                     markdown.AppendLine($"- {icon} **{kvp.Key}**: {kvp.Value}");
@@ -151,16 +151,39 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
         }
     }
 
-    private static string GetClassificationIcon(DataClassificationLevel level) => level switch
+    private static bool IsSensitiveClassification(string classificationValue)
     {
-        DataClassificationLevel.Public => "🌐",
-        DataClassificationLevel.Internal => "🏢",
-        DataClassificationLevel.Private => "🔒",
-        DataClassificationLevel.Sensitive => "🔐",
-        DataClassificationLevel.Custom => "🏷️",
-        DataClassificationLevel.None => "⚪",
-        _ => "❓"
-    };
+        return classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase) ||
+               classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) ||
+               classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetClassificationIcon(string classificationValue)
+    {
+        if (classificationValue.Contains("Public", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🌐";
+        }
+        if (classificationValue.Contains("Internal", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🏢";
+        }
+        if (classificationValue.Contains("Private", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🔒";
+        }
+        if (classificationValue.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) ||
+            classificationValue.Contains("Confidential", StringComparison.OrdinalIgnoreCase))
+        {
+            return "🔐";
+        }
+        if (classificationValue.Contains("None", StringComparison.OrdinalIgnoreCase) || classificationValue == "0")
+        {
+            return "⚪";
+        }
+
+        return "🏷️";
+    }
 
     private static void GenerateTableOfContents(StringBuilder markdown, LoggerUsageExtractionResult loggerUsage)
     {
@@ -269,7 +292,7 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             {
                 var customTag = !string.IsNullOrEmpty(param.CustomTagName) ? $"`{param.CustomTagName}`" : "-";
                 var classification = param.DataClassification != null
-                    ? $"{GetClassificationIcon(param.DataClassification.Level)} {param.DataClassification.Level}"
+                    ? $"{GetClassificationIcon(param.DataClassification.ClassificationValue)} {param.DataClassification.ClassificationValue}"
                     : "-";
                 markdown.AppendLine($"| `{param.Name}` | `{param.Type ?? "unknown"}` | {param.Kind} | {customTag} | {classification} |");
             }
@@ -277,8 +300,7 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
 
             // Add security note if any parameters are classified as sensitive
             if (usage.MessageParameters.Any(p => p.DataClassification != null &&
-                (p.DataClassification.Level == DataClassificationLevel.Private ||
-                 p.DataClassification.Level == DataClassificationLevel.Sensitive)))
+                IsSensitiveClassification(p.DataClassification.ClassificationValue)))
             {
                 markdown.AppendLine("> 🔒 **Security Note:** This log contains sensitive data that may be redacted at runtime.");
                 markdown.AppendLine();
@@ -452,8 +474,8 @@ internal class MarkdownLoggerReportGenerator : ILoggerReportGenerator
             // Show data classification if present
             if (property.DataClassification != null)
             {
-                var icon = GetClassificationIcon(property.DataClassification.Level);
-                markdown.Append($" {icon} *{property.DataClassification.Level}*");
+                var icon = GetClassificationIcon(property.DataClassification.ClassificationValue);
+                markdown.Append($" {icon} *{property.DataClassification.ClassificationValue}*");
             }
 
             // If there are nested properties, indicate collection or complex type

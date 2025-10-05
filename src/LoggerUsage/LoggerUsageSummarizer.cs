@@ -138,7 +138,7 @@ public class LoggerUsageSummarizer
     private void PopulateClassificationStatistics(LoggerUsageExtractionResult extractionResult)
     {
         var stats = extractionResult.Summary.ClassificationStats;
-        var classificationCounts = new Dictionary<DataClassificationLevel, int>();
+        var classificationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         // Count classified parameters
         foreach (var usage in extractionResult.Results)
@@ -150,8 +150,8 @@ public class LoggerUsageSummarizer
                     if (param.DataClassification != null)
                     {
                         stats.TotalClassifiedParameters++;
-                        var level = param.DataClassification.Level;
-                        classificationCounts[level] = classificationCounts.GetValueOrDefault(level) + 1;
+                        var value = param.DataClassification.ClassificationValue;
+                        classificationCounts[value] = classificationCounts.GetValueOrDefault(value) + 1;
                     }
                 }
             }
@@ -166,14 +166,18 @@ public class LoggerUsageSummarizer
             }
         }
 
-        stats.ByLevel = classificationCounts;
+        stats.ByValue = classificationCounts;
 
         // Calculate sensitive parameter percentage
         var totalParams = stats.TotalClassifiedParameters + stats.TotalClassifiedProperties;
         if (totalParams > 0)
         {
-            var sensitiveCount = classificationCounts.GetValueOrDefault(DataClassificationLevel.Private) +
-                                classificationCounts.GetValueOrDefault(DataClassificationLevel.Sensitive);
+            // Count values that contain "Private" or "Sensitive"
+            var sensitiveCount = classificationCounts
+                .Where(kvp => kvp.Key.Contains("Private", StringComparison.OrdinalIgnoreCase) ||
+                             kvp.Key.Contains("Sensitive", StringComparison.OrdinalIgnoreCase) ||
+                             kvp.Key.Contains("Confidential", StringComparison.OrdinalIgnoreCase))
+                .Sum(kvp => kvp.Value);
             stats.SensitiveParameterPercentage = (double)sensitiveCount / totalParams * 100.0;
         }
     }
@@ -183,7 +187,7 @@ public class LoggerUsageSummarizer
     /// </summary>
     private void CountClassifiedProperties(
         List<LogPropertyInfo> properties,
-        Dictionary<DataClassificationLevel, int> classificationCounts,
+        Dictionary<string, int> classificationCounts,
         LoggerUsageExtractionSummary.ClassificationStatistics stats)
     {
         foreach (var property in properties)
@@ -191,8 +195,8 @@ public class LoggerUsageSummarizer
             if (property.DataClassification != null)
             {
                 stats.TotalClassifiedProperties++;
-                var level = property.DataClassification.Level;
-                classificationCounts[level] = classificationCounts.GetValueOrDefault(level) + 1;
+                var value = property.DataClassification.ClassificationValue;
+                classificationCounts[value] = classificationCounts.GetValueOrDefault(value) + 1;
             }
 
             // Recursively count nested properties
