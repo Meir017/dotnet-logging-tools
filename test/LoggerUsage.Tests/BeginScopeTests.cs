@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
 
@@ -6,7 +6,7 @@ namespace LoggerUsage.Tests;
 
 /// <summary>
 /// Tests for BeginScope logger usage analysis.
-/// 
+///
 /// Note: Some tests reflect current implementation limitations:
 /// - Dictionary variable references extract the variable, not dictionary contents
 /// - Method invocation parameter extraction is not implemented
@@ -40,7 +40,7 @@ public class TestClass
         // Assert
         loggerUsages.Should().NotBeNull();
         loggerUsages.Results.Should().HaveCount(2);
-        
+
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
@@ -72,7 +72,7 @@ public class TestClass
         // Assert
         loggerUsages.Should().NotBeNull();
         loggerUsages.Results.Should().HaveCount(2);
-        
+
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
@@ -121,7 +121,7 @@ public class TestClass
         loggerUsages.Should().NotBeNull();
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         beginScopeUsage.Should().NotBeNull();
-        
+
         var parameters = beginScopeUsage!.MessageParameters;
         parameters.Should().HaveCount(expectedParameters.Count);
         parameters.Should().BeEquivalentTo(expectedParameters);
@@ -130,23 +130,23 @@ public class TestClass
     public static TheoryData<string, string[], List<MessageParameter>> BeginScopeMessageParameterCases() => new()
     {
         // Simple parameter references
-        { "Processing request {RequestId}", ["123"], [ 
+        { "Processing request {RequestId}", ["123"], [
             new MessageParameter("RequestId", "int", "Constant")
         ] },
-        { "User {UserId} in request {RequestId}", ["\"user123\"", "456"], [ 
-            new MessageParameter("UserId", "string", "Constant"), 
-            new MessageParameter("RequestId", "int", "Constant") 
+        { "User {UserId} in request {RequestId}", ["\"user123\"", "456"], [
+            new MessageParameter("UserId", "string", "Constant"),
+            new MessageParameter("RequestId", "int", "Constant")
         ] },
         { "Processing {Operation} for {UserId} with {RequestId}", ["\"Create\"", "\"user123\"", "789"], [
-            new MessageParameter("Operation", "string", "Constant"), 
-            new MessageParameter("UserId", "string", "Constant"), 
+            new MessageParameter("Operation", "string", "Constant"),
+            new MessageParameter("UserId", "string", "Constant"),
             new MessageParameter("RequestId", "int", "Constant")
         ] },
 
         // Parameter references from method arguments
-        { "User {UserId} processing {RequestId}", ["strArg", "intArg"], [ 
-            new MessageParameter("UserId", "string", "ParameterReference"), 
-            new MessageParameter("RequestId", "int", "ParameterReference") 
+        { "User {UserId} processing {RequestId}", ["strArg", "intArg"], [
+            new MessageParameter("UserId", "string", "ParameterReference"),
+            new MessageParameter("RequestId", "int", "ParameterReference")
         ] },
 
         // Local variable references
@@ -192,7 +192,7 @@ public class TestClass
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageTemplate.Should().Be("Processing request {RequestId}");
         beginScopeUsage!.MessageParameters.Should().ContainSingle()
-            .Which.Should().Match<MessageParameter>(p => 
+            .Which.Should().Match<MessageParameter>(p =>
                 p.Name == "RequestId" && p.Type == "int" && p.Kind == "Constant");
     }
 
@@ -223,15 +223,15 @@ public class TestClass
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageTemplate.Should().Be("User {UserId} processing request {RequestId} with status {Status}");
         beginScopeUsage!.MessageParameters.Should().HaveCount(3);
-        
+
         beginScopeUsage!.MessageParameters[0].Name.Should().Be("UserId");
         beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
         beginScopeUsage!.MessageParameters[0].Kind.Should().Be("Constant");
-        
+
         beginScopeUsage!.MessageParameters[1].Name.Should().Be("RequestId");
         beginScopeUsage!.MessageParameters[1].Type.Should().Be("int");
         beginScopeUsage!.MessageParameters[1].Kind.Should().Be("Constant");
-        
+
         beginScopeUsage!.MessageParameters[2].Name.Should().Be("Status");
         beginScopeUsage!.MessageParameters[2].Type.Should().Be("bool");
         beginScopeUsage!.MessageParameters[2].Kind.Should().Be("Constant");
@@ -251,7 +251,7 @@ public class TestClass
         // Assert
         loggerUsages.Should().NotBeNull();
         loggerUsages.Results.Should().HaveCount(2);
-        
+
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
@@ -259,7 +259,7 @@ public class TestClass
 
         // Assert.Skip("TODO: parse KeyValuePair collections correctly");
         beginScopeUsage!.MessageParameters.Should().HaveCount(expectedParameterCount);
-        
+
         for (int i = 0; i < expectedParameters.Count; i++)
         {
             beginScopeUsage!.MessageParameters[i].Name.Should().Be(expectedParameters[i].Name);
@@ -390,20 +390,20 @@ public class TestClass
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MethodName.Should().Be(nameof(ILogger.BeginScope));
         beginScopeUsage!.MessageTemplate.Should().BeNull();
-        
+
         // Should extract parameters from anonymous object properties
         beginScopeUsage!.MessageParameters.Should().HaveCount(3);
-        
+
         var userIdParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "UserId");
         userIdParam.Should().NotBeNull();
         userIdParam!.Type.Should().Be("string");
         userIdParam!.Kind.Should().Be("ParameterReference");
-        
+
         var requestIdParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "RequestId");
         requestIdParam.Should().NotBeNull();
         requestIdParam!.Type.Should().Be("int");
         requestIdParam!.Kind.Should().Be("ParameterReference");
-        
+
         var timestampParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "Timestamp");
         timestampParam.Should().NotBeNull();
         timestampParam!.Type.Should().Be("System.DateTime");
@@ -425,8 +425,8 @@ public class TestClass
 {
     public void TestMethod(ILogger logger, Guid operationId)
     {
-        using (logger.BeginScope(new 
-        { 
+        using (logger.BeginScope(new
+        {
             OperationId = operationId,
             Data = new { Count = 42, Items = new[] { ""a"", ""b"" } },
             Flags = new List<string> { ""important"", ""urgent"" },
@@ -446,14 +446,14 @@ public class TestClass
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageParameters.Should().HaveCount(4);
-        
+
         var operationIdParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "OperationId");
         operationIdParam.Should().NotBeNull();
         operationIdParam!.Type.Should().Be("System.Guid");
-        
+
         var dataParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "Data");
         dataParam.Should().NotBeNull();
-        
+
         var flagsParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "Flags");
         flagsParam.Should().NotBeNull();
         flagsParam!.Type.Should().Be("System.Collections.Generic.List<string>");
@@ -472,8 +472,8 @@ public class TestClass
 {
     public void TestMethod(ILogger logger)
     {
-        using (logger.BeginScope(new 
-        { 
+        using (logger.BeginScope(new
+        {
             OptionalData = (string?)null,
             RequiredData = ""value"",
             NullableInt = (int?)null
@@ -492,15 +492,15 @@ public class TestClass
         var beginScopeUsage = loggerUsages.Results.FirstOrDefault(r => r.MethodType == LoggerUsageMethodType.BeginScope);
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageParameters.Should().HaveCount(3);
-        
+
         var optionalParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "OptionalData");
         optionalParam.Should().NotBeNull();
         optionalParam!.Type.Should().Be("object");
-        
+
         var requiredParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "RequiredData");
         requiredParam.Should().NotBeNull();
         requiredParam!.Type.Should().Be("string");
-        
+
         var nullableParam = beginScopeUsage!.MessageParameters.FirstOrDefault(p => p.Name == "NullableInt");
         nullableParam.Should().NotBeNull();
         nullableParam!.Type.Should().Be("object");
@@ -519,7 +519,7 @@ public class TestClass
 {
     public void TestMethod(ILogger logger, string operation, string userId)
     {
-        using (logger.BeginScope(""Processing {Operation} for user {UserId} at {Timestamp}"", 
+        using (logger.BeginScope(""Processing {Operation} for user {UserId} at {Timestamp}"",
             operation, userId, DateTime.UtcNow))
         {
             logger.LogInformation(""Inside scope"");
@@ -536,15 +536,15 @@ public class TestClass
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageTemplate.Should().Be("Processing {Operation} for user {UserId} at {Timestamp}");
         beginScopeUsage!.MessageParameters.Should().HaveCount(3);
-        
+
         beginScopeUsage!.MessageParameters[0].Name.Should().Be("Operation");
         beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
         beginScopeUsage!.MessageParameters[0].Kind.Should().Be("ParameterReference");
-        
+
         beginScopeUsage!.MessageParameters[1].Name.Should().Be("UserId");
         beginScopeUsage!.MessageParameters[1].Type.Should().Be("string");
         beginScopeUsage!.MessageParameters[1].Kind.Should().Be("ParameterReference");
-        
+
         beginScopeUsage!.MessageParameters[2].Name.Should().Be("Timestamp");
         beginScopeUsage!.MessageParameters[2].Type.Should().Be("System.DateTime");
         beginScopeUsage!.MessageParameters[2].Kind.Should().Be("PropertyReference");
@@ -562,7 +562,7 @@ public class TestClass
 {
     public void TestMethod(ILogger logger, string requestId, string sourceSystem)
     {
-        using (logger.BeginScope(""Request {RequestId} from {Source}"", 
+        using (logger.BeginScope(""Request {RequestId} from {Source}"",
             new object[] { requestId, sourceSystem }))
         {
             logger.LogInformation(""Inside scope"");
@@ -579,11 +579,11 @@ public class TestClass
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageTemplate.Should().Be("Request {RequestId} from {Source}");
         beginScopeUsage!.MessageParameters.Should().HaveCount(2);
-        
+
         beginScopeUsage!.MessageParameters[0].Name.Should().Be("RequestId");
         beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
         beginScopeUsage!.MessageParameters[0].Kind.Should().Be("ParameterReference");
-        
+
         beginScopeUsage!.MessageParameters[1].Name.Should().Be("Source");
         beginScopeUsage!.MessageParameters[1].Type.Should().Be("string");
         beginScopeUsage!.MessageParameters[1].Kind.Should().Be("ParameterReference");
@@ -620,11 +620,11 @@ public class TestClass
         beginScopeUsage.Should().NotBeNull();
         beginScopeUsage!.MessageTemplate.Should().Be("Complex operation {Op} with data {Data} and flags {Flags}");
         beginScopeUsage!.MessageParameters.Should().HaveCount(3);
-        
+
         beginScopeUsage!.MessageParameters[0].Name.Should().Be("Op");
         beginScopeUsage!.MessageParameters[0].Type.Should().Be("string");
         beginScopeUsage!.MessageParameters[0].Kind.Should().Be("ParameterReference");
-        
+
         beginScopeUsage!.MessageParameters[1].Name.Should().Be("Data");
         beginScopeUsage!.MessageParameters[2].Name.Should().Be("Flags");
     }
@@ -640,7 +640,7 @@ namespace TestNamespace;
 public class TestClass
 {
     private string GetMessageTemplate() => ""Processing {Operation} at {Timestamp}"";
-    
+
     public void TestMethod(ILogger logger, string operation, System.DateTime timestamp)
     {
         var template = GetMessageTemplate();
@@ -676,7 +676,7 @@ namespace TestNamespace;
 
 public class TestClass
 {
-    private List<KeyValuePair<string, object?>> GetScopeKeyValuePairs() => 
+    private List<KeyValuePair<string, object?>> GetScopeKeyValuePairs() =>
         new List<KeyValuePair<string, object?>> { new(""key"", ""value"") };
 
     public void TestMethod(ILogger logger)
@@ -700,7 +700,7 @@ public class TestClass
         beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Parameter extraction from local variable reference
         beginScopeUsage!.MessageParameters.Should().ContainSingle()
-            .Which.Should().Match<MessageParameter>(p => 
+            .Which.Should().Match<MessageParameter>(p =>
                 p.Name == "<scopeData>" && p.Kind == "LocalReference");
     }
 
@@ -738,7 +738,7 @@ public class TestClass
         beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Parameter extraction from field reference
         beginScopeUsage!.MessageParameters.Should().ContainSingle()
-            .Which.Should().Match<MessageParameter>(p => 
+            .Which.Should().Match<MessageParameter>(p =>
                 p.Name == "<_defaultScope>" && p.Kind == "FieldReference");
     }
 
@@ -798,7 +798,7 @@ public class TestClass
             [""operation""] = operation,
             [""entityId""] = entityId
         };
-        
+
         using (logger.BeginScope(scope))
         {
             logger.LogInformation(""Inside scope"");
@@ -817,7 +817,7 @@ public class TestClass
         beginScopeUsage!.MessageTemplate.Should().BeNull();
         // Currently extracts the local variable reference, not dictionary contents
         beginScopeUsage!.MessageParameters.Should().ContainSingle();
-        
+
         var firstParam = beginScopeUsage!.MessageParameters[0];
         firstParam.Name.Should().Be("<scope>");
         firstParam.Kind.Should().Be("LocalReference");
@@ -916,13 +916,13 @@ public class TestClass
         // Assert
         var beginScopeUsages = loggerUsages.Results.Where(r => r.MethodType == LoggerUsageMethodType.BeginScope).ToList();
         beginScopeUsages.Should().HaveCount(2);
-        
+
         var userScope = beginScopeUsages.FirstOrDefault(s => s.MessageTemplate?.Contains("UserId") == true);
         userScope.Should().NotBeNull();
         userScope!.MessageTemplate.Should().Be("User {UserId}");
         userScope!.MessageParameters.Should().ContainSingle()
             .Which.Name.Should().Be("UserId");
-        
+
         var requestScope = beginScopeUsages.FirstOrDefault(s => s.MessageTemplate?.Contains("RequestId") == true);
         requestScope.Should().NotBeNull();
         requestScope!.MessageTemplate.Should().Be("Request {RequestId}");

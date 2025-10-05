@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using LoggerUsage.Models;
 using Microsoft.Extensions.Logging;
 
@@ -17,7 +17,7 @@ namespace TestNamespace;
 
 public class TestClass
 {
-    private static readonly Action<ILogger, string, Exception?> _logUserCreated = 
+    private static readonly Action<ILogger, string, Exception?> _logUserCreated =
         LoggerMessage.Define<string>(LogLevel.Information, new EventId(1, ""UserCreated""), ""User {Name} was created"");
 }";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -58,7 +58,7 @@ namespace TestNamespace;
 
 public class TestClass
 {{
-    private static readonly Action<ILogger, string, Exception?> _logAction = 
+    private static readonly Action<ILogger, string, Exception?> _logAction =
         LoggerMessage.Define<string>(LogLevel.Information, {eventIdArg}, ""Test message {{Name}}"");
 }}";
 
@@ -117,7 +117,7 @@ namespace TestNamespace;
 
 public class TestClass
 {{
-    private static readonly Action<ILogger, Exception?> _logAction = 
+    private static readonly Action<ILogger, Exception?> _logAction =
         LoggerMessage.Define({logLevelArg}, new EventId(1), ""Test message"");
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -154,7 +154,7 @@ namespace TestNamespace;
 
 public class TestClass
 {{
-    private static readonly Action<ILogger, Exception?> _logAction = 
+    private static readonly Action<ILogger, Exception?> _logAction =
         LoggerMessage.Define(LogLevel.Information, new EventId(1), {messageArg});
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -203,7 +203,7 @@ namespace TestNamespace;
 
 public class TestClass
 {{
-    private static readonly {actionType} _logAction = 
+    private static readonly {actionType} _logAction =
         LoggerMessage.Define{genericTypes}(LogLevel.Information, new EventId(1), ""{messageTemplate}"");
 }}";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -260,7 +260,7 @@ namespace TestNamespace;
 
 public class TestClass
 {
-    private static readonly Action<ILogger, string, Exception?> _invalidDefine = 
+    private static readonly Action<ILogger, string, Exception?> _invalidDefine =
         LoggerMessage.Define<string>(LogLevel.Information, new EventId(5, ""Invalid""), null!);
 }";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -294,7 +294,7 @@ public class TestClass
         // This should not be processed
     }
 
-    private static readonly Action<ILogger, string, Exception?> _validDefine = 
+    private static readonly Action<ILogger, string, Exception?> _validDefine =
         LoggerMessage.Define<string>(LogLevel.Information, new EventId(1, ""Valid""), ""User {UserId} action"");
 }";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -323,10 +323,10 @@ namespace TestNamespace;
 
 public class TestClass
 {
-    private static readonly Action<ILogger, string, int, Exception?> _mismatchedDefine = 
+    private static readonly Action<ILogger, string, int, Exception?> _mismatchedDefine =
         LoggerMessage.Define<string, int>(
-            LogLevel.Information, 
-            new EventId(6, ""Mismatched""), 
+            LogLevel.Information,
+            new EventId(6, ""Mismatched""),
             ""Only one parameter {Param1}"");
 }";
         var compilation = await TestUtils.CreateCompilationAsync(code);
@@ -342,7 +342,7 @@ public class TestClass
         usage.MethodName.Should().Be("Define");
         usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
         usage.MessageTemplate.Should().Be("Only one parameter {Param1}");
-        
+
         // Should extract parameters based on generic types, not just message template
         // The extractor should handle this gracefully
         usage.MessageParameters.Should().NotBeEmpty();
@@ -385,7 +385,7 @@ public class TestClass
         usage.LogLevel.Should().Be(LogLevel.Error);
         usage.MessageTemplate.Should().Be("Operation {OperationId} failed with error");
         usage.EventId.Should().NotBeNull();
-        
+
         // Should handle static EventId reference - might be EventIdRef type
         if (usage.EventId is EventIdRef eventIdRef)
         {
@@ -405,8 +405,8 @@ namespace TestNamespace;
 public class TestClass
 {
     private static string GetMessageTemplate() => ""Dynamic template {Value}"";
-    
-    private static readonly Action<ILogger, string, Exception?> _dynamicTemplate = 
+
+    private static readonly Action<ILogger, string, Exception?> _dynamicTemplate =
         LoggerMessage.Define<string>(
             LogLevel.Information,
             new EventId(7, ""Dynamic""),
@@ -424,7 +424,7 @@ public class TestClass
         var usage = loggerUsages.Results[0];
         usage.MethodName.Should().Be("Define");
         usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
-        
+
         // Should handle non-literal message template gracefully
         // The extractor might not be able to extract the template if it's not a literal, so it could be null or empty
         // This is expected behavior - the extractor can only extract literal string templates
@@ -466,7 +466,7 @@ public class TestClass
         usage.MethodName.Should().Be("Define");
         usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageDefine);
         usage.MessageTemplate.Should().Be("Operation {OperationId} took {Duration} with data {CustomData} and items {Items}");
-        
+
         // Should extract all 4 parameters with correct types
         usage.MessageParameters.Count.Should().Be(4);
         usage.MessageParameters.Should().Contain(p => p.Name == "OperationId" && p.Type == "System.Guid");
