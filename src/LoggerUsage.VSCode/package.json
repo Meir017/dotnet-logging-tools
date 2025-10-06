@@ -4,6 +4,7 @@
   "description": "Logging insights for C# projects using Microsoft.Extensions.Logging",
   "version": "1.0.0",
   "publisher": "meir017",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
