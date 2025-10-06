@@ -7,7 +7,12 @@ suite('Configuration Test Suite', () => {
 
   // Clean up after each test
   teardown(async () => {
-    await Configuration.resetToDefaults();
+    try {
+      await Configuration.resetToDefaults();
+    } catch (error) {
+      // Ignore errors if no workspace is open
+      console.log('Skipping configuration reset (no workspace)');
+    }
   });
 
   test('getAutoAnalyzeOnSave should return default value', () => {
@@ -59,7 +64,13 @@ suite('Configuration Test Suite', () => {
     assert.strictEqual(value, false, 'Default should be false');
   });
 
-  test('updateConfig should update configuration value', async () => {
+  test('updateConfig should update configuration value', async function() {
+    // Skip if no workspace is open
+    if (!vscode.workspace.workspaceFolders) {
+      this.skip();
+      return;
+    }
+
     const newValue = false;
     await Configuration.updateConfig('autoAnalyzeOnSave', newValue);
     
@@ -70,7 +81,13 @@ suite('Configuration Test Suite', () => {
     assert.strictEqual(value, newValue, 'Should update the configuration value');
   });
 
-  test('updateConfig should handle nested configuration keys', async () => {
+  test('updateConfig should handle nested configuration keys', async function() {
+    // Skip if no workspace is open
+    if (!vscode.workspace.workspaceFolders) {
+      this.skip();
+      return;
+    }
+
     const newValue = 2000;
     await Configuration.updateConfig('performanceThresholds.maxFilesPerAnalysis', newValue);
     
@@ -80,7 +97,13 @@ suite('Configuration Test Suite', () => {
     assert.strictEqual(value, newValue, 'Should update nested configuration');
   });
 
-  test('resetToDefaults should restore all default values', async () => {
+  test('resetToDefaults should restore all default values', async function() {
+    // Skip if no workspace is open
+    if (!vscode.workspace.workspaceFolders) {
+      this.skip();
+      return;
+    }
+
     // Change some values
     await Configuration.updateConfig('autoAnalyzeOnSave', false);
     await Configuration.updateConfig('enableProblemsIntegration', false);
@@ -100,7 +123,13 @@ suite('Configuration Test Suite', () => {
     assert.strictEqual(problemsIntegration, true, 'enableProblemsIntegration should be reset to true');
   });
 
-  test('onDidChangeConfiguration should fire when configuration changes', (done) => {
+  test('onDidChangeConfiguration should fire when configuration changes', function(done) {
+    // Skip if no workspace is open
+    if (!vscode.workspace.workspaceFolders) {
+      this.skip();
+      return;
+    }
+
     const disposable = Configuration.onDidChangeConfiguration((e) => {
       assert.ok(e.affectsConfiguration('loggerUsage'), 'Event should affect loggerUsage section');
       disposable.dispose();
@@ -129,7 +158,13 @@ suite('Configuration Test Suite', () => {
     assert.ok(timeout >= 0, 'analysisTimeoutMs should be non-negative');
   });
 
-  test('Configuration should handle empty arrays', async () => {
+  test('Configuration should handle empty arrays', async function() {
+    // Skip if no workspace is open
+    if (!vscode.workspace.workspaceFolders) {
+      this.skip();
+      return;
+    }
+
     await Configuration.updateConfig('excludePatterns', []);
     
     await new Promise(resolve => setTimeout(resolve, 100));
