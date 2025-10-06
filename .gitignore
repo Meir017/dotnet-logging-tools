@@ -399,3 +399,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# VS Code Extension - TypeScript compiled output
+src/LoggerUsage.VSCode/out/
+src/LoggerUsage.VSCode/.vscode-test/
+src/LoggerUsage.VSCode/*.vsix
