@@ -10,13 +10,15 @@ export function run(): Promise<void> {
     timeout: 10000
   });
 
+  // Use correct relative path to compiled test files
+  // From out/src/LoggerUsage.VSCode/test/suite, go up 4 levels to root, then to out/test/
   const testsRoot = path.resolve(__dirname, '../../../../test/LoggerUsage.VSCode.Tests');
 
   return new Promise((resolve, reject) => {
     try {
       // Find all test files recursively
       const files = findTestFiles(testsRoot);
-      
+
       // Add files to the test suite
       files.forEach((f: string) => mocha.addFile(f));
 
@@ -37,13 +39,13 @@ export function run(): Promise<void> {
 
 function findTestFiles(dir: string): string[] {
   const files: string[] = [];
-  
+
   function traverse(currentPath: string) {
     const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
-      
+
       if (entry.isDirectory()) {
         traverse(fullPath);
       } else if (entry.isFile() && entry.name.endsWith('.test.js')) {
@@ -51,7 +53,7 @@ function findTestFiles(dir: string): string[] {
       }
     }
   }
-  
+
   traverse(dir);
   return files;
 }

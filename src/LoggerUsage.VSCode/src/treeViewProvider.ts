@@ -131,7 +131,7 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
             }];
         }
 
-        const solutionName = this.solutionPath 
+        const solutionName = this.solutionPath
             ? path.basename(this.solutionPath, '.sln')
             : 'Workspace';
 
@@ -153,7 +153,7 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
         // Group insights by project (inferred from file path)
         for (const insight of this.currentInsights) {
             const projectName = this.inferProjectName(insight.location.filePath);
-            
+
             if (!projectMap.has(projectName)) {
                 projectMap.set(projectName, []);
             }
@@ -191,7 +191,7 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
         const fileMap = new Map<string, LoggingInsight[]>();
         for (const insight of projectInsights) {
             const filePath = insight.location.filePath;
-            
+
             if (!fileMap.has(filePath)) {
                 fileMap.set(filePath, []);
             }
@@ -203,7 +203,7 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
         for (const [filePath, insights] of fileMap) {
             const fileName = path.basename(filePath);
             const inconsistenciesCount = insights.filter(i => i.hasInconsistencies).length;
-            
+
             let description = `${insights.length} insights`;
             if (inconsistenciesCount > 0) {
                 description += ` (${inconsistenciesCount} issues)`;
@@ -239,10 +239,10 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
             const line = insight.location.startLine;
             const methodType = this.getShortMethodType(insight.methodType);
             const logLevel = insight.logLevel || '?';
-            
+
             // Create label
             let label = `Line ${line}: ${methodType}`;
-            
+
             // Add inconsistency indicator
             if (insight.hasInconsistencies) {
                 label += ' ⚠️';
@@ -284,35 +284,16 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
      * Infers project name from file path
      */
     private inferProjectName(filePath: string): string {
-        // Look for .csproj directory in path
+        // Split path and remove filename (last part)
         const parts = filePath.split(/[\\/]/);
-        
-        // Find the directory containing a likely project file
-        // (heuristic: directory before 'src' or similar, or second-to-last directory)
-        for (let i = parts.length - 1; i >= 0; i--) {
-            const part = parts[i];
-            
-            // If we find common source folders, the previous part might be project name
-            if (part.toLowerCase() === 'src' || 
-                part.toLowerCase() === 'lib' || 
-                part.toLowerCase() === 'app') {
-                if (i + 1 < parts.length) {
-                    return parts[i + 1];
-                }
-            }
-            
-            // Look for .csproj-like names (capitalized, PascalCase)
-            if (part && part[0] === part[0].toUpperCase() && part.includes('.')) {
-                return part;
-            }
+        const directories = parts.slice(0, -1);
+
+        if (directories.length === 0) {
+            return 'Unknown';
         }
 
-        // Fallback: use directory name before filename
-        if (parts.length >= 2) {
-            return parts[parts.length - 2];
-        }
-
-        return 'Unknown';
+        // Use the immediate parent directory as the project name
+        return directories[directories.length - 1];
     }
 
     /**

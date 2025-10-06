@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         );
 
         outputChannel.appendLine('All services initialized successfully');
-        
+
         // Show welcome message on first activation
         const hasShownWelcome = context.globalState.get('hasShownWelcome', false);
         if (!hasShownWelcome) {
@@ -96,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
  */
 export function deactivate(): void {
     console.log('Logger Usage extension is now deactivating...');
-    
+
     if (outputChannel) {
         outputChannel.appendLine('Logger Usage extension deactivated');
     }
@@ -129,20 +129,20 @@ function registerCommands(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('loggerUsage.showInsightsPanel', async () => {
             const panel = InsightsPanel.createOrShow(context.extensionUri);
             commands.setInsightsPanel(panel.getPanel());
-            
+
             // Set up panel callbacks
             panel.setNavigateToInsightCallback(async (insightId: string) => {
                 await commands.navigateToInsight(insightId);
             });
-            
+
             panel.setExportResultsCallback(async (_format: 'json' | 'csv' | 'markdown') => {
                 await commands.exportInsights();
             });
-            
+
             panel.setRefreshAnalysisCallback(async () => {
                 await commands.analyze();
             });
-            
+
             // Send current insights to panel
             const currentInsights = commands.getCurrentInsights();
             if (currentInsights.length > 0) {
@@ -212,7 +212,7 @@ function setupFileWatchers(context: vscode.ExtensionContext): void {
     const fileWatcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
         if (document.languageId === 'csharp') {
             outputChannel.appendLine(`File saved: ${document.fileName}`);
-            
+
             const activeSolution = commands.getActiveSolutionPath();
             if (activeSolution) {
                 try {
