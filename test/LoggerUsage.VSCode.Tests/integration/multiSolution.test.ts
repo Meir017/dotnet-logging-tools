@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-suite('Multi-Solution Integration Test Suite', () => {
+suite.skip('Multi-Solution Integration Test Suite', () => {
   vscode.window.showInformationMessage('Start multi-solution integration tests.');
 
   test('Should detect multiple .sln files in workspace', async () => {

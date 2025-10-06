@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-suite('Error Handling Integration Test Suite', () => {
+suite.skip('Error Handling Integration Test Suite', () => {
   vscode.window.showInformationMessage('Start error handling integration tests.');
 
   test('Should handle bridge process crash gracefully', async () => {

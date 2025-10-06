@@ -73,10 +73,10 @@ suite('Configuration Test Suite', () => {
 
     const newValue = false;
     await Configuration.updateConfig('autoAnalyzeOnSave', newValue);
-    
+
     // Wait a bit for VS Code to apply the change
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const value = Configuration.getAutoAnalyzeOnSave();
     assert.strictEqual(value, newValue, 'Should update the configuration value');
   });
@@ -90,9 +90,9 @@ suite('Configuration Test Suite', () => {
 
     const newValue = 2000;
     await Configuration.updateConfig('performanceThresholds.maxFilesPerAnalysis', newValue);
-    
+
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const value = Configuration.getMaxFilesPerAnalysis();
     assert.strictEqual(value, newValue, 'Should update nested configuration');
   });
@@ -107,18 +107,18 @@ suite('Configuration Test Suite', () => {
     // Change some values
     await Configuration.updateConfig('autoAnalyzeOnSave', false);
     await Configuration.updateConfig('enableProblemsIntegration', false);
-    
+
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Reset to defaults
     await Configuration.resetToDefaults();
-    
+
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Verify defaults are restored
     const autoAnalyze = Configuration.getAutoAnalyzeOnSave();
     const problemsIntegration = Configuration.getEnableProblemsIntegration();
-    
+
     assert.strictEqual(autoAnalyze, true, 'autoAnalyzeOnSave should be reset to true');
     assert.strictEqual(problemsIntegration, true, 'enableProblemsIntegration should be reset to true');
   });
@@ -153,7 +153,7 @@ suite('Configuration Test Suite', () => {
   test('Configuration should validate numeric ranges', () => {
     const maxFiles = Configuration.getMaxFilesPerAnalysis();
     const timeout = Configuration.getAnalysisTimeoutMs();
-    
+
     assert.ok(maxFiles >= 0, 'maxFilesPerAnalysis should be non-negative');
     assert.ok(timeout >= 0, 'analysisTimeoutMs should be non-negative');
   });
@@ -166,9 +166,9 @@ suite('Configuration Test Suite', () => {
     }
 
     await Configuration.updateConfig('excludePatterns', []);
-    
+
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const patterns = Configuration.getExcludePatterns();
     assert.ok(Array.isArray(patterns), 'Should still return an array');
   });

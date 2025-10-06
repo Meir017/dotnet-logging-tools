@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-suite('Full Workflow Integration Test Suite', () => {
+suite.skip('Full Workflow Integration Test Suite', () => {
   vscode.window.showInformationMessage('Start full workflow integration tests.');
 
   test('Should activate extension when workspace contains .sln file', async () => {

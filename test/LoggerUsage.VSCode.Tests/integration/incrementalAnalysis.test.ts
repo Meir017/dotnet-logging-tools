@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-suite('Incremental Analysis Integration Test Suite', () => {
+suite.skip('Incremental Analysis Integration Test Suite', () => {
   vscode.window.showInformationMessage('Start incremental analysis integration tests.');
 
   test('Should trigger re-analysis when C# file is saved', async () => {

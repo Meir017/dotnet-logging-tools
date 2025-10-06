@@ -65,7 +65,7 @@ suite('Commands Test Suite', () => {
     const outputChannel = createMockOutputChannel();
     const commands = new Commands(analysisService, outputChannel);
 
-    assert.strictEqual(typeof commands.showInsightsPanel, 'function', 
+    assert.strictEqual(typeof commands.showInsightsPanel, 'function',
       'showInsightsPanel should be a function');
     // Full test would verify webview panel creation
   });
@@ -76,7 +76,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Commands class has setInsightsPanel to track panel state
-    assert.strictEqual(typeof commands.setInsightsPanel, 'function', 
+    assert.strictEqual(typeof commands.setInsightsPanel, 'function',
       'setInsightsPanel should exist for panel management');
   });
 
@@ -91,7 +91,7 @@ suite('Commands Test Suite', () => {
     const outputChannel = createMockOutputChannel();
     const commands = new Commands(analysisService, outputChannel);
 
-    assert.strictEqual(typeof commands.selectSolution, 'function', 
+    assert.strictEqual(typeof commands.selectSolution, 'function',
       'selectSolution should be a function');
   });
 
@@ -101,9 +101,9 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Commands class tracks active solution
-    assert.strictEqual(typeof commands.getActiveSolutionPath, 'function', 
+    assert.strictEqual(typeof commands.getActiveSolutionPath, 'function',
       'getActiveSolutionPath should exist');
-    
+
     const initialPath = commands.getActiveSolutionPath();
     assert.strictEqual(initialPath, null, 'Initial active solution should be null');
   });
@@ -113,7 +113,7 @@ suite('Commands Test Suite', () => {
     const outputChannel = createMockOutputChannel();
     const commands = new Commands(analysisService, outputChannel);
 
-    assert.strictEqual(typeof commands.exportInsights, 'function', 
+    assert.strictEqual(typeof commands.exportInsights, 'function',
       'exportInsights should be a function');
   });
 
@@ -122,7 +122,7 @@ suite('Commands Test Suite', () => {
     const outputChannel = createMockOutputChannel();
     const commands = new Commands(analysisService, outputChannel);
 
-    assert.strictEqual(typeof commands.exportInsights, 'function', 
+    assert.strictEqual(typeof commands.exportInsights, 'function',
       'exportInsights method should exist');
     // Full test would mock showSaveDialog
   });
@@ -133,7 +133,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Commands class should have access to current insights
-    assert.strictEqual(typeof commands.getCurrentInsights, 'function', 
+    assert.strictEqual(typeof commands.getCurrentInsights, 'function',
       'getCurrentInsights should exist for export functionality');
     const insights = commands.getCurrentInsights();
     assert.ok(Array.isArray(insights), 'getCurrentInsights should return an array');
@@ -145,7 +145,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Commands class should have clearFilters method
-    assert.strictEqual(typeof commands.clearFilters, 'function', 
+    assert.strictEqual(typeof commands.clearFilters, 'function',
       'clearFilters should be a function');
   });
 
@@ -155,7 +155,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Verify method exists - full test would verify webview message sent
-    assert.strictEqual(typeof commands.clearFilters, 'function', 
+    assert.strictEqual(typeof commands.clearFilters, 'function',
       'clearFilters method should exist');
   });
 
@@ -165,7 +165,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Commands class should have navigateToInsight method
-    assert.strictEqual(typeof commands.navigateToInsight, 'function', 
+    assert.strictEqual(typeof commands.navigateToInsight, 'function',
       'navigateToInsight should be a function');
   });
 
@@ -175,7 +175,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Verify method exists for error handling test
-    assert.strictEqual(typeof commands.navigateToInsight, 'function', 
+    assert.strictEqual(typeof commands.navigateToInsight, 'function',
       'navigateToInsight method should exist for error handling');
   });
 
@@ -185,7 +185,7 @@ suite('Commands Test Suite', () => {
     const commands = new Commands(analysisService, outputChannel);
 
     // Commands class should have refreshTreeView method
-    assert.strictEqual(typeof commands.refreshTreeView, 'function', 
+    assert.strictEqual(typeof commands.refreshTreeView, 'function',
       'refreshTreeView should be a function');
   });
 });

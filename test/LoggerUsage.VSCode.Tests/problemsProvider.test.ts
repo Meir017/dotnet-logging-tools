@@ -60,7 +60,7 @@ suite('Problems Provider Test Suite', () => {
     });
 
     provider.updateInsights([insight]);
-    
+
     // We can't directly access VS Code's diagnostic collection
     // but we can verify the method runs without errors
     assert.ok(true, 'Should publish diagnostics without error');
@@ -142,7 +142,7 @@ suite('Problems Provider Test Suite', () => {
 
     provider.updateInsights([insight]);
     provider.clearFile('/test/file.cs');
-    
+
     assert.ok(true, 'Should clear file diagnostics');
   });
 
@@ -158,7 +158,7 @@ suite('Problems Provider Test Suite', () => {
 
     provider.updateInsights([insight]);
     provider.clearDiagnostics();
-    
+
     assert.ok(true, 'Should clear all diagnostics');
   });
 
@@ -201,7 +201,7 @@ suite('Problems Provider Test Suite', () => {
   test('Should dispose diagnostic collection on provider disposal', () => {
     const tempProvider = new ProblemsProvider();
     tempProvider.dispose();
-    
+
     // If dispose works, calling it again should not throw
     assert.doesNotThrow(() => tempProvider.dispose());
   });

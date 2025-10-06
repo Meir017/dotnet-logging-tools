@@ -9,7 +9,7 @@ suite('Insights Panel Test Suite', () => {
     // InsightsPanel.createOrShow creates a webview panel
     // We can't easily mock vscode.window.createWebviewPanel in tests,
     // but we can verify the static method exists and has correct signature
-    assert.strictEqual(typeof InsightsPanel.createOrShow, 'function', 
+    assert.strictEqual(typeof InsightsPanel.createOrShow, 'function',
       'createOrShow should be a static function');
     assert.strictEqual(typeof InsightsPanel.viewType, 'string',
       'viewType should be defined');
@@ -22,7 +22,7 @@ suite('Insights Panel Test Suite', () => {
     // Full test would require mocking webview.postMessage
     assert.strictEqual(typeof InsightsPanel.getCurrentPanel, 'function',
       'getCurrentPanel should be a static function');
-    
+
     // The method signature exists on the class prototype
     assert.ok(InsightsPanel.prototype.updateInsights,
       'updateInsights method should exist on prototype');
@@ -74,7 +74,7 @@ suite('Insights Panel Test Suite', () => {
     const currentTheme = vscode.window.activeColorTheme;
     assert.ok(currentTheme, 'Should have access to current color theme');
     // vscode.ColorThemeKind enum: Light = 1, Dark = 2, HighContrast = 3
-    assert.ok([1, 2, 3].includes(currentTheme.kind), 
+    assert.ok([1, 2, 3].includes(currentTheme.kind),
       'Theme kind should be valid (1=Light, 2=Dark, 3=HighContrast)');
   });
 
@@ -88,7 +88,7 @@ suite('Insights Panel Test Suite', () => {
     // Verify getCurrentPanel static method exists
     assert.strictEqual(typeof InsightsPanel.getCurrentPanel, 'function',
       'getCurrentPanel should return existing panel instance');
-    
+
     // createOrShow should reuse existing panel
     assert.strictEqual(typeof InsightsPanel.createOrShow, 'function',
       'createOrShow should handle panel reuse');
@@ -112,7 +112,7 @@ suite('Insights Panel Test Suite', () => {
     // Verify dispose method exists for cleanup
     assert.ok(InsightsPanel.prototype.dispose,
       'dispose method should handle panel close cleanup');
-    
+
     // Verify getCurrentPanel can return undefined after disposal
     assert.strictEqual(typeof InsightsPanel.getCurrentPanel, 'function',
       'getCurrentPanel should handle disposed state');
