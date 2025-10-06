@@ -307,24 +307,29 @@ suite('Tree View Provider Test Suite', () => {
   test('Should handle insights from same file in different projects', async () => {
     const provider = new LoggerTreeViewProvider();
     const insights = [
-      createTestInsight('1', 'C:\\ProjectA\\src\\Common.cs', 10, 'Message 1'),
-      createTestInsight('2', 'C:\\ProjectB\\src\\Common.cs', 20, 'Message 2')
+      // Use paths where project name is inferred correctly (before 'src' folder)
+      createTestInsight('1', 'C:\\Solution\\ProjectA\\Common.cs', 10, 'Message 1'),
+      createTestInsight('2', 'C:\\Solution\\ProjectB\\Common.cs', 20, 'Message 2')
     ];
     
-    provider.updateInsights(insights);
+    provider.updateInsights(insights, 'C:\\Solution\\MySolution.sln');
     
     const roots = await provider.getChildren();
     const projects = await provider.getChildren(roots[0]);
     
-    // Should have 2 different projects
-    assert.ok(projects.length >= 2, 'Should have at least 2 projects');
+    // Should have 2 different projects (ProjectA and ProjectB)
+    assert.strictEqual(projects.length, 2, 'Should have 2 projects');
     
     // Each project should have the Common.cs file
     const filesProject1 = await provider.getChildren(projects[0]);
     const filesProject2 = await provider.getChildren(projects[1]);
     
-    assert.ok(filesProject1.length >= 1, 'First project should have files');
-    assert.ok(filesProject2.length >= 1, 'Second project should have files');
+    assert.strictEqual(filesProject1.length, 1, 'First project should have 1 file');
+    assert.strictEqual(filesProject2.length, 1, 'Second project should have 1 file');
+    
+    // Both should have Common.cs
+    assert.ok(filesProject1[0].label.includes('Common.cs'), 'First project should have Common.cs');
+    assert.ok(filesProject2[0].label.includes('Common.cs'), 'Second project should have Common.cs');
     
     provider.dispose();
   });
