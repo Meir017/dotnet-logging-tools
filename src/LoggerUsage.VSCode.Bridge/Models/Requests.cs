@@ -29,13 +29,13 @@ public record PingRequest : IBridgeRequest
 public record AnalysisRequest : IBridgeRequest
 {
     public string Command => "analyze";
-    
+
     [JsonPropertyName("workspacePath")]
     public required string WorkspacePath { get; init; }
-    
+
     [JsonPropertyName("solutionPath")]
     public string? SolutionPath { get; init; }
-    
+
     [JsonPropertyName("excludePatterns")]
     public string[]? ExcludePatterns { get; init; }
 }
@@ -46,10 +46,10 @@ public record AnalysisRequest : IBridgeRequest
 public record IncrementalAnalysisRequest : IBridgeRequest
 {
     public string Command => "analyzeFile";
-    
+
     [JsonPropertyName("filePath")]
     public required string FilePath { get; init; }
-    
+
     [JsonPropertyName("solutionPath")]
     public required string SolutionPath { get; init; }
 }

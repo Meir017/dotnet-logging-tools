@@ -24,7 +24,7 @@ suite('Extension Activation Test Suite', () => {
     // TODO: Assert loggerUsage.* commands are present
     const commands = await vscode.commands.getCommands(true);
     const loggerUsageCommands = commands.filter(cmd => cmd.startsWith('loggerUsage.'));
-    
+
     assert.ok(loggerUsageCommands.includes('loggerUsage.analyze'), 'analyze command not registered');
     assert.ok(loggerUsageCommands.includes('loggerUsage.showInsightsPanel'), 'showInsightsPanel command not registered');
     assert.ok(loggerUsageCommands.includes('loggerUsage.selectSolution'), 'selectSolution command not registered');

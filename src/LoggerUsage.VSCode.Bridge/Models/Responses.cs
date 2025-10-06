@@ -21,7 +21,7 @@ public interface IBridgeResponse
 public record ReadyResponse : IBridgeResponse
 {
     public string Status => "ready";
-    
+
     [JsonPropertyName("version")]
     public required string Version { get; init; }
 }
@@ -32,13 +32,13 @@ public record ReadyResponse : IBridgeResponse
 public record AnalysisProgress : IBridgeResponse
 {
     public string Status => "progress";
-    
+
     [JsonPropertyName("percentage")]
     public required int Percentage { get; init; }
-    
+
     [JsonPropertyName("message")]
     public required string Message { get; init; }
-    
+
     [JsonPropertyName("currentFile")]
     public string? CurrentFile { get; init; }
 }
@@ -49,7 +49,7 @@ public record AnalysisProgress : IBridgeResponse
 public record AnalysisSuccessResponse : IBridgeResponse
 {
     public string Status => "success";
-    
+
     [JsonPropertyName("result")]
     public required AnalysisResult Result { get; init; }
 }
@@ -61,7 +61,7 @@ public record AnalysisResult
 {
     [JsonPropertyName("insights")]
     public required List<LoggingInsightDto> Insights { get; init; }
-    
+
     [JsonPropertyName("summary")]
     public required AnalysisSummaryDto Summary { get; init; }
 }
@@ -72,13 +72,13 @@ public record AnalysisResult
 public record AnalysisErrorResponse : IBridgeResponse
 {
     public string Status => "error";
-    
+
     [JsonPropertyName("message")]
     public required string Message { get; init; }
-    
+
     [JsonPropertyName("details")]
     public required string Details { get; init; }
-    
+
     [JsonPropertyName("errorCode")]
     public string? ErrorCode { get; init; }
 }

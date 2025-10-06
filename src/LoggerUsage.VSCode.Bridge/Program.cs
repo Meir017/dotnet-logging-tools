@@ -39,7 +39,7 @@ while (true)
     {
         // Read line from stdin
         var line = await Console.In.ReadLineAsync();
-        
+
         if (string.IsNullOrWhiteSpace(line))
         {
             continue;
@@ -60,7 +60,7 @@ while (true)
                 Details = $"Failed to parse JSON: {ex.Message}",
                 ErrorCode = "INVALID_JSON"
             };
-            
+
             WriteResponse(errorResponse);
             continue;
         }
@@ -73,7 +73,7 @@ while (true)
                 Details = "Deserialized request was null",
                 ErrorCode = "NULL_REQUEST"
             };
-            
+
             WriteResponse(errorResponse);
             continue;
         }
@@ -85,17 +85,17 @@ while (true)
             {
                 Version = "1.0.0"
             },
-            
+
             AnalysisRequest analysisRequest => await analyzer.AnalyzeWorkspaceAsync(
                 analysisRequest,
                 CancellationToken.None),
-            
+
             IncrementalAnalysisRequest incrementalRequest => await analyzer.AnalyzeFileAsync(
                 incrementalRequest,
                 CancellationToken.None),
-            
+
             ShutdownRequest => null!, // Signal to exit
-            
+
             _ => new AnalysisErrorResponse
             {
                 Message = "Unknown command",
@@ -122,7 +122,7 @@ while (true)
             Details = $"Unexpected error during command processing: {ex.Message}\n{ex.StackTrace}",
             ErrorCode = "INTERNAL_ERROR"
         };
-        
+
         WriteResponse(errorResponse);
     }
 }

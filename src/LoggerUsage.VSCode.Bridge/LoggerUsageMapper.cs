@@ -18,14 +18,14 @@ public class LoggerUsageMapper
         var location = MapLocation(usage.Location);
         var id = GenerateInsightId(location);
         var inconsistencies = DetectInconsistencies(usage);
-        
+
         // Extract data classifications from parameters
         var dataClassifications = usage.MessageParameters
             .Where(p => p.DataClassification != null)
             .Select(p => new { p.Name, Classification = p.DataClassification! })
             .Select(x => MapDataClassification(x.Name, x.Classification))
             .ToList();
-        
+
         return new LoggingInsightDto
         {
             Id = id,
@@ -41,7 +41,7 @@ public class LoggerUsageMapper
             Inconsistencies = inconsistencies.Count > 0 ? inconsistencies : null
         };
     }
-    
+
     /// <summary>
     /// Generate unique insight ID from location
     /// </summary>
@@ -49,7 +49,7 @@ public class LoggerUsageMapper
     {
         return $"{location.FilePath}:{location.StartLine}:{location.StartColumn}";
     }
-    
+
     /// <summary>
     /// Map location from LoggerUsage model to DTO
     /// </summary>
@@ -64,7 +64,7 @@ public class LoggerUsageMapper
             EndColumn = 0
         };
     }
-    
+
     /// <summary>
     /// Map EventId to DTO
     /// </summary>
@@ -74,7 +74,7 @@ public class LoggerUsageMapper
         {
             return null;
         }
-        
+
         // EventIdBase is polymorphic - could be EventIdDetails or EventIdRef
         if (eventId is EventIdDetails details)
         {
@@ -84,11 +84,11 @@ public class LoggerUsageMapper
                 Name = details.Name.Value as string
             };
         }
-        
+
         // For EventIdRef, we can't resolve the actual values
         return null;
     }
-    
+
     /// <summary>
     /// Map data classification to DTO
     /// </summary>
@@ -100,7 +100,7 @@ public class LoggerUsageMapper
             ClassificationType = info.ClassificationTypeName
         };
     }
-    
+
     /// <summary>
     /// Map method type enum to string
     /// </summary>
@@ -116,20 +116,20 @@ public class LoggerUsageMapper
             _ => "Unknown"
         };
     }
-    
+
     /// <summary>
     /// Detect inconsistencies in logging usage
     /// </summary>
     private static List<ParameterInconsistencyDto> DetectInconsistencies(LoggerUsageInfo usage)
     {
         var inconsistencies = new List<ParameterInconsistencyDto>();
-        
+
         // 1. Detect parameter name mismatches
         var templateParams = ExtractTemplateParameters(usage.MessageTemplate);
         var actualParams = usage.MessageParameters
             .Select(p => p.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        
+
         foreach (var templateParam in templateParams)
         {
             if (!actualParams.Contains(templateParam))
@@ -143,7 +143,7 @@ public class LoggerUsageMapper
                 });
             }
         }
-        
+
         // 2. Detect missing EventIds
         if (usage.EventId == null && usage.LogLevel != LogLevel.Trace && usage.LogLevel != LogLevel.Debug)
         {
@@ -155,12 +155,12 @@ public class LoggerUsageMapper
                 Location = MapLocation(usage.Location)
             });
         }
-        
+
         // 3. Detect sensitive data in logs
         var parametersWithClassifications = usage.MessageParameters
             .Where(p => p.DataClassification != null)
             .ToList();
-            
+
         if (parametersWithClassifications.Any())
         {
             foreach (var param in parametersWithClassifications)
@@ -174,10 +174,10 @@ public class LoggerUsageMapper
                 });
             }
         }
-        
+
         return inconsistencies;
     }
-    
+
     /// <summary>
     /// Extract parameter names from message template
     /// </summary>
@@ -187,11 +187,11 @@ public class LoggerUsageMapper
         {
             return [];
         }
-            
+
         var parameters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var template = messageTemplate;
         var startIndex = 0;
-        
+
         while (startIndex < template.Length)
         {
             var openBrace = template.IndexOf('{', startIndex);
@@ -199,39 +199,39 @@ public class LoggerUsageMapper
             {
                 break;
             }
-                
+
             var closeBrace = template.IndexOf('}', openBrace);
             if (closeBrace == -1)
             {
                 break;
             }
-                
+
             var paramName = template.Substring(openBrace + 1, closeBrace - openBrace - 1);
-            
+
             // Remove format specifiers (e.g., {name:000} -> name)
             var colonIndex = paramName.IndexOf(':');
             if (colonIndex != -1)
             {
                 paramName = paramName.Substring(0, colonIndex);
             }
-                
+
             // Remove alignment specifiers (e.g., {name,10} -> name)
             var commaIndex = paramName.IndexOf(',');
             if (commaIndex != -1)
             {
                 paramName = paramName.Substring(0, commaIndex);
             }
-                
+
             paramName = paramName.Trim();
-            
+
             if (!string.IsNullOrWhiteSpace(paramName))
             {
                 parameters.Add(paramName);
             }
-                
+
             startIndex = closeBrace + 1;
         }
-        
+
         return parameters;
     }
 }
