@@ -1,0 +1,9 @@
+
+> logger-usage@1.0.0 pretest
+> npm run compile
+
+
+> logger-usage@1.0.0 compile
+> tsc -p ./
+
+../../test/LoggerUsage.VSCode.Tests/integration/fullWorkflow.test.ts(3,1): error TS6133: 'path' is declared but its value is never read.

@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import * as path from 'path';
 
 suite('Full Workflow Integration Test Suite', () => {
   vscode.window.showInformationMessage('Start full workflow integration tests.');
