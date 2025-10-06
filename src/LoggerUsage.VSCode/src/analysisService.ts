@@ -194,7 +194,7 @@ export class AnalysisService implements vscode.Disposable {
             }, 10000); // 10 second timeout
 
             const pingRequest: BridgeRequest = { command: 'ping' };
-            
+
             // Set up a temporary handler for the ready response
             const originalHandler = this.handleResponse.bind(this);
             this.handleResponse = (response: AnalysisResponse) => {
@@ -314,7 +314,7 @@ export class AnalysisService implements vscode.Disposable {
                 const errorResponse = response as AnalysisErrorResponse;
                 const error = new Error(`Analysis failed: ${errorResponse.message}\n${errorResponse.details}`);
                 pendingEntry.reject(error);
-                
+
                 // Show error to user
                 vscode.window.showErrorMessage(
                     `Logger Usage Analysis Failed: ${errorResponse.message}`,
@@ -363,7 +363,7 @@ export class AnalysisService implements vscode.Disposable {
      */
     private handleBridgeError(error: Error): void {
         this.outputChannel.appendLine(`Bridge error: ${error.message}`);
-        
+
         // Reject all pending requests
         for (const [requestId, pending] of this.pendingResponses.entries()) {
             pending.reject(error);
@@ -406,7 +406,7 @@ export class AnalysisService implements vscode.Disposable {
             // Development: built locally
             path.join(this.context.extensionPath, '..', 'LoggerUsage.VSCode.Bridge', 'bin', 'Debug', 'net10.0', 'win-x64', 'LoggerUsage.VSCode.Bridge.exe'),
             path.join(this.context.extensionPath, '..', 'LoggerUsage.VSCode.Bridge', 'bin', 'Release', 'net10.0', 'win-x64', 'LoggerUsage.VSCode.Bridge.exe'),
-            
+
             // Packaged extension: bridge bundled in extension
             path.join(this.context.extensionPath, 'bridge', 'LoggerUsage.VSCode.Bridge.exe'),
             path.join(this.context.extensionPath, 'bridge', 'win-x64', 'LoggerUsage.VSCode.Bridge.exe'),

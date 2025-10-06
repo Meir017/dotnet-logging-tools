@@ -44,7 +44,7 @@ export class ProblemsProvider implements vscode.Disposable {
     public updateFile(filePath: string, insights: LoggingInsight[]): void {
         const uri = vscode.Uri.file(filePath);
         const diagnostics = this.createDiagnosticsForInsights(insights);
-        
+
         this.diagnosticCollection.set(uri, diagnostics);
     }
 
@@ -83,7 +83,7 @@ export class ProblemsProvider implements vscode.Disposable {
 
         for (const insight of insightsWithIssues) {
             const uri = vscode.Uri.file(insight.location.filePath);
-            
+
             if (!diagnosticsByFile.has(uri)) {
                 diagnosticsByFile.set(uri, []);
             }
@@ -275,7 +275,7 @@ export class ProblemsProvider implements vscode.Disposable {
                                 new vscode.Position(insight.location.startLine - 1, 0)
                             )
                         ),
-                        'Sensitive data classifications: ' + 
+                        'Sensitive data classifications: ' +
                         insight.dataClassifications.map(dc => `${dc.parameterName} (${dc.classificationType})`).join(', ')
                     )
                 );
@@ -286,7 +286,7 @@ export class ProblemsProvider implements vscode.Disposable {
 
         // Add tags for better categorization
         const tags: vscode.DiagnosticTag[] = [];
-        
+
         // Mark as unnecessary if it's a warning about missing EventId
         if (inconsistency.type === 'MissingEventId') {
             // This is a suggestion, not critical

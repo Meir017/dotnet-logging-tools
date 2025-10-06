@@ -90,6 +90,7 @@ export class Commands {
                 const result = await this.analysisService.analyzeWorkspace(
                     workspaceFolder.uri.fsPath,
                     solutionPath,
+                    undefined,
                     (progressInfo) => {
                         progress.report({
                             message: progressInfo.message,
@@ -100,7 +101,7 @@ export class Commands {
                 );
 
                 // Convert result to insights
-                this.currentInsights = this.convertToInsights(result.insights);
+                this.currentInsights = this.convertToInsights(result.result.insights);
 
                 this.outputChannel.appendLine(`Analysis complete. Found ${this.currentInsights.length} logging statements.`);
 
@@ -148,7 +149,7 @@ export class Commands {
         if (solutionFiles.length === 1) {
             this.activeSolutionPath = solutionFiles[0];
             vscode.window.showInformationMessage(`Selected solution: ${path.basename(solutionFiles[0])}`);
-            
+
             // Trigger re-analysis
             await this.analyze();
             return;
@@ -169,7 +170,7 @@ export class Commands {
         if (selected) {
             this.activeSolutionPath = selected.filePath;
             vscode.window.showInformationMessage(`Selected solution: ${selected.label}`);
-            
+
             // Trigger re-analysis
             await this.analyze();
         }
@@ -350,7 +351,7 @@ export class Commands {
             const otherInsights = this.currentInsights.filter(
                 i => i.location.filePath !== fileUri.fsPath
             );
-            const newInsights = this.convertToInsights(result.insights);
+            const newInsights = this.convertToInsights(result.result.insights);
 
             this.currentInsights = [...otherInsights, ...newInsights];
 
@@ -401,7 +402,7 @@ export class Commands {
 
         const pattern = new vscode.RelativePattern(workspaceFolder, '**/*.sln');
         const excludePattern = Configuration.getExcludePatterns().join(',');
-        
+
         const files = await vscode.workspace.findFiles(pattern, excludePattern);
         return files.map(uri => uri.fsPath);
     }
@@ -412,7 +413,7 @@ export class Commands {
     private convertToInsights(insights: any[]): LoggingInsight[] {
         // The analysis service returns data in the correct format already
         // Just ensure proper typing and ID generation
-        return insights.map((insight, index) => ({
+        return insights.map((insight) => ({
             ...insight,
             id: insight.id || `${insight.location.filePath}:${insight.location.startLine}:${insight.location.startColumn}`
         }));
@@ -525,7 +526,7 @@ export class Commands {
             lines.push('');
             lines.push(`**Total:** ${withInconsistencies.length}`);
             lines.push('');
-            
+
             for (const insight of withInconsistencies) {
                 lines.push(`### ${path.basename(insight.location.filePath)}:${insight.location.startLine}`);
                 lines.push('');
@@ -533,7 +534,7 @@ export class Commands {
                 lines.push(`**Log Level:** ${insight.logLevel || 'N/A'}`);
                 lines.push(`**Message:** \`${insight.messageTemplate}\``);
                 lines.push('');
-                
+
                 if (insight.inconsistencies) {
                     lines.push('**Issues:**');
                     for (const issue of insight.inconsistencies) {
@@ -547,7 +548,7 @@ export class Commands {
         // Detailed listing
         lines.push('## Detailed Logging Statements');
         lines.push('');
-        
+
         for (const insight of insights) {
             const fileName = path.basename(insight.location.filePath);
             lines.push(`### ${fileName}:${insight.location.startLine}`);

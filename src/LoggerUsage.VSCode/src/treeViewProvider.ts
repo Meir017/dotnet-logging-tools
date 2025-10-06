@@ -37,16 +37,12 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
 
     private currentInsights: LoggingInsight[] = [];
     private solutionPath: string | null = null;
-    private treeView: vscode.TreeView<TreeNode> | null = null;
 
-    constructor(private readonly outputChannel: vscode.OutputChannel) {}
+    constructor() {}
 
     /**
-     * Sets the tree view reference (for access to reveal/selection)
+     * Updates the insights data and triggers a refresh of the tree view
      */
-    public setTreeView(treeView: vscode.TreeView<TreeNode>): void {
-        this.treeView = treeView;
-    }
 
     /**
      * Updates insights and refreshes tree

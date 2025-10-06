@@ -19,7 +19,7 @@ export class InsightsPanel implements vscode.Disposable {
     private currentInsights: LoggingInsight[] = [];
     private currentSummary: AnalysisSummary | null = null;
     private currentFilter: FilterState = DEFAULT_FILTER_STATE;
-    
+
     // Callback for handling webview messages (set by Commands class)
     private onNavigateToInsightCallback?: (insightId: string) => Promise<void>;
     private onExportResultsCallback?: (format: 'json' | 'csv' | 'markdown') => Promise<void>;
@@ -64,6 +64,13 @@ export class InsightsPanel implements vscode.Disposable {
      */
     public static getCurrentPanel(): InsightsPanel | undefined {
         return InsightsPanel.currentPanel;
+    }
+
+    /**
+     * Gets the webview panel
+     */
+    public getPanel(): vscode.WebviewPanel {
+        return this.panel;
     }
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
@@ -241,18 +248,18 @@ export class InsightsPanel implements vscode.Disposable {
      */
     private detectTheme(): 'light' | 'dark' | 'high-contrast' {
         const colorTheme = vscode.window.activeColorTheme;
-        
+
         // Check for high contrast first
         if (colorTheme.kind === vscode.ColorThemeKind.HighContrast ||
             colorTheme.kind === vscode.ColorThemeKind.HighContrastLight) {
             return 'high-contrast';
         }
-        
+
         // Check for light theme
         if (colorTheme.kind === vscode.ColorThemeKind.Light) {
             return 'light';
         }
-        
+
         // Default to dark
         return 'dark';
     }
@@ -262,17 +269,17 @@ export class InsightsPanel implements vscode.Disposable {
      */
     private updateWebviewContent(): void {
         const webview = this.panel.webview;
-        
+
         // Try to load from HTML template file
         const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'views', 'insightsView.html');
-        
+
         try {
             if (fs.existsSync(htmlPath.fsPath)) {
                 let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8');
-                
+
                 // Replace template variables
                 htmlContent = this.replaceTemplateVariables(htmlContent, webview);
-                
+
                 webview.html = htmlContent;
             } else {
                 // Fallback to inline HTML
@@ -289,13 +296,13 @@ export class InsightsPanel implements vscode.Disposable {
      */
     private replaceTemplateVariables(html: string, webview: vscode.Webview): string {
         const nonce = this.getNonce();
-        
+
         // Replace CSP nonce
         html = html.replace(/\$\{nonce\}/g, nonce);
-        
+
         // Replace CSP source
         html = html.replace(/\$\{cspSource\}/g, webview.cspSource);
-        
+
         return html;
     }
 
@@ -320,20 +327,20 @@ export class InsightsPanel implements vscode.Disposable {
             font-family: var(--vscode-font-family);
             font-size: var(--vscode-font-size);
         }
-        
+
         h1 {
             color: var(--vscode-foreground);
             font-size: 24px;
             margin-bottom: 20px;
         }
-        
+
         .toolbar {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
-        
+
         .toolbar button {
             background-color: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
@@ -342,28 +349,28 @@ export class InsightsPanel implements vscode.Disposable {
             cursor: pointer;
             border-radius: 2px;
         }
-        
+
         .toolbar button:hover {
             background-color: var(--vscode-button-hoverBackground);
         }
-        
+
         .filters {
             background-color: var(--vscode-editor-inactiveSelectionBackground);
             padding: 15px;
             margin-bottom: 20px;
             border-radius: 4px;
         }
-        
+
         .filter-group {
             margin-bottom: 10px;
         }
-        
+
         .filter-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
-        
+
         .filter-group input[type="text"] {
             width: 100%;
             padding: 6px;
@@ -372,34 +379,34 @@ export class InsightsPanel implements vscode.Disposable {
             border: 1px solid var(--vscode-input-border);
             border-radius: 2px;
         }
-        
+
         .filter-group input[type="checkbox"] {
             margin-right: 5px;
         }
-        
+
         .insights-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-        
+
         .insights-table th,
         .insights-table td {
             padding: 8px;
             text-align: left;
             border-bottom: 1px solid var(--vscode-panel-border);
         }
-        
+
         .insights-table th {
             background-color: var(--vscode-editor-inactiveSelectionBackground);
             font-weight: bold;
         }
-        
+
         .insights-table tr:hover {
             background-color: var(--vscode-list-hoverBackground);
             cursor: pointer;
         }
-        
+
         .badge {
             display: inline-block;
             padding: 2px 6px;
@@ -407,47 +414,47 @@ export class InsightsPanel implements vscode.Disposable {
             font-size: 11px;
             font-weight: bold;
         }
-        
+
         .badge-inconsistency {
             background-color: var(--vscode-editorWarning-foreground);
             color: var(--vscode-editor-background);
         }
-        
+
         .badge-method-type {
             background-color: var(--vscode-editorInfo-foreground);
             color: var(--vscode-editor-background);
         }
-        
+
         .summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-        
+
         .summary-card {
             background-color: var(--vscode-editor-inactiveSelectionBackground);
             padding: 15px;
             border-radius: 4px;
         }
-        
+
         .summary-card h3 {
             margin: 0 0 10px 0;
             font-size: 14px;
             color: var(--vscode-descriptionForeground);
         }
-        
+
         .summary-card .value {
             font-size: 32px;
             font-weight: bold;
         }
-        
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
             color: var(--vscode-descriptionForeground);
         }
-        
+
         .empty-state h2 {
             margin-bottom: 10px;
         }
@@ -455,7 +462,7 @@ export class InsightsPanel implements vscode.Disposable {
 </head>
 <body>
     <h1>Logger Usage Insights</h1>
-    
+
     <div class="toolbar">
         <button id="refreshBtn">Refresh Analysis</button>
         <button id="exportJsonBtn">Export JSON</button>
@@ -463,11 +470,11 @@ export class InsightsPanel implements vscode.Disposable {
         <button id="exportMarkdownBtn">Export Markdown</button>
         <button id="clearFiltersBtn">Clear Filters</button>
     </div>
-    
+
     <div class="summary" id="summary">
         <!-- Summary cards will be inserted here -->
     </div>
-    
+
     <div class="filters">
         <div class="filter-group">
             <label for="searchInput">Search:</label>
@@ -480,24 +487,24 @@ export class InsightsPanel implements vscode.Disposable {
             </label>
         </div>
     </div>
-    
+
     <div id="content">
         <div class="empty-state">
             <h2>No insights available</h2>
             <p>Run analysis to view logging insights</p>
         </div>
     </div>
-    
+
     <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
-        
+
         let currentInsights = [];
         let currentSummary = null;
-        
+
         // Handle messages from extension
         window.addEventListener('message', event => {
             const message = event.data;
-            
+
             switch (message.command) {
                 case 'updateInsights':
                     currentInsights = message.insights;
@@ -505,53 +512,53 @@ export class InsightsPanel implements vscode.Disposable {
                     renderInsights();
                     renderSummary();
                     break;
-                    
+
                 case 'updateFilters':
                     // Update filter UI
                     break;
-                    
+
                 case 'updateTheme':
                     // Theme changed
                     document.body.className = 'theme-' + message.theme;
                     break;
-                    
+
                 case 'showError':
                     alert('Error: ' + message.message);
                     break;
             }
         });
-        
+
         // Toolbar buttons
         document.getElementById('refreshBtn').addEventListener('click', () => {
             vscode.postMessage({ command: 'refreshAnalysis' });
         });
-        
+
         document.getElementById('exportJsonBtn').addEventListener('click', () => {
             vscode.postMessage({ command: 'exportResults', format: 'json' });
         });
-        
+
         document.getElementById('exportCsvBtn').addEventListener('click', () => {
             vscode.postMessage({ command: 'exportResults', format: 'csv' });
         });
-        
+
         document.getElementById('exportMarkdownBtn').addEventListener('click', () => {
             vscode.postMessage({ command: 'exportResults', format: 'markdown' });
         });
-        
+
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
             document.getElementById('searchInput').value = '';
             document.getElementById('showInconsistenciesOnly').checked = false;
             applyFilters();
         });
-        
+
         // Filter changes
         document.getElementById('searchInput').addEventListener('input', applyFilters);
         document.getElementById('showInconsistenciesOnly').addEventListener('change', applyFilters);
-        
+
         function applyFilters() {
             const searchQuery = document.getElementById('searchInput').value;
             const showInconsistenciesOnly = document.getElementById('showInconsistenciesOnly').checked;
-            
+
             vscode.postMessage({
                 command: 'applyFilters',
                 filters: {
@@ -564,15 +571,15 @@ export class InsightsPanel implements vscode.Disposable {
                 }
             });
         }
-        
+
         function renderSummary() {
             const summaryEl = document.getElementById('summary');
-            
+
             if (!currentSummary) {
                 summaryEl.innerHTML = '';
                 return;
             }
-            
+
             summaryEl.innerHTML = \`
                 <div class="summary-card">
                     <h3>Total Logging Statements</h3>
@@ -588,10 +595,10 @@ export class InsightsPanel implements vscode.Disposable {
                 </div>
             \`;
         }
-        
+
         function renderInsights() {
             const contentEl = document.getElementById('content');
-            
+
             if (!currentInsights || currentInsights.length === 0) {
                 contentEl.innerHTML = \`
                     <div class="empty-state">
@@ -601,18 +608,18 @@ export class InsightsPanel implements vscode.Disposable {
                 \`;
                 return;
             }
-            
+
             let html = '<table class="insights-table"><thead><tr>';
             html += '<th>File</th><th>Line</th><th>Method Type</th>';
             html += '<th>Log Level</th><th>Message</th><th>Status</th>';
             html += '</tr></thead><tbody>';
-            
+
             for (const insight of currentInsights) {
                 const fileName = insight.location.filePath.split(/[\\\\/]/).pop();
-                const inconsistencyBadge = insight.hasInconsistencies 
-                    ? '<span class="badge badge-inconsistency">!</span>' 
+                const inconsistencyBadge = insight.hasInconsistencies
+                    ? '<span class="badge badge-inconsistency">!</span>'
                     : '';
-                
+
                 html += \`<tr onclick="navigateToInsight('\${insight.id}')">\`;
                 html += \`<td>\${fileName}</td>\`;
                 html += \`<td>\${insight.location.startLine}</td>\`;
@@ -622,15 +629,15 @@ export class InsightsPanel implements vscode.Disposable {
                 html += \`<td>\${inconsistencyBadge}</td>\`;
                 html += '</tr>';
             }
-            
+
             html += '</tbody></table>';
             contentEl.innerHTML = html;
         }
-        
+
         function navigateToInsight(insightId) {
             vscode.postMessage({ command: 'navigateToInsight', insightId: insightId });
         }
-        
+
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -662,7 +669,7 @@ export class InsightsPanel implements vscode.Disposable {
         // Filter by search query
         if (filters.searchQuery) {
             const query = filters.searchQuery.toLowerCase();
-            filtered = filtered.filter(i => 
+            filtered = filtered.filter(i =>
                 i.messageTemplate.toLowerCase().includes(query)
             );
         }
@@ -674,28 +681,28 @@ export class InsightsPanel implements vscode.Disposable {
 
         // Filter by log levels
         if (filters.logLevels.length > 0) {
-            filtered = filtered.filter(i => 
+            filtered = filtered.filter(i =>
                 i.logLevel && filters.logLevels.includes(i.logLevel)
             );
         }
 
         // Filter by method types
         if (filters.methodTypes.length > 0) {
-            filtered = filtered.filter(i => 
+            filtered = filtered.filter(i =>
                 filters.methodTypes.includes(i.methodType)
             );
         }
 
         // Filter by tags
         if (filters.tags.length > 0) {
-            filtered = filtered.filter(i => 
+            filtered = filtered.filter(i =>
                 i.tags.some(tag => filters.tags.includes(tag))
             );
         }
 
         // Filter by file paths
         if (filters.filePaths.length > 0) {
-            filtered = filtered.filter(i => 
+            filtered = filtered.filter(i =>
                 filters.filePaths.includes(i.location.filePath)
             );
         }
