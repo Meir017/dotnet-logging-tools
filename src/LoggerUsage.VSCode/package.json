@@ -1,0 +1,191 @@
+{
+  "name": "logger-usage",
+  "displayName": "Logger Usage",
+  "description": "Logging insights for C# projects using Microsoft.Extensions.Logging",
+  "version": "1.0.0",
+  "publisher": "meir017",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "csharp",
+    "logging",
+    "microsoft.extensions.logging",
+    "roslyn",
+    "analysis"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.sln",
+    "workspaceContains:**/*.csproj"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "loggerUsage.analyze",
+        "title": "Logger Usage: Analyze Workspace",
+        "icon": "$(search)"
+      },
+      {
+        "command": "loggerUsage.showInsightsPanel",
+        "title": "Logger Usage: Show Insights Panel",
+        "icon": "$(output)"
+      },
+      {
+        "command": "loggerUsage.selectSolution",
+        "title": "Logger Usage: Select Active Solution"
+      },
+      {
+        "command": "loggerUsage.exportInsights",
+        "title": "Logger Usage: Export Insights"
+      },
+      {
+        "command": "loggerUsage.clearFilters",
+        "title": "Logger Usage: Clear All Filters"
+      },
+      {
+        "command": "loggerUsage.navigateToInsight",
+        "title": "Logger Usage: Navigate to Insight"
+      },
+      {
+        "command": "loggerUsage.refreshTreeView",
+        "title": "Logger Usage: Refresh",
+        "icon": "$(refresh)"
+      }
+    ],
+    "configuration": {
+      "title": "Logger Usage",
+      "properties": {
+        "loggerUsage.autoAnalyzeOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically analyze logging usage when C# files are saved"
+        },
+        "loggerUsage.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/obj/**",
+            "**/bin/**"
+          ],
+          "description": "Glob patterns for files to exclude from analysis"
+        },
+        "loggerUsage.performanceThresholds.maxFilesPerAnalysis": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum number of files to analyze in a single pass"
+        },
+        "loggerUsage.performanceThresholds.analysisTimeoutMs": {
+          "type": "number",
+          "default": 300000,
+          "description": "Maximum time (ms) for analysis before timeout warning (best-effort)"
+        },
+        "loggerUsage.enableProblemsIntegration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show logging inconsistencies in the Problems panel"
+        },
+        "loggerUsage.filterDefaults.logLevels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Information",
+            "Warning",
+            "Error"
+          ],
+          "description": "Default log levels to display"
+        },
+        "loggerUsage.filterDefaults.showInconsistenciesOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show only logging statements with inconsistencies by default"
+        }
+      }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "loggerUsageTreeView",
+          "name": "Logger Usage"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": []
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "loggerUsage.refreshTreeView",
+          "when": "view == loggerUsageTreeView",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "loggerUsage.analyze"
+        },
+        {
+          "command": "loggerUsage.showInsightsPanel"
+        },
+        {
+          "command": "loggerUsage.selectSolution"
+        },
+        {
+          "command": "loggerUsage.exportInsights"
+        },
+        {
+          "command": "loggerUsage.clearFilters"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "loggerUsage.analyze",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.x",
+    "@types/mocha": "^10.0.6",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.19.11",
+    "eslint": "^8.56.0",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Meir017/dotnet-logging-usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Meir017/dotnet-logging-usage/issues"
+  },
+  "homepage": "https://github.com/Meir017/dotnet-logging-usage#readme",
+  "license": "MIT"
+}
