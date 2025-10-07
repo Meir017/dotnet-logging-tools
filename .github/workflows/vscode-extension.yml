@@ -49,46 +49,14 @@ jobs:
       run: npm run compile
 
     - name: Run tests (Linux)
-      id: test_linux
       if: runner.os == 'Linux'
       working-directory: src/LoggerUsage.VSCode
-      run: xvfb-run -a npm test 2>&1 | tee test-output.log
-      continue-on-error: true
+      run: xvfb-run -a npm test
 
     - name: Run tests (Windows/macOS)
-      id: test_other
       if: runner.os != 'Linux'
       working-directory: src/LoggerUsage.VSCode
-      run: npm test 2>&1 | tee test-output.log
-      continue-on-error: true
-
-    - name: Parse test results
-      if: always()
-      id: parse_tests
-      working-directory: src/LoggerUsage.VSCode
-      shell: bash
-      run: |
-        if [ -f test-output.log ]; then
-          # Debug: show the last few lines of the test output
-          echo "=== Last 20 lines of test output ==="
-          tail -20 test-output.log
-          echo "==================================="
-          
-          # Parse test results - mocha outputs like "76 passing (232ms)"
-          PASSING=$(grep -E '[0-9]+ passing' test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
-          PENDING=$(grep -E '[0-9]+ pending' test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
-          FAILING=$(grep -E '[0-9]+ failing' test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
-          
-          echo "passing=$PASSING" >> $GITHUB_OUTPUT
-          echo "pending=$PENDING" >> $GITHUB_OUTPUT
-          echo "failing=$FAILING" >> $GITHUB_OUTPUT
-          echo "✅ Passing: $PASSING | ⏭️ Pending: $PENDING | ❌ Failing: $FAILING"
-        else
-          echo "No test-output.log found!"
-          echo "passing=0" >> $GITHUB_OUTPUT
-          echo "pending=0" >> $GITHUB_OUTPUT
-          echo "failing=0" >> $GITHUB_OUTPUT
-        fi
+      run: npm test
 
     - name: Upload test results
       if: always()
@@ -98,18 +66,6 @@ jobs:
         path: src/LoggerUsage.VSCode/test-results/
         if-no-files-found: ignore
     
-    - name: Upload test output
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-output-${{ matrix.os }}-node${{ matrix.node-version }}
-        path: src/LoggerUsage.VSCode/test-output.log
-        if-no-files-found: ignore
-    
-    - name: Fail if tests failed
-      if: steps.parse_tests.outputs.failing != '0'
-      run: exit 1
-
     - name: Package extension
       if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
       working-directory: src/LoggerUsage.VSCode
@@ -122,135 +78,6 @@ jobs:
         name: vscode-extension
         path: src/LoggerUsage.VSCode/*.vsix
         retention-days: 30
-
-  integration-readiness:
-    runs-on: ubuntu-latest
-    needs: build-and-test
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download test output (Ubuntu)
-      uses: actions/download-artifact@v4
-      with:
-        name: test-output-ubuntu-latest-22.x
-        path: ./test-output
-      continue-on-error: true
-
-    - name: Check for skipped integration tests
-      id: check_tests
-      working-directory: test/LoggerUsage.VSCode.Tests
-      run: |
-        SKIPPED_COUNT=$(grep -r "suite.skip" integration/ 2>/dev/null | wc -l || echo "0")
-        echo "skipped_tests=$SKIPPED_COUNT" >> $GITHUB_OUTPUT
-        echo "Found $SKIPPED_COUNT skipped integration test suites"
-
-    - name: Parse test results from artifact
-      id: parse_results
-      shell: bash
-      run: |
-        if [ -f ./test-output/test-output.log ]; then
-          echo "=== Parsing test results from artifact ==="
-          # Show a sample of the log for debugging
-          tail -20 ./test-output/test-output.log
-          echo "=========================================="
-          
-          # Parse test results - mocha outputs like "76 passing (232ms)"
-          PASSING=$(grep -E '[0-9]+ passing' ./test-output/test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
-          PENDING=$(grep -E '[0-9]+ pending' ./test-output/test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
-          FAILING=$(grep -E '[0-9]+ failing' ./test-output/test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
-          
-          echo "passing=$PASSING" >> $GITHUB_OUTPUT
-          echo "pending=$PENDING" >> $GITHUB_OUTPUT
-          echo "failing=$FAILING" >> $GITHUB_OUTPUT
-          echo "Test results - Passing: $PASSING, Pending: $PENDING, Failing: $FAILING"
-        else
-          echo "No test output file found in artifact!"
-          ls -la ./test-output/ || echo "test-output directory not found"
-          echo "passing=0" >> $GITHUB_OUTPUT
-          echo "pending=0" >> $GITHUB_OUTPUT
-          echo "failing=0" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Comment on PR about integration tests
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const skippedCount = '${{ steps.check_tests.outputs.skipped_tests }}' || '0';
-          const passing = '${{ steps.parse_results.outputs.passing }}' || 'N/A';
-          const pending = '${{ steps.parse_results.outputs.pending }}' || 'N/A';
-          const failing = '${{ steps.parse_results.outputs.failing }}' || 'N/A';
-          
-          // Check if we have valid test data
-          const hasTestData = passing !== 'N/A' && passing !== '0' && passing !== '';
-          
-          let testSummary = '';
-          if (hasTestData) {
-            testSummary = `**Unit Tests:**
-          - ✅ **${passing} passing**
-          - ⏭️ **${pending} pending** (workspace-dependent)
-          - ${failing === '0' ? '✅' : '❌'} **${failing} failing**`;
-          } else {
-            testSummary = `**Unit Tests:**
-          - ⚠️ Test results could not be parsed from artifacts
-          - Check the [Actions run logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details`;
-          }
-          
-          const body = `### 📊 Test Results Summary
-
-          ${testSummary}
-
-          **Integration Tests:**
-          - ⚠️ **${skippedCount} test suite(s) skipped** (placeholders)
-
-          ---
-
-          ${skippedCount !== '0' ? `
-          ### ⚠️ Integration Tests Status
-
-          Currently **${skippedCount}** integration test suite(s) are marked with \`suite.skip()\`.
-
-          These tests will need to be implemented before the extension can be considered production-ready.
-
-          **Current test status:**
-          - ${hasTestData ? `✅ Unit tests: ${passing} passing, ${pending} pending` : '⚠️ Unit test results not available'}
-          - ⏭️ Integration tests: Skipped (placeholders for future implementation)
-
-          The extension is functionally complete but requires real-world testing scenarios with actual workspace fixtures.
-          ` : '✅ All integration tests are implemented!'}`;
-
-          // Check if comment already exists
-          const { data: comments } = await github.rest.issues.listComments({
-            issue_number: context.payload.pull_request.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-          });
-
-          const botComment = comments.find(comment => 
-            comment.user.type === 'Bot' && 
-            comment.body.includes('Test Results Summary')
-          );
-
-          if (botComment) {
-            // Update existing comment
-            await github.rest.issues.updateComment({
-              comment_id: botComment.id,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-          } else {
-            // Create new comment
-            await github.rest.issues.createComment({
-              issue_number: context.payload.pull_request.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-          }
 
   analyze:
     runs-on: ubuntu-latest
