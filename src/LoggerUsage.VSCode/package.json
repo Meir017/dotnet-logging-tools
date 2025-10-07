@@ -20,6 +20,7 @@
     "analysis"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "workspaceContains:**/*.sln",
     "workspaceContains:**/*.csproj"
   ],
