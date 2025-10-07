@@ -6,15 +6,8 @@ console.log('Building C# Bridge executable...');
 
 // Paths
 const bridgeProjectPath = path.resolve(__dirname, '../../LoggerUsage.VSCode.Bridge/LoggerUsage.VSCode.Bridge.csproj');
+const bridgeOutputPath = path.resolve(__dirname, '../../LoggerUsage.VSCode.Bridge/bin/Release/net10.0');
 const extensionBridgePath = path.resolve(__dirname, '../bridge');
-
-// Platforms to build for
-const platforms = [
-  { rid: 'win-x64', outputDir: 'win-x64' },
-  { rid: 'linux-x64', outputDir: 'linux-x64' },
-  { rid: 'osx-x64', outputDir: 'osx-x64' },
-  { rid: 'osx-arm64', outputDir: 'osx-arm64' }
-];
 
 // Clean and create bridge directory
 if (fs.existsSync(extensionBridgePath)) {
@@ -22,24 +15,41 @@ if (fs.existsSync(extensionBridgePath)) {
 }
 fs.mkdirSync(extensionBridgePath, { recursive: true });
 
-// Build for each platform
-for (const platform of platforms) {
-  console.log(`  Building for ${platform.rid}...`);
-  
-  const outputPath = path.join(extensionBridgePath, platform.outputDir);
-  
-  try {
-    // Build the bridge with dotnet publish
-    execSync(
-      `dotnet publish "${bridgeProjectPath}" -c Release -r ${platform.rid} --self-contained false -o "${outputPath}"`,
-      { stdio: 'inherit' }
-    );
-    
-    console.log(`  ✓ Built ${platform.rid} successfully`);
-  } catch (error) {
-    console.error(`  ✗ Failed to build ${platform.rid}:`, error.message);
-    process.exit(1);
-  }
-}
+console.log('  Building Bridge in Release configuration...');
 
-console.log('✓ C# Bridge built successfully for all platforms');
+try {
+  // Build the bridge in Release mode
+  execSync(
+    `dotnet build "${bridgeProjectPath}" -c Release`,
+    { stdio: 'inherit' }
+  );
+  
+  console.log('  ✓ Bridge built successfully');
+  
+  // Copy the build output to the extension's bridge folder
+  console.log('  Copying binaries to extension folder...');
+  
+  if (!fs.existsSync(bridgeOutputPath)) {
+    throw new Error(`Build output not found at: ${bridgeOutputPath}`);
+  }
+  
+  // Copy all files from the build output to the bridge folder
+  const files = fs.readdirSync(bridgeOutputPath);
+  let copiedCount = 0;
+  files.forEach(file => {
+    const srcPath = path.join(bridgeOutputPath, file);
+    const stats = fs.statSync(srcPath);
+    if (stats.isFile()) {
+      const destPath = path.join(extensionBridgePath, file);
+      fs.copyFileSync(srcPath, destPath);
+      copiedCount++;
+    }
+  });
+  
+  console.log(`  ✓ Copied ${copiedCount} files to bridge folder`);
+  console.log('✓ C# Bridge bundled successfully');
+  
+} catch (error) {
+  console.error('  ✗ Failed to build Bridge:', error.message);
+  process.exit(1);
+}

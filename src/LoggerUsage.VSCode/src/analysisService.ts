@@ -401,15 +401,19 @@ export class AnalysisService implements vscode.Disposable {
      * Finds the C# Bridge executable
      */
     private findBridgeExecutable(): string | null {
+        // Determine the executable name based on platform
+        const exeName = process.platform === 'win32' 
+            ? 'LoggerUsage.VSCode.Bridge.exe' 
+            : 'LoggerUsage.VSCode.Bridge';
+
         // Try different possible locations
         const possiblePaths = [
-            // Development: built locally
-            path.join(this.context.extensionPath, '..', 'LoggerUsage.VSCode.Bridge', 'bin', 'Debug', 'net10.0', 'win-x64', 'LoggerUsage.VSCode.Bridge.exe'),
-            path.join(this.context.extensionPath, '..', 'LoggerUsage.VSCode.Bridge', 'bin', 'Release', 'net10.0', 'win-x64', 'LoggerUsage.VSCode.Bridge.exe'),
-
+            // Development: built locally in Debug
+            path.join(this.context.extensionPath, '..', 'LoggerUsage.VSCode.Bridge', 'bin', 'Debug', 'net10.0', exeName),
+            // Development: built locally in Release
+            path.join(this.context.extensionPath, '..', 'LoggerUsage.VSCode.Bridge', 'bin', 'Release', 'net10.0', exeName),
             // Packaged extension: bridge bundled in extension
-            path.join(this.context.extensionPath, 'bridge', 'LoggerUsage.VSCode.Bridge.exe'),
-            path.join(this.context.extensionPath, 'bridge', 'win-x64', 'LoggerUsage.VSCode.Bridge.exe'),
+            path.join(this.context.extensionPath, 'bridge', exeName),
         ];
 
         for (const execPath of possiblePaths) {
