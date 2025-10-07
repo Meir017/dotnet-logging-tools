@@ -160,7 +160,8 @@
   },
   "scripts": {
     "convert-icon": "node scripts/convert-icon.js",
-    "vscode:prepublish": "npm run convert-icon && npm run compile",
+    "build-bridge": "node scripts/build-bridge.js",
+    "vscode:prepublish": "npm run convert-icon && npm run build-bridge && npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
