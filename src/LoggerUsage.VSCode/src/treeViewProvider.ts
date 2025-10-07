@@ -131,8 +131,9 @@ export class LoggerTreeViewProvider implements vscode.TreeDataProvider<TreeNode>
             }];
         }
 
+        // Handle cross-platform path separators
         const solutionName = this.solutionPath
-            ? path.basename(this.solutionPath, '.sln')
+            ? this.solutionPath.split(/[/\\]/).pop()?.replace('.sln', '') || 'Workspace'
             : 'Workspace';
 
         return [{

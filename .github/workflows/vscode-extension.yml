@@ -2,7 +2,7 @@ name: VS Code Extension CI
 
 on:
   push:
-    branches: [ "main", "001-a-vscode-extension" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -91,7 +91,7 @@ jobs:
       id: check_tests
       working-directory: test/LoggerUsage.VSCode.Tests
       run: |
-        SKIPPED_COUNT=$(grep -r "suite.skip" integration/ | wc -l)
+        SKIPPED_COUNT=$(grep -r "suite.skip" integration/ 2>/dev/null | wc -l || echo "0")
         echo "skipped_tests=$SKIPPED_COUNT" >> $GITHUB_OUTPUT
         echo "Found $SKIPPED_COUNT skipped integration test suites"
 
@@ -154,7 +154,7 @@ jobs:
       working-directory: src/LoggerUsage.VSCode
       run: |
         echo "🔍 Remaining TODOs:"
-        grep -r "TODO" src/ ../../test/LoggerUsage.VSCode.Tests/ || echo "No TODOs found!"
+        grep -r "TODO" src/ ../../test/LoggerUsage.VSCode.Tests/ 2>/dev/null || echo "No TODOs found!"
 
     - name: Verify package.json version
       working-directory: src/LoggerUsage.VSCode
