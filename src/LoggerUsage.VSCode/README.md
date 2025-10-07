@@ -98,12 +98,6 @@ Configure via VS Code settings: `File > Preferences > Settings > Extensions > Lo
 
 ### General Settings
 
-## ⚙️ Configuration
-
-Configure via VS Code settings: `File > Preferences > Settings > Extensions > Logger Usage`
-
-### General Settings
-
 #### `loggerUsage.autoAnalyzeOnSave`
 
 - **Type**: `boolean`
