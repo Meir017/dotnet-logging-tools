@@ -10,7 +10,9 @@ async function main() {
     const extensionTestsPath = path.resolve(__dirname, './suite/index');
 
     // Path to test workspace for integration tests
-    const testWorkspacePath = path.resolve(__dirname, '../../../fixtures/sample-workspace');
+    // __dirname is out/src/LoggerUsage.VSCode/test after compilation
+    // Need to go up to repo root, then to test/fixtures/sample-workspace
+    const testWorkspacePath = path.resolve(__dirname, '../../../../../../test/fixtures/sample-workspace');
 
     // Download VS Code, unzip it and run the integration test
     await runTests({
