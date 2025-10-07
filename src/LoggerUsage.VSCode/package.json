@@ -4,6 +4,7 @@
   "description": "Logging insights for C# projects using Microsoft.Extensions.Logging",
   "version": "1.0.0",
   "publisher": "meir017",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -157,7 +158,8 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "convert-icon": "node scripts/convert-icon.js",
+    "vscode:prepublish": "npm run convert-icon && npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
@@ -177,6 +179,7 @@
     "esbuild": "^0.19.11",
     "eslint": "^8.56.0",
     "mocha": "^10.2.0",
+    "sharp": "^0.34.4",
     "typescript": "^5.3.3"
   },
   "repository": {
