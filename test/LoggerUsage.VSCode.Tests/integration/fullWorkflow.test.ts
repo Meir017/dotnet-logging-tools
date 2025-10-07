@@ -1,97 +1,116 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import * as path from 'path';
 
-suite.skip('Full Workflow Integration Test Suite', () => {
+suite('Full Workflow Integration Test Suite', () => {
+  const testWorkspacePath = path.join(__dirname, '../../../../fixtures/sample-workspace');
+  
   vscode.window.showInformationMessage('Start full workflow integration tests.');
 
-  test('Should activate extension when workspace contains .sln file', async () => {
-    // TODO: Create test workspace with sample .sln file
-    // TODO: Open workspace in VS Code
-    // TODO: Assert extension activates automatically
-    // TODO: Assert activation event fired
-    assert.fail('Test not implemented - should activate on .sln file');
+  test('Should activate extension when workspace contains .sln file', async function() {
+    this.timeout(30000); // Allow time for workspace loading and activation
+    
+    // Open the test workspace
+    const workspaceUri = vscode.Uri.file(testWorkspacePath);
+    await vscode.commands.executeCommand('vscode.openFolder', workspaceUri, false);
+    
+    // Wait for extension activation
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Check if extension is active
+    const extension = vscode.extensions.getExtension('meir017.logger-usage');
+    assert.ok(extension, 'Extension should be installed');
+    assert.ok(extension.isActive, 'Extension should be active after opening workspace with .sln');
   });
 
-  test('Should run analysis automatically on activation', async () => {
-    // TODO: Open workspace with C# project
-    // TODO: Assert analysis triggered automatically
-    // TODO: Assert progress notification shown
-    assert.fail('Test not implemented - should run auto-analysis');
+  test.skip('Should run analysis automatically on activation', async function() {
+    this.timeout(60000); // Analysis can take time
+    
+    // TODO: Listen for analysis completion event
+    // TODO: Assert progress notification was shown
+    // TODO: Verify insights were collected
+    assert.fail('Test not fully implemented - requires event listening');
   });
 
-  test('Should display insights in tree view after analysis', async () => {
-    // TODO: Run analysis on sample project
-    // TODO: Get tree view provider
-    // TODO: Assert insights displayed in tree
-    // TODO: Assert correct node hierarchy
-    assert.fail('Test not implemented - should display in tree view');
+  test.skip('Should display insights in tree view after analysis', async function() {
+    this.timeout(30000);
+    
+    // TODO: Trigger analysis
+    // await vscode.commands.executeCommand('loggerUsage.analyze');
+    
+    // TODO: Get tree view provider and verify data
+    // TODO: Assert insights are displayed in correct hierarchy
+    assert.fail('Test not fully implemented - requires tree view access');
   });
 
-  test('Should show insights panel on command execution', async () => {
-    // TODO: Run analysis
-    // TODO: Execute loggerUsage.showInsightsPanel command
-    // TODO: Assert webview panel created
-    // TODO: Assert insights data sent to webview
-    assert.fail('Test not implemented - should show insights panel');
+  test.skip('Should show insights panel on command execution', async function() {
+    this.timeout(15000);
+    
+    // TODO: Execute show insights panel command
+    // await vscode.commands.executeCommand('loggerUsage.showInsightsPanel');
+    
+    // TODO: Assert webview panel was created
+    // TODO: Verify insights data sent to webview
+    assert.fail('Test not implemented - requires webview testing infrastructure');
   });
 
-  test('Should apply filters and update table', async () => {
-    // TODO: Open insights panel with data
-    // TODO: Apply filter (e.g., only Error level)
-    // TODO: Assert webview updated with filtered data
-    // TODO: Assert UI shows only Error-level insights
-    assert.fail('Test not implemented - should apply filters');
+  test.skip('Should apply filters and update table', async function() {
+    // TODO: Open insights panel
+    // TODO: Send filter message to webview
+    // TODO: Verify filtered results
+    assert.fail('Test not implemented - requires webview message testing');
   });
 
-  test('Should navigate to file location when clicking insight', async () => {
-    // TODO: Display insights in panel
-    // TODO: Click on insight row
-    // TODO: Assert navigateToInsight command executed
-    // TODO: Assert editor opens at correct file/line
-    assert.fail('Test not implemented - should navigate to location');
+  test.skip('Should navigate to file location when clicking insight', async function() {
+    // TODO: Trigger navigateToInsight command with test insight ID
+    // await vscode.commands.executeCommand('loggerUsage.navigateToInsight', 'test-insight-id');
+    
+    // TODO: Assert correct file opened
+    // TODO: Assert cursor at correct line/column
+    assert.fail('Test not implemented - requires insight ID generation');
   });
 
-  test('Should show diagnostics in Problems panel', async () => {
-    // TODO: Analyze project with parameter inconsistencies
-    // TODO: Assert diagnostics published to Problems panel
-    // TODO: Assert diagnostic count matches inconsistencies count
-    assert.fail('Test not implemented - should show in Problems panel');
+  test.skip('Should show diagnostics in Problems panel', async function() {
+    // TODO: Run analysis on project with inconsistencies
+    // TODO: Get diagnostics collection
+    // TODO: Assert diagnostics exist for parameter mismatches
+    assert.fail('Test not implemented - requires diagnostics API access');
   });
 
-  test('Should clear diagnostics when clearing filters', async () => {
-    // TODO: Display diagnostics
+  test.skip('Should clear diagnostics when clearing filters', async function() {
+    // TODO: Create diagnostics
     // TODO: Execute clearFilters command
-    // TODO: Assert diagnostics remain (filters don't affect Problems panel)
+    // TODO: Verify diagnostics still exist (filters don't affect Problems panel)
     assert.fail('Test not implemented - filters should not affect diagnostics');
   });
 
-  test('Should export insights to JSON file', async () => {
+  test.skip('Should export insights to JSON file', async function() {
     // TODO: Run analysis
     // TODO: Execute exportInsights command
     // TODO: Select JSON format
-    // TODO: Choose save location
-    // TODO: Assert file created with correct JSON content
-    assert.fail('Test not implemented - should export to JSON');
+    // TODO: Verify file created with valid JSON
+    assert.fail('Test not implemented - requires file system mocking');
   });
 
-  test('Should handle analysis errors gracefully', async () => {
-    // TODO: Open workspace with invalid .sln file
+  test.skip('Should handle analysis errors gracefully', async function() {
+    // TODO: Create workspace with invalid .sln
     // TODO: Trigger analysis
     // TODO: Assert error notification shown
-    // TODO: Assert no crash
-    assert.fail('Test not implemented - should handle errors');
+    // TODO: Verify no crash occurred
+    assert.fail('Test not implemented - requires error injection');
   });
 
-  test('Should update status bar with solution name', async () => {
+  test.skip('Should update status bar with solution name', async function() {
     // TODO: Open workspace with solution
-    // TODO: Assert status bar item shows solution name
-    assert.fail('Test not implemented - should show solution in status bar');
+    // TODO: Get status bar items
+    // TODO: Assert solution name displayed
+    assert.fail('Test not implemented - requires status bar API access');
   });
 
-  test('Should search insights by message template', async () => {
+  test.skip('Should search insights by message template', async function() {
     // TODO: Open insights panel
-    // TODO: Enter search query
-    // TODO: Assert results filtered by search query
-    assert.fail('Test not implemented - should support search');
+    // TODO: Send search message to webview
+    // TODO: Assert results filtered correctly
+    assert.fail('Test not implemented - requires webview testing');
   });
 });
