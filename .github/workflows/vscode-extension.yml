@@ -69,13 +69,25 @@ jobs:
       shell: bash
       run: |
         if [ -f test-output.log ]; then
-          PASSING=$(grep -oP '\d+(?= passing)' test-output.log | tail -1 || echo "0")
-          PENDING=$(grep -oP '\d+(?= pending)' test-output.log | tail -1 || echo "0")
-          FAILING=$(grep -oP '\d+(?= failing)' test-output.log | tail -1 || echo "0")
+          # Debug: show the last few lines of the test output
+          echo "=== Last 20 lines of test output ==="
+          tail -20 test-output.log
+          echo "==================================="
+          
+          # Parse test results - mocha outputs like "76 passing (232ms)"
+          PASSING=$(grep -E '[0-9]+ passing' test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
+          PENDING=$(grep -E '[0-9]+ pending' test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
+          FAILING=$(grep -E '[0-9]+ failing' test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
+          
           echo "passing=$PASSING" >> $GITHUB_OUTPUT
           echo "pending=$PENDING" >> $GITHUB_OUTPUT
           echo "failing=$FAILING" >> $GITHUB_OUTPUT
           echo "✅ Passing: $PASSING | ⏭️ Pending: $PENDING | ❌ Failing: $FAILING"
+        else
+          echo "No test-output.log found!"
+          echo "passing=0" >> $GITHUB_OUTPUT
+          echo "pending=0" >> $GITHUB_OUTPUT
+          echo "failing=0" >> $GITHUB_OUTPUT
         fi
 
     - name: Upload test results
@@ -139,13 +151,26 @@ jobs:
       shell: bash
       run: |
         if [ -f ./test-output/test-output.log ]; then
-          PASSING=$(grep -oP '\d+(?= passing)' ./test-output/test-output.log | tail -1 || echo "0")
-          PENDING=$(grep -oP '\d+(?= pending)' ./test-output/test-output.log | tail -1 || echo "0")
-          FAILING=$(grep -oP '\d+(?= failing)' ./test-output/test-output.log | tail -1 || echo "0")
+          echo "=== Parsing test results from artifact ==="
+          # Show a sample of the log for debugging
+          tail -20 ./test-output/test-output.log
+          echo "=========================================="
+          
+          # Parse test results - mocha outputs like "76 passing (232ms)"
+          PASSING=$(grep -E '[0-9]+ passing' ./test-output/test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
+          PENDING=$(grep -E '[0-9]+ pending' ./test-output/test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
+          FAILING=$(grep -E '[0-9]+ failing' ./test-output/test-output.log | grep -oE '[0-9]+' | head -1 || echo "0")
+          
           echo "passing=$PASSING" >> $GITHUB_OUTPUT
           echo "pending=$PENDING" >> $GITHUB_OUTPUT
           echo "failing=$FAILING" >> $GITHUB_OUTPUT
           echo "Test results - Passing: $PASSING, Pending: $PENDING, Failing: $FAILING"
+        else
+          echo "No test output file found in artifact!"
+          ls -la ./test-output/ || echo "test-output directory not found"
+          echo "passing=0" >> $GITHUB_OUTPUT
+          echo "pending=0" >> $GITHUB_OUTPUT
+          echo "failing=0" >> $GITHUB_OUTPUT
         fi
 
     - name: Comment on PR about integration tests
@@ -154,17 +179,29 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const skippedCount = '${{ steps.check_tests.outputs.skipped_tests }}';
-          const passing = '${{ steps.parse_results.outputs.passing }}' || '0';
-          const pending = '${{ steps.parse_results.outputs.pending }}' || '0';
-          const failing = '${{ steps.parse_results.outputs.failing }}' || '0';
+          const skippedCount = '${{ steps.check_tests.outputs.skipped_tests }}' || '0';
+          const passing = '${{ steps.parse_results.outputs.passing }}' || 'N/A';
+          const pending = '${{ steps.parse_results.outputs.pending }}' || 'N/A';
+          const failing = '${{ steps.parse_results.outputs.failing }}' || 'N/A';
+          
+          // Check if we have valid test data
+          const hasTestData = passing !== 'N/A' && passing !== '0' && passing !== '';
+          
+          let testSummary = '';
+          if (hasTestData) {
+            testSummary = `**Unit Tests:**
+          - ✅ **${passing} passing**
+          - ⏭️ **${pending} pending** (workspace-dependent)
+          - ${failing === '0' ? '✅' : '❌'} **${failing} failing**`;
+          } else {
+            testSummary = `**Unit Tests:**
+          - ⚠️ Test results could not be parsed from artifacts
+          - Check the [Actions run logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details`;
+          }
           
           const body = `### 📊 Test Results Summary
 
-          **Unit Tests:**
-          - ✅ **${passing} passing**
-          - ⏭️ **${pending} pending** (workspace-dependent)
-          - ${failing === '0' ? '✅' : '❌'} **${failing} failing**
+          ${testSummary}
 
           **Integration Tests:**
           - ⚠️ **${skippedCount} test suite(s) skipped** (placeholders)
@@ -179,7 +216,7 @@ jobs:
           These tests will need to be implemented before the extension can be considered production-ready.
 
           **Current test status:**
-          - ✅ Unit tests: ${passing} passing
+          - ${hasTestData ? `✅ Unit tests: ${passing} passing, ${pending} pending` : '⚠️ Unit test results not available'}
           - ⏭️ Integration tests: Skipped (placeholders for future implementation)
 
           The extension is functionally complete but requires real-world testing scenarios with actual workspace fixtures.
