@@ -1,6 +1,7 @@
 import * as path from 'path';
 import Mocha from 'mocha';
 import * as fs from 'fs';
+import * as vscode from 'vscode';
 
 export function run(): Promise<void> {
   // Create the mocha test runner
@@ -21,6 +22,31 @@ export function run(): Promise<void> {
 
       // Add files to the test suite
       files.forEach((f: string) => mocha.addFile(f));
+
+      // Add global setup hook to wait for extension activation
+      mocha.suite.beforeAll('Wait for extension activation', async function() {
+        this.timeout(30000); // 30 seconds timeout
+        
+        // Wait for extension commands to be registered
+        const maxWaitTime = 20000; // 20 seconds max
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < maxWaitTime) {
+          const commands = await vscode.commands.getCommands(true);
+          const extensionCommands = commands.filter(cmd => cmd.startsWith('loggerUsage.'));
+          
+          if (extensionCommands.length > 0) {
+            console.log(`Extension activated successfully. Found ${extensionCommands.length} commands.`);
+            return; // Extension is ready
+          }
+          
+          // Wait 500ms before checking again
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // If we get here, extension didn't activate in time
+        console.warn('Warning: Extension did not activate within timeout period');
+      });
 
       // Run the mocha test
       mocha.run((failures: number) => {
