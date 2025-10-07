@@ -130,17 +130,31 @@ export class ProblemsProvider implements vscode.Disposable {
     }
 
     /**
+     * Safely creates a VS Code Position from location data (converts from 1-based to 0-based)
+     */
+    private createPosition(line: number, column: number): vscode.Position {
+        return new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1));
+    }
+
+    /**
+     * Safely creates a VS Code Range from location data (converts from 1-based to 0-based)
+     */
+    private createRange(location: { startLine: number; startColumn: number; endLine: number; endColumn: number }): vscode.Range {
+        return new vscode.Range(
+            this.createPosition(location.startLine, location.startColumn),
+            this.createPosition(location.endLine, location.endColumn)
+        );
+    }
+
+    /**
      * Creates a single diagnostic from an inconsistency
      */
     private createDiagnostic(insight: LoggingInsight, inconsistency: ParameterInconsistency): vscode.Diagnostic {
         // Determine the location for the diagnostic
         const location = inconsistency.location || insight.location;
 
-        // Create the range (convert from 1-based to 0-based)
-        const range = new vscode.Range(
-            new vscode.Position(location.startLine - 1, location.startColumn - 1),
-            new vscode.Position(location.endLine - 1, location.endColumn - 1)
-        );
+        // Create the range using the safe helper
+        const range = this.createRange(location);
 
         // Map severity
         const severity = this.mapSeverity(inconsistency.severity);
@@ -210,10 +224,7 @@ export class ProblemsProvider implements vscode.Disposable {
             new vscode.DiagnosticRelatedInformation(
                 new vscode.Location(
                     vscode.Uri.file(insight.location.filePath),
-                    new vscode.Range(
-                        new vscode.Position(insight.location.startLine - 1, insight.location.startColumn - 1),
-                        new vscode.Position(insight.location.endLine - 1, insight.location.endColumn - 1)
-                    )
+                    this.createRange(insight.location)
                 ),
                 `Logging statement: ${insight.messageTemplate}`
             )
@@ -225,8 +236,8 @@ export class ProblemsProvider implements vscode.Disposable {
                 new vscode.Location(
                     vscode.Uri.file(insight.location.filePath),
                     new vscode.Range(
-                        new vscode.Position(insight.location.startLine - 1, 0),
-                        new vscode.Position(insight.location.startLine - 1, 0)
+                        this.createPosition(insight.location.startLine, 0),
+                        this.createPosition(insight.location.startLine, 0)
                     )
                 ),
                 `Method Type: ${insight.methodType}, Log Level: ${insight.logLevel || 'Unknown'}`
@@ -241,8 +252,8 @@ export class ProblemsProvider implements vscode.Disposable {
                         new vscode.Location(
                             vscode.Uri.file(insight.location.filePath),
                             new vscode.Range(
-                                new vscode.Position(insight.location.startLine - 1, 0),
-                                new vscode.Position(insight.location.startLine - 1, 0)
+                                this.createPosition(insight.location.startLine, 0),
+                                this.createPosition(insight.location.startLine, 0)
                             )
                         ),
                         `Expected parameters: ${insight.parameters.join(', ')}`
@@ -256,8 +267,8 @@ export class ProblemsProvider implements vscode.Disposable {
                         new vscode.Location(
                             vscode.Uri.file(insight.location.filePath),
                             new vscode.Range(
-                                new vscode.Position(insight.location.startLine - 1, 0),
-                                new vscode.Position(insight.location.startLine - 1, 0)
+                                this.createPosition(insight.location.startLine, 0),
+                                this.createPosition(insight.location.startLine, 0)
                             )
                         ),
                         'Consider adding an EventId for better log correlation and filtering'
@@ -271,8 +282,8 @@ export class ProblemsProvider implements vscode.Disposable {
                         new vscode.Location(
                             vscode.Uri.file(insight.location.filePath),
                             new vscode.Range(
-                                new vscode.Position(insight.location.startLine - 1, 0),
-                                new vscode.Position(insight.location.startLine - 1, 0)
+                                this.createPosition(insight.location.startLine, 0),
+                                this.createPosition(insight.location.startLine, 0)
                             )
                         ),
                         'Sensitive data classifications: ' +

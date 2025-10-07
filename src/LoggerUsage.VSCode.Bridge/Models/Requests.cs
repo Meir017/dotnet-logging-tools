@@ -12,7 +12,7 @@ namespace LoggerUsage.VSCode.Bridge.Models;
 [JsonDerivedType(typeof(ShutdownRequest), "shutdown")]
 public interface IBridgeRequest
 {
-    string Command { get; }
+    // Note: 'command' is automatically added by JsonPolymorphic as the discriminator
 }
 
 /// <summary>
@@ -20,7 +20,6 @@ public interface IBridgeRequest
 /// </summary>
 public record PingRequest : IBridgeRequest
 {
-    public string Command => "ping";
 }
 
 /// <summary>
@@ -28,8 +27,6 @@ public record PingRequest : IBridgeRequest
 /// </summary>
 public record AnalysisRequest : IBridgeRequest
 {
-    public string Command => "analyze";
-
     [JsonPropertyName("workspacePath")]
     public required string WorkspacePath { get; init; }
 
@@ -45,8 +42,6 @@ public record AnalysisRequest : IBridgeRequest
 /// </summary>
 public record IncrementalAnalysisRequest : IBridgeRequest
 {
-    public string Command => "analyzeFile";
-
     [JsonPropertyName("filePath")]
     public required string FilePath { get; init; }
 
@@ -59,5 +54,4 @@ public record IncrementalAnalysisRequest : IBridgeRequest
 /// </summary>
 public record ShutdownRequest : IBridgeRequest
 {
-    public string Command => "shutdown";
 }

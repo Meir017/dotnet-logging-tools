@@ -12,7 +12,7 @@ namespace LoggerUsage.VSCode.Bridge.Models;
 [JsonDerivedType(typeof(AnalysisProgress), "progress")]
 public interface IBridgeResponse
 {
-    string Status { get; }
+    // Note: 'status' is automatically added by JsonPolymorphic as the discriminator
 }
 
 /// <summary>
@@ -20,8 +20,6 @@ public interface IBridgeResponse
 /// </summary>
 public record ReadyResponse : IBridgeResponse
 {
-    public string Status => "ready";
-
     [JsonPropertyName("version")]
     public required string Version { get; init; }
 }
@@ -31,8 +29,6 @@ public record ReadyResponse : IBridgeResponse
 /// </summary>
 public record AnalysisProgress : IBridgeResponse
 {
-    public string Status => "progress";
-
     [JsonPropertyName("percentage")]
     public required int Percentage { get; init; }
 
@@ -48,8 +44,6 @@ public record AnalysisProgress : IBridgeResponse
 /// </summary>
 public record AnalysisSuccessResponse : IBridgeResponse
 {
-    public string Status => "success";
-
     [JsonPropertyName("result")]
     public required AnalysisResult Result { get; init; }
 }
@@ -71,8 +65,6 @@ public record AnalysisResult
 /// </summary>
 public record AnalysisErrorResponse : IBridgeResponse
 {
-    public string Status => "error";
-
     [JsonPropertyName("message")]
     public required string Message { get; init; }
 

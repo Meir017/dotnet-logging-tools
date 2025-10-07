@@ -23,32 +23,41 @@ try {
     `dotnet build "${bridgeProjectPath}" -c Release`,
     { stdio: 'inherit' }
   );
-  
+
   console.log('  ✓ Bridge built successfully');
-  
+
   // Copy the build output to the extension's bridge folder
   console.log('  Copying binaries to extension folder...');
-  
+
   if (!fs.existsSync(bridgeOutputPath)) {
     throw new Error(`Build output not found at: ${bridgeOutputPath}`);
   }
-  
-  // Copy all files from the build output to the bridge folder
-  const files = fs.readdirSync(bridgeOutputPath);
-  let copiedCount = 0;
-  files.forEach(file => {
-    const srcPath = path.join(bridgeOutputPath, file);
-    const stats = fs.statSync(srcPath);
-    if (stats.isFile()) {
-      const destPath = path.join(extensionBridgePath, file);
-      fs.copyFileSync(srcPath, destPath);
-      copiedCount++;
+
+  // Recursively copy all files and directories from the build output to the bridge folder
+  const copyRecursive = (src, dest) => {
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    let fileCount = 0;
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        fs.mkdirSync(destPath, { recursive: true });
+        fileCount += copyRecursive(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+        fileCount++;
+      }
     }
-  });
-  
-  console.log(`  ✓ Copied ${copiedCount} files to bridge folder`);
+
+    return fileCount;
+  };
+
+  const copiedCount = copyRecursive(bridgeOutputPath, extensionBridgePath);
+  console.log(`  ✓ Copied ${copiedCount} files and directories to bridge folder`);
   console.log('✓ C# Bridge bundled successfully');
-  
+
 } catch (error) {
   console.error('  ✗ Failed to build Bridge:', error.message);
   process.exit(1);

@@ -402,8 +402,8 @@ export class AnalysisService implements vscode.Disposable {
      */
     private findBridgeExecutable(): string | null {
         // Determine the executable name based on platform
-        const exeName = process.platform === 'win32' 
-            ? 'LoggerUsage.VSCode.Bridge.exe' 
+        const exeName = process.platform === 'win32'
+            ? 'LoggerUsage.VSCode.Bridge.exe'
             : 'LoggerUsage.VSCode.Bridge';
 
         // Try different possible locations
