@@ -13,51 +13,51 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [18.x, 20.x]
-    
+        node-version: [22.x]
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: src/LoggerUsage.VSCode/package-lock.json
-    
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
-    
+
     - name: Install dependencies
       working-directory: src/LoggerUsage.VSCode
       run: npm ci
-    
+
     - name: Lint TypeScript
       working-directory: src/LoggerUsage.VSCode
       run: npm run lint
       continue-on-error: true
-    
+
     - name: Compile TypeScript
       working-directory: src/LoggerUsage.VSCode
       run: npm run compile
-    
+
     - name: Run tests (Linux)
       if: runner.os == 'Linux'
       working-directory: src/LoggerUsage.VSCode
       run: xvfb-run -a npm test
-    
+
     - name: Run tests (Windows/macOS)
       if: runner.os != 'Linux'
       working-directory: src/LoggerUsage.VSCode
       run: npm test
-    
+
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v4
@@ -65,12 +65,12 @@ jobs:
         name: test-results-${{ matrix.os }}-node${{ matrix.node-version }}
         path: src/LoggerUsage.VSCode/test-results/
         if-no-files-found: ignore
-    
+
     - name: Package extension
       if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
       working-directory: src/LoggerUsage.VSCode
       run: npm run package
-    
+
     - name: Upload VSIX
       if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
       uses: actions/upload-artifact@v4
@@ -82,11 +82,11 @@ jobs:
   integration-readiness:
     runs-on: ubuntu-latest
     needs: build-and-test
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Check for skipped integration tests
       id: check_tests
       working-directory: test/LoggerUsage.VSCode.Tests
@@ -94,7 +94,7 @@ jobs:
         SKIPPED_COUNT=$(grep -r "suite.skip" integration/ | wc -l)
         echo "skipped_tests=$SKIPPED_COUNT" >> $GITHUB_OUTPUT
         echo "Found $SKIPPED_COUNT skipped integration test suites"
-    
+
     - name: Comment on PR about integration tests
       if: github.event_name == 'pull_request' && steps.check_tests.outputs.skipped_tests != '0'
       uses: actions/github-script@v7
@@ -103,17 +103,17 @@ jobs:
         script: |
           const skippedCount = '${{ steps.check_tests.outputs.skipped_tests }}';
           const body = `### ⚠️ Integration Tests Status
-          
+
           Currently **${skippedCount}** integration test suite(s) are skipped.
-          
+
           These tests will need to be implemented before the extension can be considered production-ready.
-          
+
           **Current test status:**
           - ✅ Unit tests: Passing
           - ⏭️ Integration tests: Skipped (placeholders)
-          
+
           The extension is functionally complete but requires real-world testing scenarios.`;
-          
+
           await github.rest.issues.createComment({
             issue_number: context.payload.pull_request.number,
             owner: context.repo.owner,
@@ -124,24 +124,24 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     needs: build-and-test
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
-    
+
     - name: Install dependencies
       working-directory: src/LoggerUsage.VSCode
       run: npm ci
-    
+
     - name: Compile TypeScript
       working-directory: src/LoggerUsage.VSCode
       run: npm run compile
-    
+
     - name: Count TypeScript files
       working-directory: src/LoggerUsage.VSCode
       run: |
@@ -149,13 +149,13 @@ jobs:
         echo "TypeScript source files: $(find src -name '*.ts' | wc -l)"
         echo "TypeScript test files: $(find ../../test/LoggerUsage.VSCode.Tests -name '*.test.ts' | wc -l)"
         echo "Total lines of code: $(find src -name '*.ts' -exec cat {} \; | wc -l)"
-    
+
     - name: Check for TODOs
       working-directory: src/LoggerUsage.VSCode
       run: |
         echo "🔍 Remaining TODOs:"
         grep -r "TODO" src/ ../../test/LoggerUsage.VSCode.Tests/ || echo "No TODOs found!"
-        
+
     - name: Verify package.json version
       working-directory: src/LoggerUsage.VSCode
       run: |
