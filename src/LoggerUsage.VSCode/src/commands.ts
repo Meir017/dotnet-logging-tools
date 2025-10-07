@@ -294,16 +294,16 @@ export class Commands {
             const doc = await vscode.workspace.openTextDocument(uri);
             const editor = await vscode.window.showTextDocument(doc);
 
-            // Set cursor position and reveal
+            // Set cursor position and reveal (convert from 1-based to 0-based, ensure non-negative)
             const position = new vscode.Position(
-                insight.location.startLine - 1, // Convert to 0-based
-                insight.location.startColumn - 1
+                Math.max(0, insight.location.startLine - 1),
+                Math.max(0, insight.location.startColumn - 1)
             );
             const range = new vscode.Range(
                 position,
                 new vscode.Position(
-                    insight.location.endLine - 1,
-                    insight.location.endColumn - 1
+                    Math.max(0, insight.location.endLine - 1),
+                    Math.max(0, insight.location.endColumn - 1)
                 )
             );
 

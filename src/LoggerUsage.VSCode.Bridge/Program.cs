@@ -99,7 +99,7 @@ while (true)
             _ => new AnalysisErrorResponse
             {
                 Message = "Unknown command",
-                Details = $"Command type not recognized: {request.Command}",
+                Details = $"Command type not recognized: {line}",
                 ErrorCode = "UNKNOWN_COMMAND"
             }
         };
