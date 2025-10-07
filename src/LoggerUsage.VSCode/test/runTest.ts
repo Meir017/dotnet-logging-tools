@@ -19,7 +19,6 @@ async function main() {
       extensionDevelopmentPath,
       extensionTestsPath,
       launchArgs: [
-        '--disable-extensions',
         testWorkspacePath  // Open test workspace on launch
       ]
     });
