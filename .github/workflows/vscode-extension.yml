@@ -65,14 +65,14 @@ jobs:
         name: test-results-${{ matrix.os }}-node${{ matrix.node-version }}
         path: src/LoggerUsage.VSCode/test-results/
         if-no-files-found: ignore
-    
+
     - name: Package extension
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+      if: matrix.os == 'ubuntu-latest'
       working-directory: src/LoggerUsage.VSCode
       run: npm run package
 
     - name: Upload VSIX
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+      if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
         name: vscode-extension
