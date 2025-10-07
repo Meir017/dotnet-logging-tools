@@ -17,10 +17,14 @@ suite('Full Workflow Integration Test Suite', () => {
     // Wait for extension activation
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Check if extension is active
-    const extension = vscode.extensions.getExtension('meir017.logger-usage');
-    assert.ok(extension, 'Extension should be installed');
-    assert.ok(extension.isActive, 'Extension should be active after opening workspace with .sln');
+    // In CI/test environment, extension runs from source and may not be "installed"
+    // We verify activation by checking if commands are registered
+    const commands = await vscode.commands.getCommands(true);
+    const extensionCommands = commands.filter(cmd => cmd.startsWith('loggerUsage.'));
+    
+    assert.ok(extensionCommands.length > 0, 'Extension commands should be registered');
+    assert.ok(extensionCommands.includes('loggerUsage.analyze'), 'loggerUsage.analyze command should exist');
+    assert.ok(extensionCommands.includes('loggerUsage.showInsightsPanel'), 'loggerUsage.showInsightsPanel command should exist');
   });
 
   test.skip('Should run analysis automatically on activation', async function() {
