@@ -1,35 +1,36 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import * as path from 'path';
 
 suite('Full Workflow Integration Test Suite', () => {
-  const testWorkspacePath = path.join(__dirname, '../../../../fixtures/sample-workspace');
-  
   vscode.window.showInformationMessage('Start full workflow integration tests.');
 
   test('Should activate extension when workspace contains .sln file', async function() {
-    this.timeout(30000); // Allow time for workspace loading and activation
-    
-    // Open the test workspace
-    const workspaceUri = vscode.Uri.file(testWorkspacePath);
-    await vscode.commands.executeCommand('vscode.openFolder', workspaceUri, false);
-    
+    this.timeout(10000); // Allow time for extension activation
+
+    // Workspace is already open via test runner
     // Wait for extension activation
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Verify workspace is open
+    assert.ok(vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0, 
+      'Workspace should be open');
+
     // In CI/test environment, extension runs from source and may not be "installed"
     // We verify activation by checking if commands are registered
     const commands = await vscode.commands.getCommands(true);
     const extensionCommands = commands.filter(cmd => cmd.startsWith('loggerUsage.'));
-    
-    assert.ok(extensionCommands.length > 0, 'Extension commands should be registered');
-    assert.ok(extensionCommands.includes('loggerUsage.analyze'), 'loggerUsage.analyze command should exist');
-    assert.ok(extensionCommands.includes('loggerUsage.showInsightsPanel'), 'loggerUsage.showInsightsPanel command should exist');
+
+    assert.ok(extensionCommands.length > 0, 
+      `Extension commands should be registered. Found: ${extensionCommands.join(', ')}`);
+    assert.ok(extensionCommands.includes('loggerUsage.analyze'), 
+      'loggerUsage.analyze command should exist');
+    assert.ok(extensionCommands.includes('loggerUsage.showInsightsPanel'), 
+      'loggerUsage.showInsightsPanel command should exist');
   });
 
   test.skip('Should run analysis automatically on activation', async function() {
     this.timeout(60000); // Analysis can take time
-    
+
     // TODO: Listen for analysis completion event
     // TODO: Assert progress notification was shown
     // TODO: Verify insights were collected
@@ -38,10 +39,10 @@ suite('Full Workflow Integration Test Suite', () => {
 
   test.skip('Should display insights in tree view after analysis', async function() {
     this.timeout(30000);
-    
+
     // TODO: Trigger analysis
     // await vscode.commands.executeCommand('loggerUsage.analyze');
-    
+
     // TODO: Get tree view provider and verify data
     // TODO: Assert insights are displayed in correct hierarchy
     assert.fail('Test not fully implemented - requires tree view access');
@@ -49,10 +50,10 @@ suite('Full Workflow Integration Test Suite', () => {
 
   test.skip('Should show insights panel on command execution', async function() {
     this.timeout(15000);
-    
+
     // TODO: Execute show insights panel command
     // await vscode.commands.executeCommand('loggerUsage.showInsightsPanel');
-    
+
     // TODO: Assert webview panel was created
     // TODO: Verify insights data sent to webview
     assert.fail('Test not implemented - requires webview testing infrastructure');
@@ -68,7 +69,7 @@ suite('Full Workflow Integration Test Suite', () => {
   test.skip('Should navigate to file location when clicking insight', async function() {
     // TODO: Trigger navigateToInsight command with test insight ID
     // await vscode.commands.executeCommand('loggerUsage.navigateToInsight', 'test-insight-id');
-    
+
     // TODO: Assert correct file opened
     // TODO: Assert cursor at correct line/column
     assert.fail('Test not implemented - requires insight ID generation');

@@ -34,7 +34,7 @@ public class UserService
         using (_logger.BeginScope("Processing order {orderId}", orderId))
         {
             _logger.LogInformation("Order amount: {amount}", amount);
-            
+
             // Multiple inconsistencies
             _logger.LogError("Failed to process order {id} for amount {total}", orderId, amount);
         }

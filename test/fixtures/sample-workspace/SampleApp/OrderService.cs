@@ -29,7 +29,7 @@ public class OrderService
         {
             LogSlowOrder(orderId);
         }
-        
+
         _logger.LogInformation("Order {orderId} status: {status}", orderId, status);
     }
 }

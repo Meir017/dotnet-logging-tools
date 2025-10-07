@@ -28,7 +28,7 @@ This workspace contains a simple C# console application with various logging pat
 
 The extension should detect:
 - **Total Insights**: ~10-12 logging statements
-- **Inconsistencies**: 
+- **Inconsistencies**:
   - 2-3 parameter name mismatches (LU001)
   - 4-5 missing EventIds (LU002)
 - **Method Types**:
