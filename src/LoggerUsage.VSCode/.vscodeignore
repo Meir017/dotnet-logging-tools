@@ -7,9 +7,12 @@ out/test/**
 **/*.map
 .gitignore
 .vscodeignore
-**/*.md
-**/*.txt
 tsconfig.json
 esbuild.js
 .eslintrc.json
 node_modules/@types/**
+**/*.log
+**/*.txt
+!README.md
+!CHANGELOG.md
+!LICENSE
