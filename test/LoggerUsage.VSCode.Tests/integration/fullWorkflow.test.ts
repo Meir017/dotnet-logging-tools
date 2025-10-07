@@ -12,7 +12,7 @@ suite('Full Workflow Integration Test Suite', () => {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Verify workspace is open
-    assert.ok(vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0, 
+    assert.ok(vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0,
       'Workspace should be open');
 
     // In CI/test environment, extension runs from source and may not be "installed"
@@ -20,11 +20,11 @@ suite('Full Workflow Integration Test Suite', () => {
     const commands = await vscode.commands.getCommands(true);
     const extensionCommands = commands.filter(cmd => cmd.startsWith('loggerUsage.'));
 
-    assert.ok(extensionCommands.length > 0, 
+    assert.ok(extensionCommands.length > 0,
       `Extension commands should be registered. Found: ${extensionCommands.join(', ')}`);
-    assert.ok(extensionCommands.includes('loggerUsage.analyze'), 
+    assert.ok(extensionCommands.includes('loggerUsage.analyze'),
       'loggerUsage.analyze command should exist');
-    assert.ok(extensionCommands.includes('loggerUsage.showInsightsPanel'), 
+    assert.ok(extensionCommands.includes('loggerUsage.showInsightsPanel'),
       'loggerUsage.showInsightsPanel command should exist');
   });
 
