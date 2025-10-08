@@ -60,7 +60,9 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 compilation,
                 workspace.CurrentSolution,
                 progress,
-                cancellationToken);
+                cancellationToken,
+                projectIndex: i,
+                totalProjects: projects.Count);
             results.AddRange(extractionResult.Results);
         }
 
@@ -82,12 +84,16 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
     /// <param name="solution">Optional solution for cross-project analysis. If null, an AdhocWorkspace will be created.</param>
     /// <param name="progress">Optional progress reporter for tracking analysis progress.</param>
     /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
+    /// <param name="projectIndex">Zero-based index of the current project (for progress calculation when called from workspace analysis).</param>
+    /// <param name="totalProjects">Total number of projects being analyzed (for progress calculation when called from workspace analysis).</param>
     /// <returns>The extraction results containing all found logger usage information.</returns>
     public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesWithSolutionAsync(
         Compilation compilation,
         Solution? solution = null,
         IProgress<Models.LoggerUsageProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int projectIndex = 0,
+        int totalProjects = 1)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
         if (loggerInterface == null)
@@ -116,10 +122,6 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
         try
         {
-            var loggingTypes = new LoggingTypes(compilation, loggerInterface);
-            var results = new ConcurrentBag<LoggerUsageInfo>();
-            var reporter = new Services.ProgressReporter(progress);
-
             // If we created an AdhocWorkspace, use its compilation to ensure symbol matching for SymbolFinder
             Compilation workingCompilation = compilation;
             if (workspace != null && ensuredSolution != null)
@@ -132,9 +134,25 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 }
             }
 
+            // Create LoggingTypes from the working compilation (which may be from AdhocWorkspace)
+            var workingLoggerInterface = workingCompilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
+            if (workingLoggerInterface == null)
+            {
+                _logger.LogWarning("ILogger interface not found in working compilation. Skipping analysis.");
+                return new LoggerUsageExtractionResult();
+            }
+
+            var loggingTypes = new LoggingTypes(workingCompilation, workingLoggerInterface);
+            var results = new ConcurrentBag<LoggerUsageInfo>();
+            var reporter = new Services.ProgressReporter(progress);
+
             var syntaxTrees = workingCompilation.SyntaxTrees
                 .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
                 .ToList();
+
+            // Track last progress report time to avoid too frequent updates
+            var lastProgressReport = Stopwatch.GetTimestamp();
+            const int progressReportIntervalMs = 100; // Report progress at most every 100ms
 
             // Process syntax trees in parallel using async approach
             var syntaxTreeTasks = syntaxTrees.Select(async (syntaxTree, index) =>
@@ -142,7 +160,14 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 cancellationToken.ThrowIfCancellationRequested();
 
                 _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
-                reporter.ReportFileProgress(0, index, syntaxTrees.Count, syntaxTree.FilePath);
+                
+                // Report file progress, but throttle to avoid too many updates
+                var elapsed = Stopwatch.GetElapsedTime(lastProgressReport).TotalMilliseconds;
+                if (elapsed >= progressReportIntervalMs || index == 0 || index == syntaxTrees.Count - 1)
+                {
+                    reporter.ReportFileProgress(projectIndex, totalProjects, index, syntaxTrees.Count, syntaxTree.FilePath);
+                    lastProgressReport = Stopwatch.GetTimestamp();
+                }
 
                 var root = syntaxTree.GetRoot();
                 var semanticModel = workingCompilation.GetSemanticModel(syntaxTree);
@@ -161,7 +186,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 {
                     var start = Stopwatch.GetTimestamp();
                     _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
-                    reporter.ReportAnalyzerProgress(0, analyzer.GetType().Name, syntaxTree.FilePath);
+                    // Note: We don't report analyzer progress to avoid clutter - only log it
 
                     var usages = await analyzer.AnalyzeAsync(analysisContext);
 

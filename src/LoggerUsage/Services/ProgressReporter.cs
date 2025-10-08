@@ -52,26 +52,38 @@ internal class ProgressReporter
     /// <summary>
     /// Reports progress for file-level operations within a project.
     /// </summary>
-    /// <param name="basePercent">Base percentage from project-level progress.</param>
-    /// <param name="fileIndex">Zero-based index of the current file.</param>
+    /// <param name="projectIndex">Zero-based index of the current project.</param>
+    /// <param name="totalProjects">Total number of projects to analyze.</param>
+    /// <param name="fileIndex">Zero-based index of the current file within the project.</param>
     /// <param name="totalFiles">Total number of files in the current project.</param>
     /// <param name="fileName">Name of the file being analyzed.</param>
-    public void ReportFileProgress(int basePercent, int fileIndex, int totalFiles, string fileName)
+    public void ReportFileProgress(int projectIndex, int totalProjects, int fileIndex, int totalFiles, string fileName)
     {
         if (!_isEnabled)
         {
             return;
         }
 
-        var filePercent = totalFiles > 0 ? (fileIndex * 100) / totalFiles : 0;
-        var percent = basePercent + (filePercent / Math.Max(1, totalFiles));
+        // Calculate percentage based on overall progress across all projects
+        // Each project gets an equal share of the 100% progress
+        var projectWeight = 100.0 / Math.Max(1, totalProjects);
+        var projectBasePercent = projectIndex * projectWeight;
+        var fileProgressWithinProject = totalFiles > 0 ? (fileIndex / (double)totalFiles) : 0;
+        var percent = (int)(projectBasePercent + (fileProgressWithinProject * projectWeight));
+
+        // Extract just the filename for cleaner display
+        var displayName = Path.GetFileName(fileName);
+        if (string.IsNullOrEmpty(displayName))
+        {
+            displayName = fileName;
+        }
 
         try
         {
             _progress!.Report(new LoggerUsageProgress
             {
                 PercentComplete = percent,
-                OperationDescription = $"Analyzing file {fileIndex + 1} of {totalFiles}",
+                OperationDescription = $"Analyzing {displayName}",
                 CurrentFilePath = fileName
             });
         }
@@ -84,21 +96,30 @@ internal class ProgressReporter
     /// <summary>
     /// Reports progress for analyzer-level operations.
     /// </summary>
-    /// <param name="basePercent">Base percentage from file-level progress.</param>
+    /// <param name="projectIndex">Zero-based index of the current project.</param>
+    /// <param name="totalProjects">Total number of projects to analyze.</param>
+    /// <param name="fileIndex">Zero-based index of the current file within the project.</param>
+    /// <param name="totalFiles">Total number of files in the current project.</param>
     /// <param name="analyzerName">Name of the analyzer being executed.</param>
     /// <param name="filePath">Path of the file being analyzed.</param>
-    public void ReportAnalyzerProgress(int basePercent, string analyzerName, string? filePath = null)
+    public void ReportAnalyzerProgress(int projectIndex, int totalProjects, int fileIndex, int totalFiles, string analyzerName, string? filePath = null)
     {
         if (!_isEnabled)
         {
             return;
         }
 
+        // Calculate percentage similar to file progress
+        var projectWeight = 100.0 / Math.Max(1, totalProjects);
+        var projectBasePercent = projectIndex * projectWeight;
+        var fileProgressWithinProject = totalFiles > 0 ? (fileIndex / (double)totalFiles) : 0;
+        var percent = (int)(projectBasePercent + (fileProgressWithinProject * projectWeight));
+
         try
         {
             _progress!.Report(new LoggerUsageProgress
             {
-                PercentComplete = basePercent,
+                PercentComplete = percent,
                 OperationDescription = $"Running analyzer: {analyzerName}",
                 CurrentFilePath = filePath,
                 CurrentAnalyzer = analyzerName

@@ -142,26 +142,56 @@ public class LoggerUsageExtractor
    - Percentage: `(currentProjectIndex / totalProjects) * 100`
 
 2. **File-level progress** (within each project):
-   - "Analyzing file {FileName} in {ProjectName}"
-   - Percentage: `(baseProjectPercent + (currentFileIndex / totalFiles) * (100 / totalProjects))`
+   - "Analyzing {FileName}" (filename only, not full path)
+   - Percentage: `projectBasePercent + (fileIndex / totalFiles) * projectWeight`
+   - **Throttled**: Reports at most every 100ms to avoid visual clutter
+   - Always reports first and last file
 
-3. **Analyzer-level progress** (within each file):
-   - "Running analyzer {AnalyzerName} on {FileName}"
-   - Percentage: Fine-grained within file progress
+3. **Analyzer-level progress** (removed):
+   - ❌ Not reported to avoid excessive updates
+   - Still logged via `ILogger` for debugging
 
 **For `ExtractLoggerUsagesWithSolutionAsync` (Single Compilation):**
 
 1. **Workspace creation** (if needed):
    - "Creating AdhocWorkspace for compilation"
-   - Percentage: 5%
+   - Percentage: 0%
 
 2. **File-level progress**:
-   - "Analyzing file X of Y: {FileName}"
-   - Percentage: `5 + ((currentFileIndex / totalFiles) * 95)`
+   - "Analyzing {FileName}"
+   - Percentage: `(fileIndex / totalFiles) * 100`
+   - **Throttled**: Reports at most every 100ms
 
-3. **Analyzer-level progress**:
-   - "Running analyzer {AnalyzerName} on {FileName}"
-   - Percentage: Fine-grained within file progress
+3. **Analyzer-level progress** (removed):
+   - ❌ Not reported to avoid excessive updates
+
+### Implementation Improvements (Post-Implementation)
+
+**Based on real-world usage, the following improvements were made:**
+
+1. **Progress Throttling**: File-level progress is throttled to report at most every 100ms to prevent:
+   - Visual clutter in progress bars
+   - Performance overhead from excessive updates
+   - Console flicker from rapid updates
+
+2. **Simplified Messages**: Progress messages now show just the filename instead of full paths:
+   - Before: "Analyzing file 23 of 183: D:\...\LoggerUsageExtractor.cs"
+   - After: "Analyzing LoggerUsageExtractor.cs"
+
+3. **Analyzer Progress Removed**: Individual analyzer runs are no longer reported in progress:
+   - Reduces progress updates by ~5x (since we have 5 analyzers)
+   - Still logged via `ILogger` for debugging
+   - Users care about files being analyzed, not internal analyzer details
+
+4. **Cumulative Progress**: Fixed progress calculation to be cumulative across projects:
+   - Each project gets equal weight (100% / project count)
+   - File progress within project contributes to project's slice
+   - Progress now monotonically increases from 0% to 100%
+
+5. **Project Context Passing**: Added `projectIndex` and `totalProjects` parameters to `ExtractLoggerUsagesWithSolutionAsync`:
+   - Defaults to 0 and 1 for single-compilation scenarios
+   - Enables accurate progress calculation when called from workspace analysis
+   - Maintains backward compatibility via default parameters
 
 ### AdhocWorkspace Creation Flow
 
