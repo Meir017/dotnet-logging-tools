@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AwesomeAssertions;
 using LoggerUsage.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using ModelContextProtocol.Client;
@@ -25,8 +26,8 @@ public class IntegrationTests
         var response = await mcpClient.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(response);
-        Assert.Equal("analyze_logger_usages_in_csproj", response[0].Name);
+        response.Should().HaveCount(1);
+        response[0].Name.Should().Be("analyze_logger_usages_in_csproj");
     }
 
     [Fact]
@@ -49,11 +50,11 @@ public class IntegrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.NotNull(response);
-        Assert.Single(response.Content);
-        Assert.Equal("text", response.Content[0].Type);
-        var text = Assert.IsType<TextContentBlock>(response.Content[0]);
-        Assert.NotNull(text.Text);
+        response.Should().NotBeNull();
+        response.Content.Should().HaveCount(1);
+        response.Content[0].Type.Should().Be("text");
+        var text = response.Content[0].Should().BeOfType<TextContentBlock>().Which;
+        text.Text.Should().NotBeNull();
 
         var options = new JsonSerializerOptions
         {
@@ -61,10 +62,10 @@ public class IntegrationTests
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
         var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(text.Text!, options);
-        Assert.NotNull(loggerUsages);
-        Assert.NotNull(loggerUsages.Results);
-        Assert.NotEmpty(loggerUsages.Results);
-        Assert.NotNull(loggerUsages.Summary);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().NotBeNull();
+        loggerUsages.Results.Should().NotBeEmpty();
+        loggerUsages.Summary.Should().NotBeNull();
     }
 
     private static string GetCliCsprojPath()
