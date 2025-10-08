@@ -36,9 +36,31 @@ public class WorkspaceAnalyzer
         try
         {
             // Determine the file to load (solution or workspace)
-            var fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
-                ? new FileInfo(request.SolutionPath)
-                : FindSolutionOrProject(request.WorkspacePath);
+            FileInfo? fileToLoad;
+            try
+            {
+                fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
+                    ? new FileInfo(request.SolutionPath)
+                    : FindSolutionOrProject(request.WorkspacePath);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to workspace directory",
+                    Details = $"You don't have permission to access: {request.WorkspacePath ?? request.SolutionPath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error accessing workspace",
+                    Details = $"I/O error accessing: {request.WorkspacePath ?? request.SolutionPath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
 
             if (fileToLoad == null || !fileToLoad.Exists)
             {
@@ -75,6 +97,24 @@ public class WorkspaceAnalyzer
                     Message = "Solution or project file not found",
                     Details = ex.Message,
                     ErrorCode = "FILE_NOT_FOUND"
+                };
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to solution or project file",
+                    Details = $"You don't have permission to access: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error loading solution",
+                    Details = $"I/O error loading: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
                 };
             }
             catch (Exception ex)
@@ -246,9 +286,31 @@ public class WorkspaceAnalyzer
         try
         {
             // Load solution
-            var fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
-                ? new FileInfo(request.SolutionPath)
-                : FindSolutionOrProject(Path.GetDirectoryName(request.FilePath)!);
+            FileInfo? fileToLoad;
+            try
+            {
+                fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
+                    ? new FileInfo(request.SolutionPath)
+                    : FindSolutionOrProject(Path.GetDirectoryName(request.FilePath)!);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to workspace directory",
+                    Details = $"You don't have permission to access the directory containing: {request.FilePath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error accessing workspace",
+                    Details = $"I/O error accessing directory containing: {request.FilePath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
 
             if (fileToLoad == null || !fileToLoad.Exists)
             {
@@ -283,6 +345,24 @@ public class WorkspaceAnalyzer
                     Message = "Solution or project file not found",
                     Details = ex.Message,
                     ErrorCode = "FILE_NOT_FOUND"
+                };
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to solution or project file",
+                    Details = $"You don't have permission to access: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error loading solution",
+                    Details = $"I/O error loading: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
                 };
             }
             catch (Exception ex)
@@ -430,6 +510,8 @@ public class WorkspaceAnalyzer
     /// <summary>
     /// Finds the first .sln, .slnx, or .csproj file in the workspace
     /// </summary>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access to the directory is denied</exception>
+    /// <exception cref="IOException">Thrown when I/O error occurs</exception>
     private FileInfo? FindSolutionOrProject(string workspacePath)
     {
         var directory = new DirectoryInfo(workspacePath);
@@ -439,6 +521,7 @@ public class WorkspaceAnalyzer
         }
 
         // Look for solution files first
+        // These operations can throw UnauthorizedAccessException or IOException
         var solutionFile = directory.GetFiles("*.sln").FirstOrDefault()
             ?? directory.GetFiles("*.slnx").FirstOrDefault();
 

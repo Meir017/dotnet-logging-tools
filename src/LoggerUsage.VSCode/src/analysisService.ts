@@ -43,6 +43,23 @@ export class AnalysisService implements vscode.Disposable {
     private crashResetInterval: number = 60000; // Reset crash count after 1 minute
     private isShuttingDown: boolean = false;
 
+    // Concurrency control
+    private isAnalyzing: boolean = false;
+    private analysisQueue: Array<
+        | {
+            type: 'workspace';
+            args: [string, string | null, string[] | undefined, ProgressCallback | undefined, vscode.CancellationToken | undefined];
+            resolve: (value: AnalysisSuccessResponse) => void;
+            reject: (reason: any) => void;
+        }
+        | {
+            type: 'file';
+            args: [string, string, ProgressCallback | undefined, vscode.CancellationToken | undefined];
+            resolve: (value: AnalysisSuccessResponse) => void;
+            reject: (reason: any) => void;
+        }
+    > = [];
+
     constructor(
         private context: vscode.ExtensionContext,
         outputChannel?: vscode.OutputChannel
@@ -66,6 +83,46 @@ export class AnalysisService implements vscode.Disposable {
      * Analyzes an entire workspace
      */
     public async analyzeWorkspace(
+        workspacePath: string,
+        solutionPath: string | null,
+        excludePatterns?: string[],
+        onProgress?: ProgressCallback,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<AnalysisSuccessResponse> {
+        // Check if already analyzing
+        if (this.isAnalyzing) {
+            // Queue the request
+            return new Promise((resolve, reject) => {
+                this.analysisQueue.push({
+                    type: 'workspace',
+                    args: [workspacePath, solutionPath, excludePatterns, onProgress, cancellationToken],
+                    resolve,
+                    reject
+                });
+
+                // Show notification
+                vscode.window.showInformationMessage('Analysis in progress. Request queued.');
+            });
+        }
+
+        // Mark as analyzing
+        this.isAnalyzing = true;
+
+        try {
+            return await this.performWorkspaceAnalysis(workspacePath, solutionPath, excludePatterns, onProgress, cancellationToken);
+        } finally {
+            // Mark as not analyzing
+            this.isAnalyzing = false;
+
+            // Process next queued request if any
+            await this.processNextQueuedRequest();
+        }
+    }
+
+    /**
+     * Performs the actual workspace analysis (internal method)
+     */
+    private async performWorkspaceAnalysis(
         workspacePath: string,
         solutionPath: string | null,
         excludePatterns?: string[],
@@ -114,7 +171,7 @@ export class AnalysisService implements vscode.Disposable {
         };
 
         try {
-            const result = await this.sendRequest(request, onProgress, cancellationToken);
+            const result = await this.sendRequestWithTimeout(request, onProgress, cancellationToken);
 
             // Emit analysis complete event
             analysisEvents.fireAnalysisComplete(result, startTime);
@@ -149,6 +206,45 @@ export class AnalysisService implements vscode.Disposable {
         onProgress?: ProgressCallback,
         cancellationToken?: vscode.CancellationToken
     ): Promise<AnalysisSuccessResponse> {
+        // Check if already analyzing
+        if (this.isAnalyzing) {
+            // Queue the request
+            return new Promise((resolve, reject) => {
+                this.analysisQueue.push({
+                    type: 'file',
+                    args: [filePath, solutionPath, onProgress, cancellationToken],
+                    resolve,
+                    reject
+                });
+
+                // Show notification
+                vscode.window.showInformationMessage('Analysis in progress. Request queued.');
+            });
+        }
+
+        // Mark as analyzing
+        this.isAnalyzing = true;
+
+        try {
+            return await this.performFileAnalysis(filePath, solutionPath, onProgress, cancellationToken);
+        } finally {
+            // Mark as not analyzing
+            this.isAnalyzing = false;
+
+            // Process next queued request if any
+            await this.processNextQueuedRequest();
+        }
+    }
+
+    /**
+     * Performs the actual file analysis (internal method)
+     */
+    private async performFileAnalysis(
+        filePath: string,
+        solutionPath: string,
+        onProgress?: ProgressCallback,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<AnalysisSuccessResponse> {
         await this.ensureBridgeReady();
 
         const startTime = Date.now();
@@ -163,7 +259,7 @@ export class AnalysisService implements vscode.Disposable {
         };
 
         try {
-            const result = await this.sendRequest(request, onProgress, cancellationToken);
+            const result = await this.sendRequestWithTimeout(request, onProgress, cancellationToken);
 
             // Emit analysis complete event
             analysisEvents.fireAnalysisComplete(result, startTime);
@@ -205,6 +301,31 @@ export class AnalysisService implements vscode.Disposable {
             this.bridgeProcess = null;
             this.isReady = false;
             this.readyPromise = null;
+        }
+    }
+
+    /**
+     * Processes the next queued analysis request
+     */
+    private async processNextQueuedRequest(): Promise<void> {
+        if (this.analysisQueue.length === 0) {
+            return;
+        }
+
+        const nextRequest = this.analysisQueue.shift()!;
+
+        try {
+            let result: AnalysisSuccessResponse;
+
+            if (nextRequest.type === 'workspace') {
+                result = await this.analyzeWorkspace(...nextRequest.args);
+            } else {
+                result = await this.analyzeFile(...nextRequest.args);
+            }
+
+            nextRequest.resolve(result);
+        } catch (error) {
+            nextRequest.reject(error);
         }
     }
 
@@ -301,6 +422,62 @@ export class AnalysisService implements vscode.Disposable {
     /**
      * Sends a request to the bridge and returns a promise for the response
      */
+    /**
+     * Sends a request with optional timeout support
+     */
+    private async sendRequestWithTimeout(
+        request: BridgeRequest,
+        onProgress?: ProgressCallback,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<AnalysisSuccessResponse> {
+        // Get timeout configuration
+        const config = vscode.workspace.getConfiguration('loggerUsage');
+        const timeoutMs = config.get<number>('performanceThresholds.analysisTimeoutMs', 0);
+
+        // If timeout is disabled (0 or negative), just send the request normally
+        if (timeoutMs <= 0) {
+            return this.sendRequest(request, onProgress, cancellationToken);
+        }
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('TIMEOUT'));
+            }, timeoutMs);
+        });
+
+        try {
+            // Race between the request and the timeout
+            return await Promise.race([
+                this.sendRequest(request, onProgress, cancellationToken),
+                timeoutPromise
+            ]);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'TIMEOUT') {
+                // Show timeout warning notification
+                vscode.window.showWarningMessage(
+                    `Analysis timed out after ${timeoutMs / 1000} seconds. Showing partial results if available.`,
+                    'Show Details'
+                ).then(choice => {
+                    if (choice === 'Show Details') {
+                        this.outputChannel.appendLine('\n=== Analysis Timeout ===');
+                        this.outputChannel.appendLine(`Timeout: ${timeoutMs}ms`);
+                        this.outputChannel.appendLine('The analysis took longer than expected.');
+                        this.outputChannel.appendLine('Consider increasing the timeout in settings: loggerUsage.performanceThresholds.analysisTimeoutMs');
+                        this.outputChannel.appendLine('========================\n');
+                        this.outputChannel.show();
+                    }
+                });
+
+                this.outputChannel.appendLine(`[WARN] Analysis timed out after ${timeoutMs}ms`);
+
+                // Still throw the error to stop the analysis
+                throw new Error(`Analysis timed out after ${timeoutMs / 1000} seconds`);
+            }
+            throw error;
+        }
+    }
+
     private sendRequest(
         request: BridgeRequest,
         onProgress?: ProgressCallback,
