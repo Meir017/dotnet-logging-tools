@@ -53,16 +53,10 @@ public sealed record LoggerUsageProgress
     /// Gets the description of the current operation.
     /// </summary>
     public required string OperationDescription { get; init; }
-
     /// <summary>
     /// Gets the path of the file currently being analyzed, if applicable.
     /// </summary>
     public string? CurrentFilePath { get; init; }
-
-    /// <summary>
-    /// Gets the name of the analyzer currently running, if applicable.
-    /// </summary>
-    public string? CurrentAnalyzer { get; init; }
 }
 ```
 
@@ -160,7 +154,6 @@ public void LoggerUsageProgress_HasRequiredProperties()
         PercentComplete = 50,
         OperationDescription = "Test operation"
     };
-
     progress.PercentComplete.Should().Be(50);
     progress.OperationDescription.Should().Be("Test operation");
     progress.CurrentFilePath.Should().BeNull();
@@ -192,7 +185,6 @@ public void LoggerUsageProgress_ClampsPercentage(int input, int expected)
         PercentComplete = input,
         OperationDescription = "Test"
     };
-
     progress.PercentComplete.Should().Be(expected);
 }
 ```
@@ -218,7 +210,6 @@ public void LoggerUsageProgress_RequiresDescription(string? description)
         PercentComplete = 50,
         OperationDescription = description!
     };
-
     act.Should().Throw<ArgumentException>();
 }
 ```
@@ -505,7 +496,6 @@ public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesAsync(
 {
     var projects = workspace.CurrentSolution.Projects.Where(p => p.Language == LanguageNames.CSharp).ToList();
     var reporter = new ProgressReporter(progress, projects.Count);
-
     for (int i = 0; i < projects.Count; i++)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -543,7 +533,6 @@ public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesWithSolutionAs
     CancellationToken cancellationToken = default)
 {
     var (ensuredSolution, workspace) = await WorkspaceHelper.EnsureSolutionAsync(compilation, solution, _logger);
-
     try
     {
         // Use ensuredSolution for analysis
