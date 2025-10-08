@@ -4,13 +4,14 @@ import * as fs from 'fs';
 import { AnalysisService } from './analysisService';
 import { Configuration } from './configuration';
 import { LoggingInsight } from '../models/insightViewModel';
+import { getSolutionState } from './state/SolutionState';
+import { SolutionInfo } from './utils/solutionDetector';
 
 /**
  * Command handler implementations for Logger Usage extension
  */
 export class Commands {
     private currentInsights: LoggingInsight[] = [];
-    private activeSolutionPath: string | null = null;
     private insightsPanel: vscode.WebviewPanel | null = null;
     private treeViewProvider: any = null; // Will be properly typed when implemented
     private problemsProvider: any = null; // Will be properly typed when implemented
@@ -49,26 +50,26 @@ export class Commands {
     }
 
     /**
-     * Gets the active solution path
-     */
-    public getActiveSolutionPath(): string | null {
-        return this.activeSolutionPath;
-    }
-
-    /**
      * Command: loggerUsage.analyze
      * Triggers full workspace analysis
      */
     public async analyze(): Promise<void> {
         try {
-            // Find solution file
-            const solutionPath = await this.findOrSelectSolution();
-            if (!solutionPath) {
-                vscode.window.showWarningMessage('No solution file found. Please select a solution to analyze.');
-                return;
+            // Get solution state
+            const solutionState = getSolutionState();
+            const activeSolution = solutionState.getActiveSolution();
+
+            if (!activeSolution) {
+                // No active solution, try to find or select one
+                const newSolution = await this.findOrSelectSolution();
+                if (!newSolution) {
+                    vscode.window.showWarningMessage('No solution file found. Please select a solution to analyze.');
+                    return;
+                }
+                solutionState.setActiveSolution(newSolution);
             }
 
-            this.activeSolutionPath = solutionPath;
+            const solutionPath = solutionState.getActiveSolutionPath()!;
 
             // Get workspace root
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -139,16 +140,17 @@ export class Commands {
      * Shows quick pick to select solution file
      */
     public async selectSolution(): Promise<void> {
-        const solutionFiles = await this.findAllSolutionFiles();
+        const solutionState = getSolutionState();
+        const allSolutions = solutionState.getAllSolutions();
 
-        if (solutionFiles.length === 0) {
+        if (allSolutions.length === 0) {
             vscode.window.showWarningMessage('No solution files (.sln) found in workspace.');
             return;
         }
 
-        if (solutionFiles.length === 1) {
-            this.activeSolutionPath = solutionFiles[0];
-            vscode.window.showInformationMessage(`Selected solution: ${path.basename(solutionFiles[0])}`);
+        if (allSolutions.length === 1) {
+            solutionState.setActiveSolution(allSolutions[0]);
+            vscode.window.showInformationMessage(`Selected solution: ${allSolutions[0].displayName}`);
 
             // Trigger re-analysis
             await this.analyze();
@@ -156,10 +158,10 @@ export class Commands {
         }
 
         // Show quick pick for multiple solutions
-        const items = solutionFiles.map(filePath => ({
-            label: path.basename(filePath),
-            description: path.dirname(filePath),
-            filePath: filePath
+        const items = allSolutions.map(solution => ({
+            label: solution.displayName,
+            description: solution.relativePath,
+            solution: solution
         }));
 
         const selected = await vscode.window.showQuickPick(items, {
@@ -168,7 +170,7 @@ export class Commands {
         });
 
         if (selected) {
-            this.activeSolutionPath = selected.filePath;
+            solutionState.setActiveSolution(selected.solution);
             vscode.window.showInformationMessage(`Selected solution: ${selected.label}`);
 
             // Trigger re-analysis
@@ -333,7 +335,10 @@ export class Commands {
      * Analyzes a single file (incremental)
      */
     public async analyzeFile(fileUri: vscode.Uri): Promise<void> {
-        if (!this.activeSolutionPath) {
+        const solutionState = getSolutionState();
+        const solutionPath = solutionState.getActiveSolutionPath();
+
+        if (!solutionPath) {
             // No active solution, trigger full analysis
             await this.analyze();
             return;
@@ -344,7 +349,7 @@ export class Commands {
 
             const result = await this.analysisService.analyzeFile(
                 fileUri.fsPath,
-                this.activeSolutionPath
+                solutionPath
             );
 
             // Update only insights from this file
@@ -398,40 +403,27 @@ export class Commands {
     /**
      * Finds or prompts user to select a solution file
      */
-    private async findOrSelectSolution(): Promise<string | null> {
-        if (this.activeSolutionPath && fs.existsSync(this.activeSolutionPath)) {
-            return this.activeSolutionPath;
+    private async findOrSelectSolution(): Promise<SolutionInfo | null> {
+        const solutionState = getSolutionState();
+        const activeSolution = solutionState.getActiveSolution();
+
+        if (activeSolution && fs.existsSync(activeSolution.filePath)) {
+            return activeSolution;
         }
 
-        const solutionFiles = await this.findAllSolutionFiles();
+        const allSolutions = solutionState.getAllSolutions();
 
-        if (solutionFiles.length === 0) {
+        if (allSolutions.length === 0) {
             return null;
         }
 
-        if (solutionFiles.length === 1) {
-            return solutionFiles[0];
+        if (allSolutions.length === 1) {
+            return allSolutions[0];
         }
 
         // Multiple solutions, prompt user
         await this.selectSolution();
-        return this.activeSolutionPath;
-    }
-
-    /**
-     * Finds all .sln files in workspace
-     */
-    private async findAllSolutionFiles(): Promise<string[]> {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            return [];
-        }
-
-        const pattern = new vscode.RelativePattern(workspaceFolder, '**/*.sln');
-        const excludePattern = Configuration.getExcludePatterns().join(',');
-
-        const files = await vscode.workspace.findFiles(pattern, excludePattern);
-        return files.map(uri => uri.fsPath);
+        return solutionState.getActiveSolution();
     }
 
     /**

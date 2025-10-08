@@ -6,6 +6,8 @@ import { ProblemsProvider } from './src/problemsProvider';
 import { LoggerTreeViewProvider } from './src/treeViewProvider';
 import { Configuration } from './src/configuration';
 import { debounceAsync } from './src/utils/debounce';
+import { getSolutionState } from './src/state/SolutionState';
+import { findAllSolutions, getDefaultSolution } from './src/utils/solutionDetector';
 
 let analysisService: AnalysisService;
 let commands: Commands;
@@ -56,6 +58,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         commands = new Commands(analysisService, outputChannel);
         commands.setProblemsProvider(problemsProvider);
         commands.setTreeViewProvider(treeViewProvider);
+
+        // Initialize solution state
+        await initializeSolutionState();
+
+        // Listen for solution changes
+        const solutionState = getSolutionState();
+        context.subscriptions.push(
+            solutionState.onDidChangeSolution(async (solution) => {
+                if (solution) {
+                    outputChannel.appendLine(`Active solution changed to: ${solution.displayName}`);
+                    updateStatusBarForSolution(solution);
+                    
+                    // Clear current insights when switching solutions
+                    problemsProvider.clearDiagnostics();
+                    treeViewProvider.updateInsights([], solution.filePath);
+                }
+            })
+        );
+        context.subscriptions.push(solutionState);
 
         // Register commands
         registerCommands(context);
@@ -242,7 +263,7 @@ function setupFileWatchers(context: vscode.ExtensionContext): void {
         if (document.languageId === 'csharp') {
             outputChannel.appendLine(`C# file saved: ${document.fileName}`);
 
-            const activeSolution = commands.getActiveSolutionPath();
+            const activeSolution = getSolutionState().getActiveSolution();
             if (activeSolution) {
                 // Use debounced function to prevent multiple rapid analyses
                 await debouncedAnalyzeFile(document.uri);
@@ -292,6 +313,60 @@ function handleConfigurationChange(e: vscode.ConfigurationChangeEvent): void {
 function updateStatusBar(text: string, busy: boolean): void {
     if (statusBarItem) {
         statusBarItem.text = busy ? `$(sync~spin) ${text}` : `$(search) ${text}`;
+    }
+}
+
+/**
+ * Updates status bar with solution information
+ */
+function updateStatusBarForSolution(solution: { displayName: string; filePath: string } | null): void {
+    if (!statusBarItem) {
+        return;
+    }
+
+    const solutionState = getSolutionState();
+    const solutionCount = solutionState.getSolutionCount();
+
+    if (!solution) {
+        statusBarItem.text = '$(warning) No Solution';
+        statusBarItem.tooltip = 'No solution selected. Click to select a solution.';
+        statusBarItem.command = 'loggerUsage.selectSolution';
+    } else {
+        const countText = solutionCount > 1 ? ` (1 of ${solutionCount})` : '';
+        statusBarItem.text = `$(database) ${solution.displayName}${countText}`;
+        statusBarItem.tooltip = `Solution: ${solution.filePath}\nClick to ${solutionCount > 1 ? 'switch solution' : 'analyze'}`;
+        statusBarItem.command = solutionCount > 1 ? 'loggerUsage.selectSolution' : 'loggerUsage.analyze';
+    }
+}
+
+/**
+ * Initializes solution state on activation
+ */
+async function initializeSolutionState(): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+        outputChannel.appendLine('No workspace folders open');
+        return;
+    }
+
+    const solutionState = getSolutionState();
+    
+    // Find all solutions in workspace
+    const solutions = await findAllSolutions(workspaceFolders);
+    solutionState.setAllSolutions(solutions);
+
+    outputChannel.appendLine(`Found ${solutions.length} solution(s) in workspace`);
+
+    // Set default active solution (first one)
+    if (solutions.length > 0) {
+        const defaultSolution = await getDefaultSolution(workspaceFolders);
+        if (defaultSolution) {
+            solutionState.setActiveSolution(defaultSolution);
+            outputChannel.appendLine(`Default solution set to: ${defaultSolution.displayName}`);
+            updateStatusBarForSolution(defaultSolution);
+        }
+    } else {
+        updateStatusBarForSolution(null);
     }
 }
 
