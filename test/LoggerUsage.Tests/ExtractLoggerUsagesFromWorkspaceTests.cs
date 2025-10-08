@@ -1,3 +1,4 @@
+using AwesomeAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
@@ -33,8 +34,8 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Single(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().ContainSingle();
     }
 
     [Fact]
@@ -48,8 +49,8 @@ public class TestClass
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Empty(loggerUsages.Results);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().BeEmpty();
     }
 
     [Fact]
@@ -90,8 +91,8 @@ public class ProjectBClass
         var loggerUsages = await extractor.ExtractLoggerUsagesAsync(workspace);
 
         // Assert
-        Assert.NotNull(loggerUsages);
-        Assert.Equal(2, loggerUsages.Results.Count);
+        loggerUsages.Should().NotBeNull();
+        loggerUsages.Results.Should().HaveCount(2);
     }
 
     private static async Task<Workspace> CreateTestWorkspace(Dictionary<string, (string FileName, string SourceCode)[]> projectDocuments)
@@ -124,9 +125,9 @@ public class ProjectBClass
         foreach (var proj in solution.Projects)
         {
             var compilation = await proj.GetCompilationAsync(TestContext.Current.CancellationToken);
-            Assert.NotNull(compilation);
+            compilation.Should().NotBeNull();
             var diagnostics = compilation.GetDiagnostics(TestContext.Current.CancellationToken);
-            Assert.Empty(diagnostics);
+            diagnostics.Should().BeEmpty();
         }
 
         return workspace;
