@@ -60,8 +60,8 @@ public class LoggerUsageWorker(
             // Clear progress bar before logging results
             progressBar?.Clear();
 
-            _logger.LogInformation("Found {count} logger usages in {duration}ms", 
-                loggerUsages.Results.Count, 
+            _logger.LogInformation("Found {count} logger usages in {duration}ms",
+                loggerUsages.Results.Count,
                 Stopwatch.GetElapsedTime(extractionStart).TotalMilliseconds);
 
             if (!string.IsNullOrWhiteSpace(_options.OutputPath))
@@ -71,7 +71,7 @@ public class LoggerUsageWorker(
                 _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
                 var generator = _reportGeneratorFactory.GetReportGenerator(outputPathInfo.Extension);
                 await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(loggerUsages));
-                _logger.LogInformation("Wrote results to '{outputPath}'", 
+                _logger.LogInformation("Wrote results to '{outputPath}'",
                     _options.OutputPath);
             }
         }

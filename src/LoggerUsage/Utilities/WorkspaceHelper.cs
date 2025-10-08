@@ -51,7 +51,7 @@ internal static class WorkspaceHelper
                     : Path.GetFileName(syntaxTree.FilePath);
 
                 var text = await syntaxTree.GetTextAsync();
-                
+
                 // Add document with text content
                 project = project.AddDocument(fileName, text, filePath: syntaxTree.FilePath).Project;
             }
@@ -64,13 +64,13 @@ internal static class WorkspaceHelper
 
             var finalSolution = workspace.CurrentSolution;
             var finalProject = finalSolution.GetProject(project.Id);
-            
+
             // IMPORTANT: Force compilation to be created in the workspace
             // This ensures SymbolFinder can properly resolve symbols across documents
             if (finalProject != null)
             {
                 var workspaceCompilation = await finalProject.GetCompilationAsync();
-                logger.LogInformation("AdhocWorkspace created successfully with {DocumentCount} documents, compilation has {TreeCount} trees", 
+                logger.LogInformation("AdhocWorkspace created successfully with {DocumentCount} documents, compilation has {TreeCount} trees",
                     finalProject.Documents.Count(),
                     workspaceCompilation?.SyntaxTrees.Count() ?? 0);
             }
