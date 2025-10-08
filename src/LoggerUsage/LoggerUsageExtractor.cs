@@ -21,19 +21,34 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
     /// Asynchronously extracts logger usage information from all projects in the specified workspace.
     /// </summary>
     /// <param name="workspace">The workspace containing the projects to analyze.</param>
+    /// <param name="progress">Optional progress reporter for tracking analysis progress.</param>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation, containing the extraction results.</returns>
-    public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesAsync(Workspace workspace)
+    public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesAsync(
+        Workspace workspace,
+        IProgress<Models.LoggerUsageProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         var results = new List<LoggerUsageInfo>();
+        var projects = workspace.CurrentSolution.Projects
+            .Where(p => p.Language == LanguageNames.CSharp)
+            .ToList();
 
-        foreach (var project in workspace.CurrentSolution.Projects)
+        var reporter = new Services.ProgressReporter(progress);
+
+        for (int i = 0; i < projects.Count; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var project = projects[i];
+            reporter.ReportProjectProgress(i, projects.Count, project.Name ?? "Unknown");
+
             if (project.Language != LanguageNames.CSharp)
             {
                 continue;
             }
 
-            var compilation = await project.GetCompilationAsync();
+            var compilation = await project.GetCompilationAsync(cancellationToken);
             if (compilation == null)
             {
                 continue;
@@ -41,7 +56,11 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
             _logger.LogInformation("Analyzing project compilation '{Project}' with {Count} references", compilation.AssemblyName, compilation.References.Count());
 
-            var extractionResult = await ExtractLoggerUsagesWithSolutionAsync(compilation, workspace.CurrentSolution);
+            var extractionResult = await ExtractLoggerUsagesWithSolutionAsync(
+                compilation,
+                workspace.CurrentSolution,
+                progress,
+                cancellationToken);
             results.AddRange(extractionResult.Results);
         }
 
@@ -60,9 +79,15 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
     /// Extracts logger usage information from a single compilation unit with optional solution context.
     /// </summary>
     /// <param name="compilation">The compilation to analyze for logger usage patterns.</param>
-    /// <param name="solution">Optional solution for cross-project analysis.</param>
+    /// <param name="solution">Optional solution for cross-project analysis. If null, an AdhocWorkspace will be created.</param>
+    /// <param name="progress">Optional progress reporter for tracking analysis progress.</param>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>The extraction results containing all found logger usage information.</returns>
-    public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesWithSolutionAsync(Compilation compilation, Solution? solution = null)
+    public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesWithSolutionAsync(
+        Compilation compilation,
+        Solution? solution = null,
+        IProgress<Models.LoggerUsageProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
         if (loggerInterface == null)
@@ -74,26 +99,61 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
             return new LoggerUsageExtractionResult();
         }
 
-        var loggingTypes = new LoggingTypes(compilation, loggerInterface);
-        var results = new ConcurrentBag<LoggerUsageInfo>();
-
-        // Process syntax trees in parallel using async approach
-        var syntaxTreeTasks = compilation.SyntaxTrees
-            .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
-            .Select(async syntaxTree =>
+        // Ensure we have a solution (create AdhocWorkspace if needed)
+        if (solution == null && progress != null)
+        {
+            progress.Report(new Models.LoggerUsageProgress
             {
+                PercentComplete = 0,
+                OperationDescription = "Creating AdhocWorkspace for compilation"
+            });
+        }
+
+        var (ensuredSolution, workspace) = await Utilities.WorkspaceHelper.EnsureSolutionAsync(
+            compilation,
+            solution,
+            _logger);
+
+        try
+        {
+            var loggingTypes = new LoggingTypes(compilation, loggerInterface);
+            var results = new ConcurrentBag<LoggerUsageInfo>();
+            var reporter = new Services.ProgressReporter(progress);
+
+            // If we created an AdhocWorkspace, use its compilation to ensure symbol matching for SymbolFinder
+            Compilation workingCompilation = compilation;
+            if (workspace != null && ensuredSolution != null)
+            {
+                var project = ensuredSolution.Projects.FirstOrDefault();
+                if (project != null)
+                {
+                    workingCompilation = await project.GetCompilationAsync(cancellationToken) ?? compilation;
+                    _logger.LogDebug("Using workspace compilation with {TreeCount} trees for symbol resolution", workingCompilation.SyntaxTrees.Count());
+                }
+            }
+
+            var syntaxTrees = workingCompilation.SyntaxTrees
+                .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
+                .ToList();
+
+            // Process syntax trees in parallel using async approach
+            var syntaxTreeTasks = syntaxTrees.Select(async (syntaxTree, index) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
+                reporter.ReportFileProgress(0, index, syntaxTrees.Count, syntaxTree.FilePath);
 
                 var root = syntaxTree.GetRoot();
-                var semanticModel = compilation.GetSemanticModel(syntaxTree);
+                var semanticModel = workingCompilation.GetSemanticModel(syntaxTree);
 
                 if (root == null || semanticModel == null)
                 {
                     return;
                 }
 
-                var analysisContext = solution != null
-                    ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
+                var analysisContext = ensuredSolution != null
+                    ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, ensuredSolution, _logger)
                     : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
 
                 // Run all analyzers in parallel for this syntax tree
@@ -101,6 +161,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 {
                     var start = Stopwatch.GetTimestamp();
                     _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
+                    reporter.ReportAnalyzerProgress(0, analyzer.GetType().Name, syntaxTree.FilePath);
 
                     var usages = await analyzer.AnalyzeAsync(analysisContext);
 
@@ -122,14 +183,19 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 }
             });
 
-        await Task.WhenAll(syntaxTreeTasks);
+            await Task.WhenAll(syntaxTreeTasks);
 
-        // TODO: Populate summary.ParameterTypesByName from results
+            // TODO: Populate summary.ParameterTypesByName from results
 
-        return new LoggerUsageExtractionResult
+            return new LoggerUsageExtractionResult
+            {
+                Results = [.. results],
+                Summary = new()
+            };
+        }
+        finally
         {
-            Results = [.. results],
-            Summary = new()
-        };
+            workspace?.Dispose();
+        }
     }
 }
