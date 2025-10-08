@@ -52,7 +52,9 @@ This feature completes the VS Code extension by implementing functionality neede
    - File deletion handling
    - .csproj change detection
 
-4. **Multi-Solution Support** (11 tests)
+### What's Excluded
+
+4. **Multi-Solution Support** (removed from scope)
    - Solution detection (all .sln files)
    - Default active solution
    - Solution picker UI
@@ -73,15 +75,14 @@ This feature completes the VS Code extension by implementing functionality neede
 | fullWorkflow.test.ts | 12 | 1 | 11 | 🔄 In Progress |
 | errorHandling.test.ts | 11 | 0 | 11 | 🔴 Not Started |
 | incrementalAnalysis.test.ts | 10 | 0 | 10 | 🔴 Not Started |
-| multiSolution.test.ts | 11 | 0 | 11 | 🔴 Not Started |
-| **TOTAL** | **44** | **1** | **43** | **2% Complete** |
+| **TOTAL** | **33** | **1** | **32** | **3% Complete** |
 
 ---
 
 ## Documents
 
 - [plan.md](./plan.md) - Implementation plan and architecture
-- [tasks.md](./tasks.md) - 68 tasks organized by phase with dependencies
+- [tasks.md](./tasks.md) - 57 tasks organized by phase with dependencies
 
 ---
 
@@ -96,7 +97,6 @@ This feature completes the VS Code extension by implementing functionality neede
 
 **State Management**:
 - `InsightsState.ts` - Per-file insights storage
-- `SolutionState.ts` - Active solution tracking
 
 **Services**:
 - `ExportService.ts` - JSON/CSV/Markdown export
@@ -104,7 +104,6 @@ This feature completes the VS Code extension by implementing functionality neede
 
 **Utilities**:
 - `dotnetDetector.ts` - .NET SDK detection
-- `solutionDetector.ts` - Find all solutions in workspace
 - `debounce.ts` - Debounce utility
 - `logger.ts` - Output channel logging
 
@@ -140,23 +139,21 @@ The following must be complete from 001-a-vscode-extension:
 2. **Phase 2**: Full Workflow (21 tasks) - UI components and features
 3. **Phase 3**: Error Handling (15 tasks) - Robust error handling
 4. **Phase 4**: Incremental Analysis (10 tasks) - File watching and state
-5. **Phase 5**: Multi-Solution (10 tasks) - Multiple solution support
-6. **Phase 6**: Test Completion (5 tasks) - Enable and verify tests
-7. **Phase 7**: Documentation (4 tasks) - Update docs and changelog
+5. **Phase 5**: Test Completion (4 tasks) - Enable and verify tests
+6. **Phase 6**: Documentation (4 tasks) - Update docs and changelog
 
-**Total**: 68 tasks over ~13-18 days
+**Total**: 57 tasks over ~11-15 days
 
 ---
 
 ## Success Criteria
 
 ✅ Feature is complete when:
-- [ ] All 68 tasks in tasks.md completed
-- [ ] All 43 integration tests passing (0 skipped)
+- [ ] All 57 tasks in tasks.md completed
+- [ ] All 32 integration tests passing (0 skipped)
 - [ ] Extension installable and functional
 - [ ] Error scenarios handled gracefully
 - [ ] Incremental analysis < 2s for single file
-- [ ] Multi-solution switching works
 - [ ] Documentation updated
 
 ---
@@ -183,13 +180,12 @@ The following must be complete from 001-a-vscode-extension:
 This feature maintains the architecture from parent feature 001:
 - TypeScript extension + C# bridge
 - Event-driven UI updates
-- State management pattern for insights and solutions
+- State management pattern for insights
 - VS Code API best practices
 
 New patterns introduced:
 - EventEmitter for analysis lifecycle
 - Per-file insights storage (Map<filePath, insights[]>)
-- Active solution model (one at a time)
 - Debouncing for file save events
 - Output channel for debugging
 
