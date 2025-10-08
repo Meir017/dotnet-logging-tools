@@ -76,7 +76,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
         var loggingTypes = new LoggingTypes(compilation, loggerInterface);
         var results = new ConcurrentBag<LoggerUsageInfo>();
-        
+
         // Process syntax trees in parallel using async approach
         var syntaxTreeTasks = compilation.SyntaxTrees
             .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
@@ -92,7 +92,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                     return;
                 }
 
-                var analysisContext = solution != null 
+                var analysisContext = solution != null
                     ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, solution, _logger)
                     : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
 
@@ -101,9 +101,9 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 {
                     var start = Stopwatch.GetTimestamp();
                     _logger.LogDebug("Running Analyzer {AnalyzerType} on file {File}", analyzer.GetType().Name, syntaxTree.FilePath);
-                    
+
                     var usages = await analyzer.AnalyzeAsync(analysisContext);
-                    
+
                     var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
                     var duration = Stopwatch.GetElapsedTime(start);
                     _logger.Log(level, "Analyzer {AnalyzerType} Found {Usages} in file {FilePath} in {Duration}ms", analyzer.GetType().Name, usages.Count(), syntaxTree.FilePath, duration.TotalMilliseconds);
@@ -112,7 +112,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 });
 
                 var allUsages = await Task.WhenAll(analyzerTasks);
-                
+
                 foreach (var usages in allUsages)
                 {
                     foreach (var usage in usages)
