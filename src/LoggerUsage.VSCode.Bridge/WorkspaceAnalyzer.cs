@@ -160,8 +160,14 @@ public class WorkspaceAnalyzer
 
             ReportProgress(10, $"Analyzing {totalProjects} projects...", null);
 
-            // Run the analysis (continue even if some projects have compilation errors)
-            var extractionResult = await _loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace);
+            // Create progress handler for VS Code
+            var progress = new Progress<LoggerUsage.Models.LoggerUsageProgress>(p =>
+            {
+                ReportProgress(p.PercentComplete, p.OperationDescription, p.CurrentFilePath);
+            });
+
+            // Run the analysis with progress reporting
+            var extractionResult = await _loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace, progress, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -379,6 +385,12 @@ public class WorkspaceAnalyzer
 
             ReportProgress(30, "Analyzing file...", request.FilePath);
 
+            // Create progress handler for VS Code
+            var progress = new Progress<LoggerUsage.Models.LoggerUsageProgress>(p =>
+            {
+                ReportProgress(p.PercentComplete, p.OperationDescription, p.CurrentFilePath ?? request.FilePath);
+            });
+
             // Find the document in the solution
             var document = workspace.CurrentSolution.Projects
                 .SelectMany(p => p.Documents)
@@ -409,7 +421,9 @@ public class WorkspaceAnalyzer
             // Extract usages from the specific file
             var extractionResult = await _loggerUsageExtractor.ExtractLoggerUsagesWithSolutionAsync(
                 compilation,
-                workspace.CurrentSolution);
+                workspace.CurrentSolution,
+                progress,
+                cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 

@@ -29,8 +29,11 @@ public class Program
         builder.Services.AddSingleton<LoggerUsageWorker>();
         builder.Services.Configure<LoggerUsageOptions>(options =>
         {
-            options.Path = args.Length > 0 ? args[0] : null;
-            options.OutputPath = args.Length > 1 ? args[1] : null;
+            // Parse command line arguments
+            var nonFlagArgs = args.Where(a => !a.StartsWith("--")).ToArray();
+            options.Path = nonFlagArgs.Length > 0 ? nonFlagArgs[0] : null;
+            options.OutputPath = nonFlagArgs.Length > 1 ? nonFlagArgs[1] : null;
+            options.Verbose = args.Contains("--verbose") || args.Contains("-v");
         });
 
         configure?.Invoke(builder);
