@@ -468,6 +468,12 @@ public async Task ExtractLoggerUsagesWithSolutionAsync_NullSolution_EnablesSymbo
 
 **Status**: ✅ COMPLETED
 
+**Additional Test Added**: ✅ `ExtractLoggerUsagesWithSolutionAsync_NullSolution_SymbolsResolveCorrectly`
+- Validates the critical fix for symbol resolution when using AdhocWorkspace
+- Tests that LoggingTypes created from workspace compilation enables proper analysis
+- Verifies all logging patterns are detected correctly (5 different logging calls)
+- Ensures EventId details are properly extracted with correct values
+
 ---
 
 ### Task 17: Test - Cancellation Support [P]
