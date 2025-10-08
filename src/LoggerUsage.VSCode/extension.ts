@@ -5,6 +5,7 @@ import { InsightsPanel } from './src/insightsPanel';
 import { ProblemsProvider } from './src/problemsProvider';
 import { LoggerTreeViewProvider } from './src/treeViewProvider';
 import { Configuration } from './src/configuration';
+import { debounceAsync } from './src/utils/debounce';
 
 let analysisService: AnalysisService;
 let commands: Commands;
@@ -208,24 +209,62 @@ function setupWebviewCallbacks(): void {
  * Sets up file watchers for auto-analysis on save
  */
 function setupFileWatchers(context: vscode.ExtensionContext): void {
+    // Create a debounced version of analyzeFile to handle rapid saves
+    const debouncedAnalyzeFile = debounceAsync(
+        async (uri: vscode.Uri) => {
+            try {
+                await commands.analyzeFile(uri);
+            } catch (error) {
+                outputChannel.appendLine(`Auto-analysis failed: ${error}`);
+            }
+        },
+        500 // 500ms debounce delay
+    );
+
     // Watch for C# file saves
     const fileWatcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
+        // Handle .csproj or .sln files - trigger full re-analysis
+        if (document.fileName.endsWith('.csproj') || document.fileName.endsWith('.sln')) {
+            outputChannel.appendLine(`Project/Solution file modified: ${document.fileName}. Triggering full re-analysis...`);
+            
+            vscode.window.showInformationMessage(
+                'Project structure changed. Re-analyzing workspace...',
+                'Analyze Now'
+            ).then(selection => {
+                if (selection === 'Analyze Now') {
+                    vscode.commands.executeCommand('loggerUsage.analyze');
+                }
+            });
+            return;
+        }
+
+        // Handle C# files - trigger incremental analysis
         if (document.languageId === 'csharp') {
-            outputChannel.appendLine(`File saved: ${document.fileName}`);
+            outputChannel.appendLine(`C# file saved: ${document.fileName}`);
 
             const activeSolution = commands.getActiveSolutionPath();
             if (activeSolution) {
-                try {
-                    await commands.analyzeFile(document.uri);
-                } catch (error) {
-                    outputChannel.appendLine(`Auto-analysis failed: ${error}`);
-                }
+                // Use debounced function to prevent multiple rapid analyses
+                await debouncedAnalyzeFile(document.uri);
             }
         }
     });
 
-    context.subscriptions.push(fileWatcher);
-    outputChannel.appendLine('File watchers enabled (auto-analyze on save)');
+    // Watch for file deletions
+    const deleteWatcher = vscode.workspace.onDidDeleteFiles(async (event) => {
+        for (const uri of event.files) {
+            // Check if deleted file was a C# file
+            if (uri.fsPath.endsWith('.cs')) {
+                outputChannel.appendLine(`C# file deleted: ${uri.fsPath}`);
+                
+                // Remove insights for this file
+                await commands.removeFileInsights(uri);
+            }
+        }
+    });
+
+    context.subscriptions.push(fileWatcher, deleteWatcher);
+    outputChannel.appendLine('File watchers enabled (auto-analyze on save with 500ms debounce, file deletion handling, .csproj/.sln change detection)');
 }
 
 /**

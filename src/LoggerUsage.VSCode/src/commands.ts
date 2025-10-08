@@ -366,6 +366,33 @@ export class Commands {
         }
     }
 
+    /**
+     * Removes insights for a deleted file
+     */
+    public async removeFileInsights(fileUri: vscode.Uri): Promise<void> {
+        const filePath = fileUri.fsPath;
+
+        // Filter out insights from the deleted file
+        const insightsBeforeRemoval = this.currentInsights.length;
+        this.currentInsights = this.currentInsights.filter(
+            i => i.location.filePath !== filePath
+        );
+
+        const insightsRemoved = insightsBeforeRemoval - this.currentInsights.length;
+
+        if (insightsRemoved > 0) {
+            this.outputChannel.appendLine(`Removed ${insightsRemoved} insights from deleted file: ${filePath}`);
+
+            // Update providers
+            this.updateProviders();
+
+            // Clear diagnostics for the deleted file
+            if (this.problemsProvider && typeof this.problemsProvider.clearFile === 'function') {
+                this.problemsProvider.clearFile(filePath);
+            }
+        }
+    }
+
     // ==================== Private Helper Methods ====================
 
     /**
