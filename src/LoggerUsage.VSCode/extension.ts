@@ -286,6 +286,32 @@ function setupFileWatchers(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(fileWatcher, deleteWatcher);
     outputChannel.appendLine('File watchers enabled (auto-analyze on save with 500ms debounce, file deletion handling, .csproj/.sln change detection)');
+
+    // Watch for active editor changes to auto-switch solutions
+    const editorWatcher = vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        const autoSwitch = vscode.workspace.getConfiguration('loggerUsage').get<boolean>('autoSwitchSolution', false);
+        
+        if (!autoSwitch || !editor || editor.document.languageId !== 'csharp') {
+            return;
+        }
+
+        const filePath = editor.document.uri.fsPath;
+        const solutionState = getSolutionState();
+        const currentSolution = solutionState.getActiveSolution();
+        const allSolutions = solutionState.getAllSolutions();
+
+        // Find which solution this file belongs to
+        const { findSolutionForFile } = await import('./src/utils/solutionDetector');
+        const targetSolution = await findSolutionForFile(filePath, allSolutions);
+
+        // If file belongs to a different solution, switch to it
+        if (targetSolution && currentSolution && targetSolution.filePath !== currentSolution.filePath) {
+            outputChannel.appendLine(`Auto-switching to solution: ${targetSolution.displayName}`);
+            solutionState.setActiveSolution(targetSolution);
+        }
+    });
+
+    context.subscriptions.push(editorWatcher);
 }
 
 /**
