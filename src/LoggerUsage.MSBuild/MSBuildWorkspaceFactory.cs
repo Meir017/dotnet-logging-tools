@@ -25,7 +25,7 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
     public async Task<Workspace> Create(FileInfo fileInfo)
     {
         var workspace = MSBuildWorkspace.Create();
-        
+
         try
         {
             if (fileInfo.Extension == ".sln" || fileInfo.Extension == ".slnx")
