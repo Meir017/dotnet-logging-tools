@@ -15,6 +15,44 @@ The LoggerUsage library is a sophisticated static code analysis tool that extrac
 4. **Models** - Data structures representing extracted logging information
 5. **DependencyInjection** - Service registration and configuration
 
+## Git Workflow
+
+### Branch Strategy
+
+This project follows a **feature branch workflow** with strict protections on the main branch:
+
+- **NEVER commit directly to `main`** - The main branch is protected and should only receive changes via pull requests
+- **Each feature requires a new branch** - Create a feature branch using the pattern `NNN-feature-name` where NNN is a three-digit number
+- **Use the `.specify` workflow** - Create new features using the `.specify/scripts/powershell/create-new-feature.ps1` script which automatically:
+  - Determines the next feature number
+  - Creates a properly named branch (e.g., `001-my-feature`)
+  - Sets up the feature directory structure in `specs/`
+  - Configures the `SPECIFY_FEATURE` environment variable
+
+### Working with Feature Branches
+
+1. **Creating a feature**: Run the create-new-feature script with a description:
+   ```powershell
+   .specify/scripts/powershell/create-new-feature.ps1 "feature description"
+   ```
+
+2. **Committing changes**: Use the `report_progress` tool to commit and push changes:
+   - This tool automatically runs `git add .`, `git commit`, and `git push`
+   - Provide a clear commit message and updated PR description with checklist
+   - Never use `git` commands directly to commit/push as this bypasses the workflow
+
+3. **Branch naming**: Feature branches follow the pattern `NNN-short-description`:
+   - `001-logging-analyzer`
+   - `002-html-reports`
+   - `003-performance-improvements`
+
+### Why This Matters
+
+- **Protected main**: Ensures the main branch always contains stable, reviewed code
+- **Feature isolation**: Each feature is developed and tested independently
+- **Clear history**: Numbered branches create a chronological record of features
+- **Review process**: All changes go through pull request review before merging
+
 ## Architecture Principles
 
 ### 1. Analyzer Pattern
