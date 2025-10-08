@@ -42,19 +42,43 @@ public class LoggerUsageWorker(
 
         using var workspace = await _workspaceFactory.Create(fileInfo);
 
-        var extractionStart = Stopwatch.GetTimestamp();
-        var loggerUsages = await _extractor.ExtractLoggerUsagesAsync(workspace);
-        _logger.LogInformation("Found {count} logger usages in {duration}ms", loggerUsages.Results.Count, Stopwatch.GetElapsedTime(extractionStart).TotalMilliseconds);
+        // Setup progress reporting if verbose mode is enabled
+        IProgress<Models.LoggerUsageProgress>? progress = null;
+        ProgressBarHandler? progressBar = null;
 
-        if (!string.IsNullOrWhiteSpace(_options.OutputPath))
+        if (_options.Verbose)
         {
-            var outputPathInfo = new FileInfo(_options.OutputPath);
+            progressBar = new ProgressBarHandler();
+            progress = new Progress<Models.LoggerUsageProgress>(progressBar.Report);
+        }
 
-            _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
-            var generator = _reportGeneratorFactory.GetReportGenerator(outputPathInfo.Extension);
-            await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(loggerUsages));
-            _logger.LogInformation("Wrote results to '{outputPath}'", 
-                _options.OutputPath);
+        try
+        {
+            var extractionStart = Stopwatch.GetTimestamp();
+            var loggerUsages = await _extractor.ExtractLoggerUsagesAsync(workspace, progress);
+
+            // Clear progress bar before logging results
+            progressBar?.Clear();
+
+            _logger.LogInformation("Found {count} logger usages in {duration}ms", 
+                loggerUsages.Results.Count, 
+                Stopwatch.GetElapsedTime(extractionStart).TotalMilliseconds);
+
+            if (!string.IsNullOrWhiteSpace(_options.OutputPath))
+            {
+                var outputPathInfo = new FileInfo(_options.OutputPath);
+
+                _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
+                var generator = _reportGeneratorFactory.GetReportGenerator(outputPathInfo.Extension);
+                await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(loggerUsages));
+                _logger.LogInformation("Wrote results to '{outputPath}'", 
+                    _options.OutputPath);
+            }
+        }
+        finally
+        {
+            // Ensure progress bar is cleared even on error
+            progressBar?.Clear();
         }
 
         return 0;
