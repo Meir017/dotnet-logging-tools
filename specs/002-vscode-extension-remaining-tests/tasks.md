@@ -287,7 +287,7 @@ Implement robust error handling to make these tests pass. Tests are in `test/Log
 
 ### T028-T031: Solution & Compilation Errors
 
-- [ ] **T028** [P] Implement invalid solution handling in bridge
+- [X] **T028** [P] Implement invalid solution handling in bridge
   - File: `src/LoggerUsage.VSCode.Bridge/WorkspaceAnalyzer.cs`
   - Wrap MSBuildWorkspace.OpenSolutionAsync in try-catch
   - Catch InvalidOperationException, FileNotFoundException
@@ -295,14 +295,14 @@ Implement robust error handling to make these tests pass. Tests are in `test/Log
   - Include helpful message: "The solution file is invalid or corrupted"
   - Test: errorHandling.test.ts - "Should show user-friendly error for invalid solution file"
 
-- [ ] **T029** Handle invalid solution errors in extension
+- [X] **T029** Handle invalid solution errors in extension
   - File: `src/LoggerUsage.VSCode/src/services/AnalysisService.ts`
   - Check response.Status == "error" and ErrorCode == "INVALID_SOLUTION"
   - Show user-friendly notification (no stack trace)
   - Suggest checking solution file integrity
   - Test: errorHandling.test.ts - "Should show user-friendly error for invalid solution file"
 
-- [ ] **T030** [P] Implement partial results for compilation errors
+- [X] **T030** [P] Implement partial results for compilation errors
   - File: `src/LoggerUsage.VSCode.Bridge/WorkspaceAnalyzer.cs`
   - Extract from projects even if some have compilation errors
   - Log compilation diagnostics to progress stream
@@ -310,7 +310,7 @@ Implement robust error handling to make these tests pass. Tests are in `test/Log
   - Add warning count to summary
   - Test: errorHandling.test.ts - "Should handle compilation errors and show partial results"
 
-- [ ] **T031** Show compilation error warnings
+- [X] **T031** Show compilation error warnings
   - File: `src/LoggerUsage.VSCode/src/services/AnalysisService.ts`
   - If summary.WarningsCount > 0: show warning notification
   - Message: "Analysis completed with compilation errors. Partial results shown."

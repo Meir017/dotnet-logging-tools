@@ -70,6 +70,7 @@ export interface AnalysisSummary {
   inconsistenciesCount: number;
   filesAnalyzed: number;
   analysisTimeMs: number;
+  warningsCount?: number;
 }
 
 export type AnalysisResponse = AnalysisSuccessResponse | AnalysisErrorResponse | AnalysisProgress | ReadyResponse;

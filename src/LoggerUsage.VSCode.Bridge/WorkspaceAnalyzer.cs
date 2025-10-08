@@ -59,6 +59,24 @@ public class WorkspaceAnalyzer
             {
                 workspace = await _workspaceFactory.Create(fileToLoad);
             }
+            catch (InvalidOperationException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "The solution file is invalid or corrupted",
+                    Details = ex.Message,
+                    ErrorCode = "INVALID_SOLUTION"
+                };
+            }
+            catch (FileNotFoundException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Solution or project file not found",
+                    Details = ex.Message,
+                    ErrorCode = "FILE_NOT_FOUND"
+                };
+            }
             catch (Exception ex)
             {
                 return new AnalysisErrorResponse
@@ -93,7 +111,8 @@ public class WorkspaceAnalyzer
                             ByLogLevel = [],
                             InconsistenciesCount = 0,
                             FilesAnalyzed = 0,
-                            AnalysisTimeMs = stopwatch.ElapsedMilliseconds
+                            AnalysisTimeMs = stopwatch.ElapsedMilliseconds,
+                            WarningsCount = 0
                         }
                     }
                 };
@@ -101,10 +120,38 @@ public class WorkspaceAnalyzer
 
             ReportProgress(10, $"Analyzing {totalProjects} projects...", null);
 
-            // Run the analysis
+            // Run the analysis (continue even if some projects have compilation errors)
             var extractionResult = await _loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace);
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Count compilation warnings/errors from all projects
+            var warningsCount = 0;
+            foreach (var project in projects)
+            {
+                var compilation = await project.GetCompilationAsync(cancellationToken);
+                if (compilation != null)
+                {
+                    var diagnostics = compilation.GetDiagnostics()
+                        .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Warning ||
+                                   d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+                        .ToList();
+
+                    if (diagnostics.Any())
+                    {
+                        warningsCount += diagnostics.Count;
+                        // Log compilation diagnostics to progress stream
+                        foreach (var diagnostic in diagnostics.Take(5)) // Limit to first 5 per project
+                        {
+                            ReportProgress(
+                                50,
+                                $"Compilation {diagnostic.Severity}: {diagnostic.GetMessage()}",
+                                diagnostic.Location.SourceTree?.FilePath
+                            );
+                        }
+                    }
+                }
+            }
 
             ReportProgress(90, "Generating insights...", null);
 
@@ -122,7 +169,7 @@ public class WorkspaceAnalyzer
             stopwatch.Stop();
 
             // Generate summary
-            var summary = GenerateSummary(insights, filesAnalyzed, stopwatch.Elapsed);
+            var summary = GenerateSummary(insights, filesAnalyzed, stopwatch.Elapsed, warningsCount);
 
             ReportProgress(100, "Analysis complete", null);
 
@@ -190,6 +237,24 @@ public class WorkspaceAnalyzer
             try
             {
                 workspace = await _workspaceFactory.Create(fileToLoad);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "The solution file is invalid or corrupted",
+                    Details = ex.Message,
+                    ErrorCode = "INVALID_SOLUTION"
+                };
+            }
+            catch (FileNotFoundException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Solution or project file not found",
+                    Details = ex.Message,
+                    ErrorCode = "FILE_NOT_FOUND"
+                };
             }
             catch (Exception ex)
             {
@@ -306,7 +371,8 @@ public class WorkspaceAnalyzer
     private AnalysisSummaryDto GenerateSummary(
         List<LoggingInsightDto> insights,
         int filesAnalyzed,
-        TimeSpan duration)
+        TimeSpan duration,
+        int warningsCount = 0)
     {
         var byMethodType = insights
             .GroupBy(i => i.MethodType)
@@ -327,7 +393,8 @@ public class WorkspaceAnalyzer
             ByLogLevel = byLogLevel,
             InconsistenciesCount = inconsistenciesCount,
             FilesAnalyzed = filesAnalyzed,
-            AnalysisTimeMs = (long)duration.TotalMilliseconds
+            AnalysisTimeMs = (long)duration.TotalMilliseconds,
+            WarningsCount = warningsCount
         };
     }
 

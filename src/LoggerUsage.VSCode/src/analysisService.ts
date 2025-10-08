@@ -91,6 +91,18 @@ export class AnalysisService implements vscode.Disposable {
             // Emit analysis complete event
             analysisEvents.fireAnalysisComplete(result, startTime);
 
+            // Check for compilation warnings
+            if (result.result.summary.warningsCount && result.result.summary.warningsCount > 0) {
+                vscode.window.showWarningMessage(
+                    `Analysis completed with ${result.result.summary.warningsCount} compilation warning(s). Results may be incomplete.`,
+                    'Show Output'
+                ).then(choice => {
+                    if (choice === 'Show Output') {
+                        this.outputChannel.show();
+                    }
+                });
+            }
+
             return result;
         } catch (error) {
             // Emit analysis error event
@@ -364,15 +376,8 @@ export class AnalysisService implements vscode.Disposable {
                 const error = new Error(`Analysis failed: ${errorResponse.message}\n${errorResponse.details}`);
                 pendingEntry.reject(error);
 
-                // Show error to user
-                vscode.window.showErrorMessage(
-                    `Logger Usage Analysis Failed: ${errorResponse.message}`,
-                    'Show Details'
-                ).then(choice => {
-                    if (choice === 'Show Details') {
-                        this.outputChannel.show();
-                    }
-                });
+                // Show user-friendly error message based on error code
+                this.showErrorNotification(errorResponse);
                 break;
 
             case 'ready':
@@ -558,4 +563,64 @@ export class AnalysisService implements vscode.Disposable {
 
         return null;
     }
+
+    /**
+     * Shows user-friendly error notification based on error code
+     */
+    private showErrorNotification(errorResponse: AnalysisErrorResponse): void {
+        const errorCode = errorResponse.errorCode;
+        let message: string;
+        let actions: string[] = [];
+
+        switch (errorCode) {
+            case 'INVALID_SOLUTION':
+                message = `Solution file is invalid or corrupted: ${errorResponse.message}`;
+                actions = ['Check Solution File', 'Show Details'];
+                break;
+
+            case 'FILE_NOT_FOUND':
+                message = `File not found: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+
+            case 'NO_SOLUTION':
+                message = 'No solution or project file found in workspace';
+                actions = ['Show Details'];
+                break;
+
+            case 'COMPILATION_ERROR':
+                message = `Compilation failed: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+
+            case 'FILE_SYSTEM_ERROR':
+                message = `File system error: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+
+            case 'CANCELLED':
+                // Don't show notification for user-cancelled operations
+                return;
+
+            default:
+                message = `Analysis failed: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+        }
+
+        vscode.window.showErrorMessage(message, ...actions).then(choice => {
+            if (choice === 'Show Details') {
+                this.outputChannel.appendLine('\n=== Analysis Error Details ===');
+                this.outputChannel.appendLine(`Error Code: ${errorResponse.errorCode || 'UNKNOWN'}`);
+                this.outputChannel.appendLine(`Message: ${errorResponse.message}`);
+                this.outputChannel.appendLine(`Details: ${errorResponse.details}`);
+                this.outputChannel.appendLine('==============================\n');
+                this.outputChannel.show();
+            } else if (choice === 'Check Solution File') {
+                // Open workspace folder to allow user to check the solution file
+                vscode.commands.executeCommand('workbench.files.action.showActiveFileInExplorer');
+            }
+        });
+    }
 }
+

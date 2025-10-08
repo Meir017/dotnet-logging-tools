@@ -159,4 +159,10 @@ public record AnalysisSummaryDto
 
     [JsonPropertyName("analysisTimeMs")]
     public required long AnalysisTimeMs { get; init; }
+
+    /// <summary>
+    /// Number of compilation warnings/errors encountered during analysis
+    /// </summary>
+    [JsonPropertyName("warningsCount")]
+    public int WarningsCount { get; init; }
 }
