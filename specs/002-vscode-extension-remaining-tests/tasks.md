@@ -319,14 +319,14 @@ Implement robust error handling to make these tests pass. Tests are in `test/Log
 
 ### T032-T034: Environment & Dependencies
 
-- [ ] **T032** [P] Implement .NET SDK detection
+- [X] **T032** [P] Implement .NET SDK detection
   - File: `src/LoggerUsage.VSCode/src/utils/dotnetDetector.ts`
   - Function: `checkDotNetSdk()` - runs `dotnet --version`
   - Returns: { installed: boolean, version?: string, error?: string }
   - Timeout: 5 seconds
   - Test: errorHandling.test.ts - "Should handle missing .NET SDK gracefully"
 
-- [ ] **T033** Check .NET SDK before analysis
+- [X] **T033** Check .NET SDK before analysis
   - File: `src/LoggerUsage.VSCode/src/services/AnalysisService.ts`
   - Before starting analysis: call `checkDotNetSdk()`
   - If not installed: show error notification
@@ -334,7 +334,7 @@ Implement robust error handling to make these tests pass. Tests are in `test/Log
   - Button: "Download" → opens .NET download page
   - Test: errorHandling.test.ts - "Should handle missing .NET SDK gracefully"
 
-- [ ] **T034** [P] Implement missing dependencies handling
+- [X] **T034** [P] Implement missing dependencies handling
   - File: `src/LoggerUsage.VSCode.Bridge/WorkspaceAnalyzer.cs`
   - Detect missing NuGet packages from compilation diagnostics
   - If CS0246 errors (missing type): check for NuGet references

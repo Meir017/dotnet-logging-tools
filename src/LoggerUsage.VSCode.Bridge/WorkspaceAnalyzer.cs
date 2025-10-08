@@ -127,6 +127,7 @@ public class WorkspaceAnalyzer
 
             // Count compilation warnings/errors from all projects
             var warningsCount = 0;
+            var hasMissingDependencies = false;
             foreach (var project in projects)
             {
                 var compilation = await project.GetCompilationAsync(cancellationToken);
@@ -140,6 +141,23 @@ public class WorkspaceAnalyzer
                     if (diagnostics.Any())
                     {
                         warningsCount += diagnostics.Count;
+
+                        // Check for CS0246 errors (missing type or namespace - indicates missing NuGet packages)
+                        var missingTypeErrors = diagnostics.Where(d => d.Id == "CS0246").ToList();
+                        if (missingTypeErrors.Any())
+                        {
+                            hasMissingDependencies = true;
+                            // Log a few missing type errors
+                            foreach (var diagnostic in missingTypeErrors.Take(3))
+                            {
+                                ReportProgress(
+                                    50,
+                                    $"Missing dependency: {diagnostic.GetMessage()}",
+                                    diagnostic.Location.SourceTree?.FilePath
+                                );
+                            }
+                        }
+
                         // Log compilation diagnostics to progress stream
                         foreach (var diagnostic in diagnostics.Take(5)) // Limit to first 5 per project
                         {
@@ -151,6 +169,17 @@ public class WorkspaceAnalyzer
                         }
                     }
                 }
+            }
+
+            // If missing dependencies detected, return specific error
+            if (hasMissingDependencies)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Missing NuGet packages detected",
+                    Details = "Some types or namespaces could not be found. Try running 'dotnet restore' to restore missing NuGet packages.",
+                    ErrorCode = "MISSING_DEPENDENCIES"
+                };
             }
 
             ReportProgress(90, "Generating insights...", null);

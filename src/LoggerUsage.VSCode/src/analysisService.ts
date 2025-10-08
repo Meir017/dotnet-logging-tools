@@ -13,6 +13,7 @@ import {
     ReadyResponse
 } from '../models/ipcMessages';
 import { analysisEvents } from './analysisEvents';
+import { checkDotNetSdk, getDotNetDownloadUrl } from './utils/dotnetDetector';
 
 /**
  * Progress callback for analysis updates
@@ -71,6 +72,33 @@ export class AnalysisService implements vscode.Disposable {
         onProgress?: ProgressCallback,
         cancellationToken?: vscode.CancellationToken
     ): Promise<AnalysisSuccessResponse> {
+        // Check if .NET SDK is installed before proceeding
+        const sdkCheck = await checkDotNetSdk();
+        if (!sdkCheck.installed) {
+            const errorMessage = '.NET SDK not found. Please install .NET 10 SDK or later.';
+            this.outputChannel.appendLine(`[ERROR] ${errorMessage}`);
+            if (sdkCheck.error) {
+                this.outputChannel.appendLine(`Details: ${sdkCheck.error}`);
+            }
+
+            // Show error notification with download option
+            const choice = await vscode.window.showErrorMessage(
+                errorMessage,
+                'Download .NET',
+                'Show Details'
+            );
+
+            if (choice === 'Download .NET') {
+                vscode.env.openExternal(vscode.Uri.parse(getDotNetDownloadUrl()));
+            } else if (choice === 'Show Details') {
+                this.outputChannel.show();
+            }
+
+            throw new Error(errorMessage);
+        }
+
+        this.outputChannel.appendLine(`[INFO] .NET SDK detected: ${sdkCheck.version}`);
+
         await this.ensureBridgeReady();
 
         const startTime = Date.now();
@@ -598,6 +626,11 @@ export class AnalysisService implements vscode.Disposable {
                 actions = ['Show Details'];
                 break;
 
+            case 'MISSING_DEPENDENCIES':
+                message = `Missing NuGet packages: ${errorResponse.message}`;
+                actions = ['Run dotnet restore', 'Show Details'];
+                break;
+
             case 'CANCELLED':
                 // Don't show notification for user-cancelled operations
                 return;
@@ -619,6 +652,11 @@ export class AnalysisService implements vscode.Disposable {
             } else if (choice === 'Check Solution File') {
                 // Open workspace folder to allow user to check the solution file
                 vscode.commands.executeCommand('workbench.files.action.showActiveFileInExplorer');
+            } else if (choice === 'Run dotnet restore') {
+                // Open integrated terminal and run dotnet restore
+                const terminal = vscode.window.createTerminal('dotnet restore');
+                terminal.show();
+                terminal.sendText('dotnet restore');
             }
         });
     }
