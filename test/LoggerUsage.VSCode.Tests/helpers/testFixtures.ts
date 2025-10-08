@@ -134,7 +134,7 @@ ${logStatements.join('\n')}
  */
 export async function createCorruptedSolution(workspacePath: string, fileName: string = 'Corrupted.sln'): Promise<string> {
   const solutionPath = path.join(workspacePath, fileName);
-  
+
   // Create invalid solution content (missing required sections)
   const corruptedContent = `
 This is not a valid solution file.
@@ -231,6 +231,6 @@ ${loggerMessages.join('\n')}
   // Ensure directory exists
   const dir = path.dirname(filePath);
   await fs.promises.mkdir(dir, { recursive: true });
-  
+
   await fs.promises.writeFile(filePath, content, 'utf-8');
 }

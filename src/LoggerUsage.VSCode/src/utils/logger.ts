@@ -45,7 +45,7 @@ class Logger {
      */
     public logError(message: string, error?: Error | unknown, ...args: any[]): void {
         let formatted = this.formatMessage('ERROR', message, args);
-        
+
         if (error) {
             if (error instanceof Error) {
                 formatted += `\n  Error: ${error.message}`;
@@ -56,7 +56,7 @@ class Logger {
                 formatted += `\n  Error: ${String(error)}`;
             }
         }
-        
+
         this.getChannel().appendLine(formatted);
     }
 
@@ -90,7 +90,7 @@ class Logger {
     private formatMessage(level: string, message: string, args: any[]): string {
         const timestamp = new Date().toISOString();
         let formatted = `[${timestamp}] [${level}] ${message}`;
-        
+
         if (args.length > 0) {
             const argsStr = args.map(arg => {
                 if (typeof arg === 'object') {
@@ -102,10 +102,10 @@ class Logger {
                 }
                 return String(arg);
             }).join(' ');
-            
+
             formatted += ` ${argsStr}`;
         }
-        
+
         return formatted;
     }
 

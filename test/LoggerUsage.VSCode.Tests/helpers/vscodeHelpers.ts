@@ -12,7 +12,7 @@ import * as vscode from 'vscode';
  */
 export async function waitForCommand(commandId: string, timeout: number = 10000): Promise<void> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     const commands = await vscode.commands.getCommands(true);
     if (commands.includes(commandId)) {
@@ -20,7 +20,7 @@ export async function waitForCommand(commandId: string, timeout: number = 10000)
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  
+
   throw new Error(`Command '${commandId}' was not registered within ${timeout}ms`);
 }
 
@@ -38,7 +38,7 @@ export async function waitForAnalysis(timeout: number = 30000): Promise<any> {
     try {
       // Try to import the analysis events module
       const { analysisEvents } = await import('../../../src/LoggerUsage.VSCode/src/analysisEvents');
-      
+
       // Listen for analysis complete event
       const completeDisposable = analysisEvents.onAnalysisComplete((event) => {
         clearTimeout(timeoutId);
@@ -46,7 +46,7 @@ export async function waitForAnalysis(timeout: number = 30000): Promise<any> {
         errorDisposable.dispose();
         resolve(event.result);
       });
-      
+
       // Listen for analysis error event
       const errorDisposable = analysisEvents.onAnalysisError((event) => {
         clearTimeout(timeoutId);
@@ -97,7 +97,7 @@ export function getWebviewPanel(): vscode.WebviewPanel | undefined {
 export function getDiagnostics(uri?: vscode.Uri): vscode.Diagnostic[] {
   try {
     const allDiagnostics = vscode.languages.getDiagnostics();
-    
+
     if (uri) {
       // Find diagnostics for specific file
       for (const [diagUri, diags] of allDiagnostics) {
@@ -107,7 +107,7 @@ export function getDiagnostics(uri?: vscode.Uri): vscode.Diagnostic[] {
       }
       return [];
     }
-    
+
     // Return all diagnostics from Logger Usage collection
     const loggerUsageDiags: vscode.Diagnostic[] = [];
     for (const [, diags] of allDiagnostics) {
@@ -131,7 +131,7 @@ export async function sendWebviewMessage(message: any): Promise<boolean> {
     console.warn('No active webview panel to send message to');
     return false;
   }
-  
+
   try {
     await panel.webview.postMessage(message);
     return true;
@@ -149,7 +149,7 @@ export async function sendWebviewMessage(message: any): Promise<boolean> {
  */
 export async function waitForEditorOpen(filePath: string, timeout: number = 5000): Promise<vscode.TextEditor> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     const editor = vscode.window.activeTextEditor;
     if (editor && editor.document.uri.fsPath === filePath) {
@@ -157,7 +157,7 @@ export async function waitForEditorOpen(filePath: string, timeout: number = 5000
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  
+
   throw new Error(`Editor for file '${filePath}' did not open within ${timeout}ms`);
 }
 
@@ -174,7 +174,7 @@ export async function waitForCursorPosition(
   timeout: number = 2000
 ): Promise<void> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     const editor = vscode.window.activeTextEditor;
     if (editor) {
@@ -185,7 +185,7 @@ export async function waitForCursorPosition(
     }
     await new Promise(resolve => setTimeout(resolve, 50));
   }
-  
+
   throw new Error(`Cursor did not reach position (${line}, ${character}) within ${timeout}ms`);
 }
 

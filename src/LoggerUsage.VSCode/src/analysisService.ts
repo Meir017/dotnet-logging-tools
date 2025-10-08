@@ -34,7 +34,7 @@ export class AnalysisService implements vscode.Disposable {
     }> = new Map();
     private currentRequestId: number = 0;
     private lineBuffer: string = '';
-    
+
     // Error handling state
     private crashCount: number = 0;
     private maxRetries: number = 3;
@@ -74,7 +74,7 @@ export class AnalysisService implements vscode.Disposable {
         await this.ensureBridgeReady();
 
         const startTime = Date.now();
-        
+
         // Emit analysis started event
         analysisEvents.fireAnalysisStarted(workspacePath, solutionPath);
 
@@ -87,10 +87,10 @@ export class AnalysisService implements vscode.Disposable {
 
         try {
             const result = await this.sendRequest(request, onProgress, cancellationToken);
-            
+
             // Emit analysis complete event
             analysisEvents.fireAnalysisComplete(result, startTime);
-            
+
             return result;
         } catch (error) {
             // Emit analysis error event
@@ -112,7 +112,7 @@ export class AnalysisService implements vscode.Disposable {
         await this.ensureBridgeReady();
 
         const startTime = Date.now();
-        
+
         // Emit analysis started event (single file)
         analysisEvents.fireAnalysisStarted(filePath, solutionPath);
 
@@ -124,10 +124,10 @@ export class AnalysisService implements vscode.Disposable {
 
         try {
             const result = await this.sendRequest(request, onProgress, cancellationToken);
-            
+
             // Emit analysis complete event
             analysisEvents.fireAnalysisComplete(result, startTime);
-            
+
             return result;
         } catch (error) {
             // Emit analysis error event
@@ -142,7 +142,7 @@ export class AnalysisService implements vscode.Disposable {
      */
     public dispose(): void {
         this.isShuttingDown = true;
-        
+
         if (this.bridgeProcess) {
             try {
                 // Send shutdown command
@@ -340,10 +340,10 @@ export class AnalysisService implements vscode.Disposable {
         switch (response.status) {
             case 'progress':
                 const progressResponse = response as AnalysisProgress;
-                
+
                 // Emit analysis progress event
                 analysisEvents.fireAnalysisProgress(progressResponse);
-                
+
                 if (pendingEntry.onProgress) {
                     pendingEntry.onProgress(progressResponse);
                 }
@@ -386,12 +386,12 @@ export class AnalysisService implements vscode.Disposable {
      */
     private handleBridgeExit(code: number | null, signal: string | null): void {
         const now = Date.now();
-        
+
         // Reset crash count if enough time has passed since last crash
         if (now - this.lastCrashTime > this.crashResetInterval) {
             this.crashCount = 0;
         }
-        
+
         this.bridgeProcess = null;
         this.isReady = false;
         this.readyPromise = null;
@@ -411,7 +411,7 @@ export class AnalysisService implements vscode.Disposable {
         // Record the crash
         this.crashCount++;
         this.lastCrashTime = now;
-        
+
         this.outputChannel.appendLine(`Bridge process crashed (exit code: ${code}, signal: ${signal})`);
         this.outputChannel.appendLine(`Crash count: ${this.crashCount}/${this.maxRetries}`);
 
@@ -450,18 +450,18 @@ export class AnalysisService implements vscode.Disposable {
             });
         }
     }
-    
+
     /**
      * Retries starting the bridge after a crash
      */
     private async retryAfterCrash(): Promise<void> {
         this.outputChannel.appendLine('Retrying bridge startup...');
-        
+
         try {
             await this.startBridge();
             this.outputChannel.appendLine('Bridge restarted successfully');
             vscode.window.showInformationMessage('Logger Usage bridge restarted successfully');
-            
+
             // Reset crash count after successful restart
             this.crashCount = 0;
         } catch (error) {
@@ -476,7 +476,7 @@ export class AnalysisService implements vscode.Disposable {
             });
         }
     }
-    
+
     /**
      * Resets the crash count (useful for manual recovery)
      */
