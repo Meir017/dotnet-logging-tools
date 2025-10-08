@@ -118,19 +118,92 @@ if (SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, loggingTy
 - Use nullable reference types appropriately
 - Include comprehensive XML documentation for public APIs
 
-### 6. Testing Patterns
+### 6. Testing Philosophy: Integration-Only Approach
 
-Tests use `TestUtils.CreateCompilationAsync()` and `TestUtils.CreateLoggerUsageExtractor()` for setup. Key patterns:
+**The LoggerUsage library follows a strict integration testing approach** where all tests go through the public entrypoints of `LoggerUsageExtractor`. This is the **desired and correct approach**.
 
-- **Basic Tests**: Create compilation, extract usages, assert results
-- **Theory Tests**: Use `[MemberData]` for parameter variations and edge cases
-- **Test Organization**: Separate files by analyzer type (`LoggerMethodsTests`, `LoggerMessageAttributeTests`, etc.)
+#### Why Integration Tests Only?
 
-**Best Practices:**
-- Use descriptive test names with pattern: `TestMethod_WithCondition_ExpectedResult`
-- Test edge cases: missing symbols, malformed templates, complex expressions
-- Validate complete results: method type, parameters, location, EventId/LogLevel
-- Mock generated code for LoggerMessage patterns when needed
+**Implementation Details Are Hidden**
+
+All internal components are **implementation details** that should not be tested directly:
+- Individual analyzers (`LogMethodAnalyzer`, `LoggerMessageAttributeAnalyzer`, etc.)
+- Symbol resolution (`LoggingTypes`, `LoggerExtensionModeler`)
+- Utility functions (`EventIdExtractor`, `LocationHelper`)
+- Parameter extraction services
+- Internal context objects
+
+Testing these directly would:
+1. ❌ Couple tests to implementation details
+2. ❌ Make refactoring harder
+3. ❌ Create brittle tests that break when internals change
+4. ❌ Duplicate test coverage unnecessarily
+
+**Public API Surface is the Contract**
+
+The **only** contract users care about is:
+- `LoggerUsageExtractor.ExtractLoggerUsagesAsync(Workspace, ...)`
+- `LoggerUsageExtractor.ExtractLoggerUsagesWithSolutionAsync(Compilation, ...)`
+
+These entrypoints define what the library does. Everything else is how it does it.
+
+#### Correct Testing Pattern
+
+**All tests go through `LoggerUsageExtractor` entrypoints:**
+
+```csharp
+var compilation = await TestUtils.CreateCompilationAsync(code);
+var extractor = TestUtils.CreateLoggerUsageExtractor();
+var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+```
+
+**Why this approach:**
+- ✅ Tests the public API contract
+- ✅ Implementation details can change freely
+- ✅ Tests are resilient to refactoring
+- ✅ Validates the full pipeline works correctly
+- ✅ Focuses on user-facing behavior
+
+**Test organization:**
+- Separate files by feature/pattern being tested (`LoggerMethodsTests`, `LoggerMessageAttributeTests`, etc.)
+- Use descriptive test names: `TestMethod_WithCondition_ExpectedResult`
+- Use `[Theory]` and `[MemberData]` for variations and edge cases
+- Test edge cases through the public API
+
+**DO:**
+- ✅ Test all features through `LoggerUsageExtractor` entrypoints
+- ✅ Create compilations with test code using `TestUtils.CreateCompilationAsync()`
+- ✅ Assert on the complete `LoggerUsageExtractionResult` returned
+- ✅ Test edge cases: missing symbols, malformed templates, complex expressions
+- ✅ Validate complete results: method type, parameters, location, EventId/LogLevel
+
+**DO NOT:**
+- ❌ Test individual analyzers directly
+- ❌ Test internal utilities in isolation
+- ❌ Test symbol resolution logic separately
+- ❌ Create test doubles for internal components
+- ❌ Couple tests to implementation details
+
+**Exception:** Pure utility functions with stable contracts (like `LogValuesFormatter` and `LoggerUsageSummarizer`) may warrant separate test files, but this is rare. These have clear, stable contracts independent of the extraction pipeline and provide complex logic worth testing in isolation.
+
+#### Benefits of This Approach
+
+**Maximum Refactoring Freedom:**
+- Change analyzer implementations → tests still pass
+- Refactor symbol resolution → tests still pass
+- Reorganize utilities → tests still pass
+- **As long as behavior through `LoggerUsageExtractor` stays the same, tests pass**
+
+**User-Facing Confidence:**
+- Tests verify what users experience
+- Failures point to actual user-facing issues
+- No false positives from internal refactoring
+
+**Fast and Maintainable:**
+- Integration tests through `LoggerUsageExtractor` are already fast (Roslyn compilation is fast)
+- Well isolated (each test creates its own compilation)
+- Easy to debug (failures point to user-facing issues)
+- Comprehensive (cover the full pipeline)
 
 
 ## Extension Points
