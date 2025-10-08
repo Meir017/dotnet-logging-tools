@@ -12,6 +12,7 @@ import {
     AnalysisProgress,
     ReadyResponse
 } from '../models/ipcMessages';
+import { analysisEvents } from './analysisEvents';
 
 /**
  * Progress callback for analysis updates
@@ -33,6 +34,13 @@ export class AnalysisService implements vscode.Disposable {
     }> = new Map();
     private currentRequestId: number = 0;
     private lineBuffer: string = '';
+    
+    // Error handling state
+    private crashCount: number = 0;
+    private maxRetries: number = 3;
+    private lastCrashTime: number = 0;
+    private crashResetInterval: number = 60000; // Reset crash count after 1 minute
+    private isShuttingDown: boolean = false;
 
     constructor(
         private context: vscode.ExtensionContext,
@@ -65,6 +73,11 @@ export class AnalysisService implements vscode.Disposable {
     ): Promise<AnalysisSuccessResponse> {
         await this.ensureBridgeReady();
 
+        const startTime = Date.now();
+        
+        // Emit analysis started event
+        analysisEvents.fireAnalysisStarted(workspacePath, solutionPath);
+
         const request: AnalysisRequest = {
             command: 'analyze',
             workspacePath,
@@ -72,7 +85,19 @@ export class AnalysisService implements vscode.Disposable {
             excludePatterns
         };
 
-        return this.sendRequest(request, onProgress, cancellationToken);
+        try {
+            const result = await this.sendRequest(request, onProgress, cancellationToken);
+            
+            // Emit analysis complete event
+            analysisEvents.fireAnalysisComplete(result, startTime);
+            
+            return result;
+        } catch (error) {
+            // Emit analysis error event
+            const err = error instanceof Error ? error : new Error(String(error));
+            analysisEvents.fireAnalysisError(err);
+            throw error;
+        }
     }
 
     /**
@@ -86,19 +111,38 @@ export class AnalysisService implements vscode.Disposable {
     ): Promise<AnalysisSuccessResponse> {
         await this.ensureBridgeReady();
 
+        const startTime = Date.now();
+        
+        // Emit analysis started event (single file)
+        analysisEvents.fireAnalysisStarted(filePath, solutionPath);
+
         const request: IncrementalAnalysisRequest = {
             command: 'analyzeFile',
             filePath,
             solutionPath
         };
 
-        return this.sendRequest(request, onProgress, cancellationToken);
+        try {
+            const result = await this.sendRequest(request, onProgress, cancellationToken);
+            
+            // Emit analysis complete event
+            analysisEvents.fireAnalysisComplete(result, startTime);
+            
+            return result;
+        } catch (error) {
+            // Emit analysis error event
+            const err = error instanceof Error ? error : new Error(String(error));
+            analysisEvents.fireAnalysisError(err);
+            throw error;
+        }
     }
 
     /**
      * Disposes the service and closes the bridge process
      */
     public dispose(): void {
+        this.isShuttingDown = true;
+        
         if (this.bridgeProcess) {
             try {
                 // Send shutdown command
@@ -295,8 +339,13 @@ export class AnalysisService implements vscode.Disposable {
 
         switch (response.status) {
             case 'progress':
+                const progressResponse = response as AnalysisProgress;
+                
+                // Emit analysis progress event
+                analysisEvents.fireAnalysisProgress(progressResponse);
+                
                 if (pendingEntry.onProgress) {
-                    pendingEntry.onProgress(response as AnalysisProgress);
+                    pendingEntry.onProgress(progressResponse);
                 }
                 break;
 
@@ -336,6 +385,13 @@ export class AnalysisService implements vscode.Disposable {
      * Handles bridge process exit
      */
     private handleBridgeExit(code: number | null, signal: string | null): void {
+        const now = Date.now();
+        
+        // Reset crash count if enough time has passed since last crash
+        if (now - this.lastCrashTime > this.crashResetInterval) {
+            this.crashCount = 0;
+        }
+        
         this.bridgeProcess = null;
         this.isReady = false;
         this.readyPromise = null;
@@ -346,9 +402,72 @@ export class AnalysisService implements vscode.Disposable {
             this.pendingResponses.delete(requestId);
         }
 
-        if (code !== 0 && code !== null) {
+        // If this was an intentional shutdown, don't show errors
+        if (this.isShuttingDown || code === 0) {
+            this.outputChannel.appendLine(`Bridge process exited normally (code: ${code})`);
+            return;
+        }
+
+        // Record the crash
+        this.crashCount++;
+        this.lastCrashTime = now;
+        
+        this.outputChannel.appendLine(`Bridge process crashed (exit code: ${code}, signal: ${signal})`);
+        this.outputChannel.appendLine(`Crash count: ${this.crashCount}/${this.maxRetries}`);
+
+        // Emit error event
+        analysisEvents.fireAnalysisError(
+            new Error(`Bridge process crashed (exit code: ${code})`),
+            `The analysis bridge crashed unexpectedly. Crash ${this.crashCount}/${this.maxRetries}`
+        );
+
+        // Check if we should offer retry
+        if (this.crashCount < this.maxRetries) {
+            // Offer retry
             vscode.window.showErrorMessage(
-                `Logger Usage bridge process crashed (exit code: ${code})`,
+                `Logger Usage bridge process crashed (attempt ${this.crashCount}/${this.maxRetries})`,
+                'Retry',
+                'Show Logs'
+            ).then(choice => {
+                if (choice === 'Retry') {
+                    this.retryAfterCrash();
+                } else if (choice === 'Show Logs') {
+                    this.outputChannel.show();
+                }
+            });
+        } else {
+            // Max retries exceeded
+            vscode.window.showErrorMessage(
+                `Logger Usage bridge process crashed ${this.crashCount} times. Please check the logs for details.`,
+                'Show Logs',
+                'Reset'
+            ).then(choice => {
+                if (choice === 'Show Logs') {
+                    this.outputChannel.show();
+                } else if (choice === 'Reset') {
+                    this.resetCrashCount();
+                }
+            });
+        }
+    }
+    
+    /**
+     * Retries starting the bridge after a crash
+     */
+    private async retryAfterCrash(): Promise<void> {
+        this.outputChannel.appendLine('Retrying bridge startup...');
+        
+        try {
+            await this.startBridge();
+            this.outputChannel.appendLine('Bridge restarted successfully');
+            vscode.window.showInformationMessage('Logger Usage bridge restarted successfully');
+            
+            // Reset crash count after successful restart
+            this.crashCount = 0;
+        } catch (error) {
+            this.outputChannel.appendLine(`Retry failed: ${error}`);
+            vscode.window.showErrorMessage(
+                `Failed to restart bridge: ${error instanceof Error ? error.message : String(error)}`,
                 'Show Logs'
             ).then(choice => {
                 if (choice === 'Show Logs') {
@@ -356,6 +475,16 @@ export class AnalysisService implements vscode.Disposable {
                 }
             });
         }
+    }
+    
+    /**
+     * Resets the crash count (useful for manual recovery)
+     */
+    private resetCrashCount(): void {
+        this.crashCount = 0;
+        this.lastCrashTime = 0;
+        this.outputChannel.appendLine('Crash count reset');
+        vscode.window.showInformationMessage('Crash count reset. You can try running analysis again.');
     }
 
     /**
