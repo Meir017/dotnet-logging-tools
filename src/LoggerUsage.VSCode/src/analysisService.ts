@@ -12,6 +12,8 @@ import {
     AnalysisProgress,
     ReadyResponse
 } from '../models/ipcMessages';
+import { analysisEvents } from './analysisEvents';
+import { checkDotNetSdk, getDotNetDownloadUrl } from './utils/dotnetDetector';
 
 /**
  * Progress callback for analysis updates
@@ -33,6 +35,30 @@ export class AnalysisService implements vscode.Disposable {
     }> = new Map();
     private currentRequestId: number = 0;
     private lineBuffer: string = '';
+
+    // Error handling state
+    private crashCount: number = 0;
+    private maxRetries: number = 3;
+    private lastCrashTime: number = 0;
+    private crashResetInterval: number = 60000; // Reset crash count after 1 minute
+    private isShuttingDown: boolean = false;
+
+    // Concurrency control
+    private isAnalyzing: boolean = false;
+    private analysisQueue: Array<
+        | {
+            type: 'workspace';
+            args: [string, string | null, string[] | undefined, ProgressCallback | undefined, vscode.CancellationToken | undefined];
+            resolve: (value: AnalysisSuccessResponse) => void;
+            reject: (reason: any) => void;
+        }
+        | {
+            type: 'file';
+            args: [string, string, ProgressCallback | undefined, vscode.CancellationToken | undefined];
+            resolve: (value: AnalysisSuccessResponse) => void;
+            reject: (reason: any) => void;
+        }
+    > = [];
 
     constructor(
         private context: vscode.ExtensionContext,
@@ -63,7 +89,79 @@ export class AnalysisService implements vscode.Disposable {
         onProgress?: ProgressCallback,
         cancellationToken?: vscode.CancellationToken
     ): Promise<AnalysisSuccessResponse> {
+        // Check if already analyzing
+        if (this.isAnalyzing) {
+            // Queue the request
+            return new Promise((resolve, reject) => {
+                this.analysisQueue.push({
+                    type: 'workspace',
+                    args: [workspacePath, solutionPath, excludePatterns, onProgress, cancellationToken],
+                    resolve,
+                    reject
+                });
+
+                // Show notification
+                vscode.window.showInformationMessage('Analysis in progress. Request queued.');
+            });
+        }
+
+        // Mark as analyzing
+        this.isAnalyzing = true;
+
+        try {
+            return await this.performWorkspaceAnalysis(workspacePath, solutionPath, excludePatterns, onProgress, cancellationToken);
+        } finally {
+            // Mark as not analyzing
+            this.isAnalyzing = false;
+
+            // Process next queued request if any
+            await this.processNextQueuedRequest();
+        }
+    }
+
+    /**
+     * Performs the actual workspace analysis (internal method)
+     */
+    private async performWorkspaceAnalysis(
+        workspacePath: string,
+        solutionPath: string | null,
+        excludePatterns?: string[],
+        onProgress?: ProgressCallback,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<AnalysisSuccessResponse> {
+        // Check if .NET SDK is installed before proceeding
+        const sdkCheck = await checkDotNetSdk();
+        if (!sdkCheck.installed) {
+            const errorMessage = '.NET SDK not found. Please install .NET 10 SDK or later.';
+            this.outputChannel.appendLine(`[ERROR] ${errorMessage}`);
+            if (sdkCheck.error) {
+                this.outputChannel.appendLine(`Details: ${sdkCheck.error}`);
+            }
+
+            // Show error notification with download option
+            const choice = await vscode.window.showErrorMessage(
+                errorMessage,
+                'Download .NET',
+                'Show Details'
+            );
+
+            if (choice === 'Download .NET') {
+                vscode.env.openExternal(vscode.Uri.parse(getDotNetDownloadUrl()));
+            } else if (choice === 'Show Details') {
+                this.outputChannel.show();
+            }
+
+            throw new Error(errorMessage);
+        }
+
+        this.outputChannel.appendLine(`[INFO] .NET SDK detected: ${sdkCheck.version}`);
+
         await this.ensureBridgeReady();
+
+        const startTime = Date.now();
+
+        // Emit analysis started event
+        analysisEvents.fireAnalysisStarted(workspacePath, solutionPath);
 
         const request: AnalysisRequest = {
             command: 'analyze',
@@ -72,7 +170,31 @@ export class AnalysisService implements vscode.Disposable {
             excludePatterns
         };
 
-        return this.sendRequest(request, onProgress, cancellationToken);
+        try {
+            const result = await this.sendRequestWithTimeout(request, onProgress, cancellationToken);
+
+            // Emit analysis complete event
+            analysisEvents.fireAnalysisComplete(result, startTime);
+
+            // Check for compilation warnings
+            if (result.result.summary.warningsCount && result.result.summary.warningsCount > 0) {
+                vscode.window.showWarningMessage(
+                    `Analysis completed with ${result.result.summary.warningsCount} compilation warning(s). Results may be incomplete.`,
+                    'Show Output'
+                ).then(choice => {
+                    if (choice === 'Show Output') {
+                        this.outputChannel.show();
+                    }
+                });
+            }
+
+            return result;
+        } catch (error) {
+            // Emit analysis error event
+            const err = error instanceof Error ? error : new Error(String(error));
+            analysisEvents.fireAnalysisError(err);
+            throw error;
+        }
     }
 
     /**
@@ -84,7 +206,51 @@ export class AnalysisService implements vscode.Disposable {
         onProgress?: ProgressCallback,
         cancellationToken?: vscode.CancellationToken
     ): Promise<AnalysisSuccessResponse> {
+        // Check if already analyzing
+        if (this.isAnalyzing) {
+            // Queue the request
+            return new Promise((resolve, reject) => {
+                this.analysisQueue.push({
+                    type: 'file',
+                    args: [filePath, solutionPath, onProgress, cancellationToken],
+                    resolve,
+                    reject
+                });
+
+                // Show notification
+                vscode.window.showInformationMessage('Analysis in progress. Request queued.');
+            });
+        }
+
+        // Mark as analyzing
+        this.isAnalyzing = true;
+
+        try {
+            return await this.performFileAnalysis(filePath, solutionPath, onProgress, cancellationToken);
+        } finally {
+            // Mark as not analyzing
+            this.isAnalyzing = false;
+
+            // Process next queued request if any
+            await this.processNextQueuedRequest();
+        }
+    }
+
+    /**
+     * Performs the actual file analysis (internal method)
+     */
+    private async performFileAnalysis(
+        filePath: string,
+        solutionPath: string,
+        onProgress?: ProgressCallback,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<AnalysisSuccessResponse> {
         await this.ensureBridgeReady();
+
+        const startTime = Date.now();
+
+        // Emit analysis started event (single file)
+        analysisEvents.fireAnalysisStarted(filePath, solutionPath);
 
         const request: IncrementalAnalysisRequest = {
             command: 'analyzeFile',
@@ -92,13 +258,27 @@ export class AnalysisService implements vscode.Disposable {
             solutionPath
         };
 
-        return this.sendRequest(request, onProgress, cancellationToken);
+        try {
+            const result = await this.sendRequestWithTimeout(request, onProgress, cancellationToken);
+
+            // Emit analysis complete event
+            analysisEvents.fireAnalysisComplete(result, startTime);
+
+            return result;
+        } catch (error) {
+            // Emit analysis error event
+            const err = error instanceof Error ? error : new Error(String(error));
+            analysisEvents.fireAnalysisError(err);
+            throw error;
+        }
     }
 
     /**
      * Disposes the service and closes the bridge process
      */
     public dispose(): void {
+        this.isShuttingDown = true;
+
         if (this.bridgeProcess) {
             try {
                 // Send shutdown command
@@ -121,6 +301,31 @@ export class AnalysisService implements vscode.Disposable {
             this.bridgeProcess = null;
             this.isReady = false;
             this.readyPromise = null;
+        }
+    }
+
+    /**
+     * Processes the next queued analysis request
+     */
+    private async processNextQueuedRequest(): Promise<void> {
+        if (this.analysisQueue.length === 0) {
+            return;
+        }
+
+        const nextRequest = this.analysisQueue.shift()!;
+
+        try {
+            let result: AnalysisSuccessResponse;
+
+            if (nextRequest.type === 'workspace') {
+                result = await this.analyzeWorkspace(...nextRequest.args);
+            } else {
+                result = await this.analyzeFile(...nextRequest.args);
+            }
+
+            nextRequest.resolve(result);
+        } catch (error) {
+            nextRequest.reject(error);
         }
     }
 
@@ -217,6 +422,62 @@ export class AnalysisService implements vscode.Disposable {
     /**
      * Sends a request to the bridge and returns a promise for the response
      */
+    /**
+     * Sends a request with optional timeout support
+     */
+    private async sendRequestWithTimeout(
+        request: BridgeRequest,
+        onProgress?: ProgressCallback,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<AnalysisSuccessResponse> {
+        // Get timeout configuration
+        const config = vscode.workspace.getConfiguration('loggerUsage');
+        const timeoutMs = config.get<number>('performanceThresholds.analysisTimeoutMs', 0);
+
+        // If timeout is disabled (0 or negative), just send the request normally
+        if (timeoutMs <= 0) {
+            return this.sendRequest(request, onProgress, cancellationToken);
+        }
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('TIMEOUT'));
+            }, timeoutMs);
+        });
+
+        try {
+            // Race between the request and the timeout
+            return await Promise.race([
+                this.sendRequest(request, onProgress, cancellationToken),
+                timeoutPromise
+            ]);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'TIMEOUT') {
+                // Show timeout warning notification
+                vscode.window.showWarningMessage(
+                    `Analysis timed out after ${timeoutMs / 1000} seconds. Showing partial results if available.`,
+                    'Show Details'
+                ).then(choice => {
+                    if (choice === 'Show Details') {
+                        this.outputChannel.appendLine('\n=== Analysis Timeout ===');
+                        this.outputChannel.appendLine(`Timeout: ${timeoutMs}ms`);
+                        this.outputChannel.appendLine('The analysis took longer than expected.');
+                        this.outputChannel.appendLine('Consider increasing the timeout in settings: loggerUsage.performanceThresholds.analysisTimeoutMs');
+                        this.outputChannel.appendLine('========================\n');
+                        this.outputChannel.show();
+                    }
+                });
+
+                this.outputChannel.appendLine(`[WARN] Analysis timed out after ${timeoutMs}ms`);
+
+                // Still throw the error to stop the analysis
+                throw new Error(`Analysis timed out after ${timeoutMs / 1000} seconds`);
+            }
+            throw error;
+        }
+    }
+
     private sendRequest(
         request: BridgeRequest,
         onProgress?: ProgressCallback,
@@ -295,8 +556,13 @@ export class AnalysisService implements vscode.Disposable {
 
         switch (response.status) {
             case 'progress':
+                const progressResponse = response as AnalysisProgress;
+
+                // Emit analysis progress event
+                analysisEvents.fireAnalysisProgress(progressResponse);
+
                 if (pendingEntry.onProgress) {
-                    pendingEntry.onProgress(response as AnalysisProgress);
+                    pendingEntry.onProgress(progressResponse);
                 }
                 break;
 
@@ -315,15 +581,8 @@ export class AnalysisService implements vscode.Disposable {
                 const error = new Error(`Analysis failed: ${errorResponse.message}\n${errorResponse.details}`);
                 pendingEntry.reject(error);
 
-                // Show error to user
-                vscode.window.showErrorMessage(
-                    `Logger Usage Analysis Failed: ${errorResponse.message}`,
-                    'Show Details'
-                ).then(choice => {
-                    if (choice === 'Show Details') {
-                        this.outputChannel.show();
-                    }
-                });
+                // Show user-friendly error message based on error code
+                this.showErrorNotification(errorResponse);
                 break;
 
             case 'ready':
@@ -336,6 +595,13 @@ export class AnalysisService implements vscode.Disposable {
      * Handles bridge process exit
      */
     private handleBridgeExit(code: number | null, signal: string | null): void {
+        const now = Date.now();
+
+        // Reset crash count if enough time has passed since last crash
+        if (now - this.lastCrashTime > this.crashResetInterval) {
+            this.crashCount = 0;
+        }
+
         this.bridgeProcess = null;
         this.isReady = false;
         this.readyPromise = null;
@@ -346,9 +612,72 @@ export class AnalysisService implements vscode.Disposable {
             this.pendingResponses.delete(requestId);
         }
 
-        if (code !== 0 && code !== null) {
+        // If this was an intentional shutdown, don't show errors
+        if (this.isShuttingDown || code === 0) {
+            this.outputChannel.appendLine(`Bridge process exited normally (code: ${code})`);
+            return;
+        }
+
+        // Record the crash
+        this.crashCount++;
+        this.lastCrashTime = now;
+
+        this.outputChannel.appendLine(`Bridge process crashed (exit code: ${code}, signal: ${signal})`);
+        this.outputChannel.appendLine(`Crash count: ${this.crashCount}/${this.maxRetries}`);
+
+        // Emit error event
+        analysisEvents.fireAnalysisError(
+            new Error(`Bridge process crashed (exit code: ${code})`),
+            `The analysis bridge crashed unexpectedly. Crash ${this.crashCount}/${this.maxRetries}`
+        );
+
+        // Check if we should offer retry
+        if (this.crashCount < this.maxRetries) {
+            // Offer retry
             vscode.window.showErrorMessage(
-                `Logger Usage bridge process crashed (exit code: ${code})`,
+                `Logger Usage bridge process crashed (attempt ${this.crashCount}/${this.maxRetries})`,
+                'Retry',
+                'Show Logs'
+            ).then(choice => {
+                if (choice === 'Retry') {
+                    this.retryAfterCrash();
+                } else if (choice === 'Show Logs') {
+                    this.outputChannel.show();
+                }
+            });
+        } else {
+            // Max retries exceeded
+            vscode.window.showErrorMessage(
+                `Logger Usage bridge process crashed ${this.crashCount} times. Please check the logs for details.`,
+                'Show Logs',
+                'Reset'
+            ).then(choice => {
+                if (choice === 'Show Logs') {
+                    this.outputChannel.show();
+                } else if (choice === 'Reset') {
+                    this.resetCrashCount();
+                }
+            });
+        }
+    }
+
+    /**
+     * Retries starting the bridge after a crash
+     */
+    private async retryAfterCrash(): Promise<void> {
+        this.outputChannel.appendLine('Retrying bridge startup...');
+
+        try {
+            await this.startBridge();
+            this.outputChannel.appendLine('Bridge restarted successfully');
+            vscode.window.showInformationMessage('Logger Usage bridge restarted successfully');
+
+            // Reset crash count after successful restart
+            this.crashCount = 0;
+        } catch (error) {
+            this.outputChannel.appendLine(`Retry failed: ${error}`);
+            vscode.window.showErrorMessage(
+                `Failed to restart bridge: ${error instanceof Error ? error.message : String(error)}`,
                 'Show Logs'
             ).then(choice => {
                 if (choice === 'Show Logs') {
@@ -356,6 +685,16 @@ export class AnalysisService implements vscode.Disposable {
                 }
             });
         }
+    }
+
+    /**
+     * Resets the crash count (useful for manual recovery)
+     */
+    private resetCrashCount(): void {
+        this.crashCount = 0;
+        this.lastCrashTime = 0;
+        this.outputChannel.appendLine('Crash count reset');
+        vscode.window.showInformationMessage('Crash count reset. You can try running analysis again.');
     }
 
     /**
@@ -429,4 +768,74 @@ export class AnalysisService implements vscode.Disposable {
 
         return null;
     }
+
+    /**
+     * Shows user-friendly error notification based on error code
+     */
+    private showErrorNotification(errorResponse: AnalysisErrorResponse): void {
+        const errorCode = errorResponse.errorCode;
+        let message: string;
+        let actions: string[] = [];
+
+        switch (errorCode) {
+            case 'INVALID_SOLUTION':
+                message = `Solution file is invalid or corrupted: ${errorResponse.message}`;
+                actions = ['Check Solution File', 'Show Details'];
+                break;
+
+            case 'FILE_NOT_FOUND':
+                message = `File not found: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+
+            case 'NO_SOLUTION':
+                message = 'No solution or project file found in workspace';
+                actions = ['Show Details'];
+                break;
+
+            case 'COMPILATION_ERROR':
+                message = `Compilation failed: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+
+            case 'FILE_SYSTEM_ERROR':
+                message = `File system error: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+
+            case 'MISSING_DEPENDENCIES':
+                message = `Missing NuGet packages: ${errorResponse.message}`;
+                actions = ['Run dotnet restore', 'Show Details'];
+                break;
+
+            case 'CANCELLED':
+                // Don't show notification for user-cancelled operations
+                return;
+
+            default:
+                message = `Analysis failed: ${errorResponse.message}`;
+                actions = ['Show Details'];
+                break;
+        }
+
+        vscode.window.showErrorMessage(message, ...actions).then(choice => {
+            if (choice === 'Show Details') {
+                this.outputChannel.appendLine('\n=== Analysis Error Details ===');
+                this.outputChannel.appendLine(`Error Code: ${errorResponse.errorCode || 'UNKNOWN'}`);
+                this.outputChannel.appendLine(`Message: ${errorResponse.message}`);
+                this.outputChannel.appendLine(`Details: ${errorResponse.details}`);
+                this.outputChannel.appendLine('==============================\n');
+                this.outputChannel.show();
+            } else if (choice === 'Check Solution File') {
+                // Open workspace folder to allow user to check the solution file
+                vscode.commands.executeCommand('workbench.files.action.showActiveFileInExplorer');
+            } else if (choice === 'Run dotnet restore') {
+                // Open integrated terminal and run dotnet restore
+                const terminal = vscode.window.createTerminal('dotnet restore');
+                terminal.show();
+                terminal.sendText('dotnet restore');
+            }
+        });
+    }
 }
+

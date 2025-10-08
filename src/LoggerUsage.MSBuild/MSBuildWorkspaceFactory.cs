@@ -25,27 +25,49 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
     public async Task<Workspace> Create(FileInfo fileInfo)
     {
         var workspace = MSBuildWorkspace.Create();
-        if (fileInfo.Extension == ".sln" || fileInfo.Extension == ".slnx")
+
+        try
         {
-            var start = Stopwatch.GetTimestamp();
-            LogInfoLoadingSolution(_logger, fileInfo.FullName);
-            var solution = await workspace.OpenSolutionAsync(fileInfo.FullName, new ProjectProgress(_logger));
-            _logger.LogInformation("Loaded solution '{path}' with {count} projects in {duration}ms", solution.FilePath, solution.Projects.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+            if (fileInfo.Extension == ".sln" || fileInfo.Extension == ".slnx")
+            {
+                var start = Stopwatch.GetTimestamp();
+                LogInfoLoadingSolution(_logger, fileInfo.FullName);
+                var solution = await workspace.OpenSolutionAsync(fileInfo.FullName, new ProjectProgress(_logger));
+                _logger.LogInformation("Loaded solution '{path}' with {count} projects in {duration}ms", solution.FilePath, solution.Projects.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+            }
+            else if (fileInfo.Extension == ".csproj")
+            {
+                var start = Stopwatch.GetTimestamp();
+                LogInfoLoadingProject(_logger, fileInfo.FullName);
+                var project = await workspace.OpenProjectAsync(fileInfo.FullName, new ProjectProgress(_logger));
+                _logger.LogInformation("Loaded project '{path}' with {count} documents in {duration}ms", project.FilePath, project.Documents.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+            }
+            else
+            {
+                workspace.Dispose();
+                throw new NotSupportedException($"Unsupported file extension: {fileInfo.Extension}");
+            }
+
+            return workspace;
         }
-        else if (fileInfo.Extension == ".csproj")
-        {
-            var start = Stopwatch.GetTimestamp();
-            LogInfoLoadingProject(_logger, fileInfo.FullName);
-            var project = await workspace.OpenProjectAsync(fileInfo.FullName, new ProjectProgress(_logger));
-            _logger.LogInformation("Loaded project '{path}' with {count} documents in {duration}ms", project.FilePath, project.Documents.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
-        }
-        else
+        catch (InvalidOperationException ex)
         {
             workspace.Dispose();
-            throw new NotSupportedException($"Unsupported file extension: {fileInfo.Extension}");
+            _logger.LogError(ex, "Invalid solution or project file: {Path}", fileInfo.FullName);
+            throw new InvalidOperationException($"The solution or project file is invalid or corrupted: {fileInfo.FullName}", ex);
         }
-
-        return workspace;
+        catch (FileNotFoundException ex)
+        {
+            workspace.Dispose();
+            _logger.LogError(ex, "Solution or project file not found: {Path}", fileInfo.FullName);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            workspace.Dispose();
+            _logger.LogError(ex, "Failed to load solution or project: {Path}", fileInfo.FullName);
+            throw;
+        }
     }
 
     private class ProjectProgress(ILogger logger) : IProgress<ProjectLoadProgress>

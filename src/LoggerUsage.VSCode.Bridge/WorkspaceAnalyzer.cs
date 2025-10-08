@@ -36,9 +36,31 @@ public class WorkspaceAnalyzer
         try
         {
             // Determine the file to load (solution or workspace)
-            var fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
-                ? new FileInfo(request.SolutionPath)
-                : FindSolutionOrProject(request.WorkspacePath);
+            FileInfo? fileToLoad;
+            try
+            {
+                fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
+                    ? new FileInfo(request.SolutionPath)
+                    : FindSolutionOrProject(request.WorkspacePath);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to workspace directory",
+                    Details = $"You don't have permission to access: {request.WorkspacePath ?? request.SolutionPath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error accessing workspace",
+                    Details = $"I/O error accessing: {request.WorkspacePath ?? request.SolutionPath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
 
             if (fileToLoad == null || !fileToLoad.Exists)
             {
@@ -58,6 +80,42 @@ public class WorkspaceAnalyzer
             try
             {
                 workspace = await _workspaceFactory.Create(fileToLoad);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "The solution file is invalid or corrupted",
+                    Details = ex.Message,
+                    ErrorCode = "INVALID_SOLUTION"
+                };
+            }
+            catch (FileNotFoundException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Solution or project file not found",
+                    Details = ex.Message,
+                    ErrorCode = "FILE_NOT_FOUND"
+                };
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to solution or project file",
+                    Details = $"You don't have permission to access: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error loading solution",
+                    Details = $"I/O error loading: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
             }
             catch (Exception ex)
             {
@@ -93,7 +151,8 @@ public class WorkspaceAnalyzer
                             ByLogLevel = [],
                             InconsistenciesCount = 0,
                             FilesAnalyzed = 0,
-                            AnalysisTimeMs = stopwatch.ElapsedMilliseconds
+                            AnalysisTimeMs = stopwatch.ElapsedMilliseconds,
+                            WarningsCount = 0
                         }
                     }
                 };
@@ -101,10 +160,67 @@ public class WorkspaceAnalyzer
 
             ReportProgress(10, $"Analyzing {totalProjects} projects...", null);
 
-            // Run the analysis
+            // Run the analysis (continue even if some projects have compilation errors)
             var extractionResult = await _loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace);
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Count compilation warnings/errors from all projects
+            var warningsCount = 0;
+            var hasMissingDependencies = false;
+            foreach (var project in projects)
+            {
+                var compilation = await project.GetCompilationAsync(cancellationToken);
+                if (compilation != null)
+                {
+                    var diagnostics = compilation.GetDiagnostics()
+                        .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Warning ||
+                                   d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+                        .ToList();
+
+                    if (diagnostics.Any())
+                    {
+                        warningsCount += diagnostics.Count;
+
+                        // Check for CS0246 errors (missing type or namespace - indicates missing NuGet packages)
+                        var missingTypeErrors = diagnostics.Where(d => d.Id == "CS0246").ToList();
+                        if (missingTypeErrors.Any())
+                        {
+                            hasMissingDependencies = true;
+                            // Log a few missing type errors
+                            foreach (var diagnostic in missingTypeErrors.Take(3))
+                            {
+                                ReportProgress(
+                                    50,
+                                    $"Missing dependency: {diagnostic.GetMessage()}",
+                                    diagnostic.Location.SourceTree?.FilePath
+                                );
+                            }
+                        }
+
+                        // Log compilation diagnostics to progress stream
+                        foreach (var diagnostic in diagnostics.Take(5)) // Limit to first 5 per project
+                        {
+                            ReportProgress(
+                                50,
+                                $"Compilation {diagnostic.Severity}: {diagnostic.GetMessage()}",
+                                diagnostic.Location.SourceTree?.FilePath
+                            );
+                        }
+                    }
+                }
+            }
+
+            // If missing dependencies detected, return specific error
+            if (hasMissingDependencies)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Missing NuGet packages detected",
+                    Details = "Some types or namespaces could not be found. Try running 'dotnet restore' to restore missing NuGet packages.",
+                    ErrorCode = "MISSING_DEPENDENCIES"
+                };
+            }
 
             ReportProgress(90, "Generating insights...", null);
 
@@ -122,7 +238,7 @@ public class WorkspaceAnalyzer
             stopwatch.Stop();
 
             // Generate summary
-            var summary = GenerateSummary(insights, filesAnalyzed, stopwatch.Elapsed);
+            var summary = GenerateSummary(insights, filesAnalyzed, stopwatch.Elapsed, warningsCount);
 
             ReportProgress(100, "Analysis complete", null);
 
@@ -170,9 +286,31 @@ public class WorkspaceAnalyzer
         try
         {
             // Load solution
-            var fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
-                ? new FileInfo(request.SolutionPath)
-                : FindSolutionOrProject(Path.GetDirectoryName(request.FilePath)!);
+            FileInfo? fileToLoad;
+            try
+            {
+                fileToLoad = !string.IsNullOrWhiteSpace(request.SolutionPath)
+                    ? new FileInfo(request.SolutionPath)
+                    : FindSolutionOrProject(Path.GetDirectoryName(request.FilePath)!);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to workspace directory",
+                    Details = $"You don't have permission to access the directory containing: {request.FilePath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error accessing workspace",
+                    Details = $"I/O error accessing directory containing: {request.FilePath}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
 
             if (fileToLoad == null || !fileToLoad.Exists)
             {
@@ -190,6 +328,42 @@ public class WorkspaceAnalyzer
             try
             {
                 workspace = await _workspaceFactory.Create(fileToLoad);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "The solution file is invalid or corrupted",
+                    Details = ex.Message,
+                    ErrorCode = "INVALID_SOLUTION"
+                };
+            }
+            catch (FileNotFoundException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Solution or project file not found",
+                    Details = ex.Message,
+                    ErrorCode = "FILE_NOT_FOUND"
+                };
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "Access denied to solution or project file",
+                    Details = $"You don't have permission to access: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new AnalysisErrorResponse
+                {
+                    Message = "File system error loading solution",
+                    Details = $"I/O error loading: {fileToLoad.FullName}\n{ex.Message}",
+                    ErrorCode = "FILE_SYSTEM_ERROR"
+                };
             }
             catch (Exception ex)
             {
@@ -306,7 +480,8 @@ public class WorkspaceAnalyzer
     private AnalysisSummaryDto GenerateSummary(
         List<LoggingInsightDto> insights,
         int filesAnalyzed,
-        TimeSpan duration)
+        TimeSpan duration,
+        int warningsCount = 0)
     {
         var byMethodType = insights
             .GroupBy(i => i.MethodType)
@@ -327,13 +502,16 @@ public class WorkspaceAnalyzer
             ByLogLevel = byLogLevel,
             InconsistenciesCount = inconsistenciesCount,
             FilesAnalyzed = filesAnalyzed,
-            AnalysisTimeMs = (long)duration.TotalMilliseconds
+            AnalysisTimeMs = (long)duration.TotalMilliseconds,
+            WarningsCount = warningsCount
         };
     }
 
     /// <summary>
     /// Finds the first .sln, .slnx, or .csproj file in the workspace
     /// </summary>
+    /// <exception cref="UnauthorizedAccessException">Thrown when access to the directory is denied</exception>
+    /// <exception cref="IOException">Thrown when I/O error occurs</exception>
     private FileInfo? FindSolutionOrProject(string workspacePath)
     {
         var directory = new DirectoryInfo(workspacePath);
@@ -343,6 +521,7 @@ public class WorkspaceAnalyzer
         }
 
         // Look for solution files first
+        // These operations can throw UnauthorizedAccessException or IOException
         var solutionFile = directory.GetFiles("*.sln").FirstOrDefault()
             ?? directory.GetFiles("*.slnx").FirstOrDefault();
 
