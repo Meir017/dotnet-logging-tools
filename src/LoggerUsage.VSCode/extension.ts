@@ -5,6 +5,9 @@ import { InsightsPanel } from './src/insightsPanel';
 import { ProblemsProvider } from './src/problemsProvider';
 import { LoggerTreeViewProvider } from './src/treeViewProvider';
 import { Configuration } from './src/configuration';
+import { debounceAsync } from './src/utils/debounce';
+import { getSolutionState } from './src/state/SolutionState';
+import { findAllSolutions, getDefaultSolution } from './src/utils/solutionDetector';
 
 let analysisService: AnalysisService;
 let commands: Commands;
@@ -55,6 +58,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         commands = new Commands(analysisService, outputChannel);
         commands.setProblemsProvider(problemsProvider);
         commands.setTreeViewProvider(treeViewProvider);
+
+        // Initialize solution state
+        await initializeSolutionState();
+
+        // Listen for solution changes
+        const solutionState = getSolutionState();
+        context.subscriptions.push(
+            solutionState.onDidChangeSolution(async (solution) => {
+                if (solution) {
+                    outputChannel.appendLine(`Active solution changed to: ${solution.displayName}`);
+                    updateStatusBarForSolution(solution);
+                    
+                    // Clear current insights when switching solutions
+                    problemsProvider.clearDiagnostics();
+                    treeViewProvider.updateInsights([], solution.filePath);
+                }
+            })
+        );
+        context.subscriptions.push(solutionState);
 
         // Register commands
         registerCommands(context);
@@ -208,24 +230,88 @@ function setupWebviewCallbacks(): void {
  * Sets up file watchers for auto-analysis on save
  */
 function setupFileWatchers(context: vscode.ExtensionContext): void {
+    // Create a debounced version of analyzeFile to handle rapid saves
+    const debouncedAnalyzeFile = debounceAsync(
+        async (uri: vscode.Uri) => {
+            try {
+                await commands.analyzeFile(uri);
+            } catch (error) {
+                outputChannel.appendLine(`Auto-analysis failed: ${error}`);
+            }
+        },
+        500 // 500ms debounce delay
+    );
+
     // Watch for C# file saves
     const fileWatcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
-        if (document.languageId === 'csharp') {
-            outputChannel.appendLine(`File saved: ${document.fileName}`);
-
-            const activeSolution = commands.getActiveSolutionPath();
-            if (activeSolution) {
-                try {
-                    await commands.analyzeFile(document.uri);
-                } catch (error) {
-                    outputChannel.appendLine(`Auto-analysis failed: ${error}`);
+        // Handle .csproj or .sln files - trigger full re-analysis
+        if (document.fileName.endsWith('.csproj') || document.fileName.endsWith('.sln')) {
+            outputChannel.appendLine(`Project/Solution file modified: ${document.fileName}. Triggering full re-analysis...`);
+            
+            vscode.window.showInformationMessage(
+                'Project structure changed. Re-analyzing workspace...',
+                'Analyze Now'
+            ).then(selection => {
+                if (selection === 'Analyze Now') {
+                    vscode.commands.executeCommand('loggerUsage.analyze');
                 }
+            });
+            return;
+        }
+
+        // Handle C# files - trigger incremental analysis
+        if (document.languageId === 'csharp') {
+            outputChannel.appendLine(`C# file saved: ${document.fileName}`);
+
+            const activeSolution = getSolutionState().getActiveSolution();
+            if (activeSolution) {
+                // Use debounced function to prevent multiple rapid analyses
+                await debouncedAnalyzeFile(document.uri);
             }
         }
     });
 
-    context.subscriptions.push(fileWatcher);
-    outputChannel.appendLine('File watchers enabled (auto-analyze on save)');
+    // Watch for file deletions
+    const deleteWatcher = vscode.workspace.onDidDeleteFiles(async (event) => {
+        for (const uri of event.files) {
+            // Check if deleted file was a C# file
+            if (uri.fsPath.endsWith('.cs')) {
+                outputChannel.appendLine(`C# file deleted: ${uri.fsPath}`);
+                
+                // Remove insights for this file
+                await commands.removeFileInsights(uri);
+            }
+        }
+    });
+
+    context.subscriptions.push(fileWatcher, deleteWatcher);
+    outputChannel.appendLine('File watchers enabled (auto-analyze on save with 500ms debounce, file deletion handling, .csproj/.sln change detection)');
+
+    // Watch for active editor changes to auto-switch solutions
+    const editorWatcher = vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        const autoSwitch = vscode.workspace.getConfiguration('loggerUsage').get<boolean>('autoSwitchSolution', false);
+        
+        if (!autoSwitch || !editor || editor.document.languageId !== 'csharp') {
+            return;
+        }
+
+        const filePath = editor.document.uri.fsPath;
+        const solutionState = getSolutionState();
+        const currentSolution = solutionState.getActiveSolution();
+        const allSolutions = solutionState.getAllSolutions();
+
+        // Find which solution this file belongs to
+        const { findSolutionForFile } = await import('./src/utils/solutionDetector');
+        const targetSolution = await findSolutionForFile(filePath, allSolutions);
+
+        // If file belongs to a different solution, switch to it
+        if (targetSolution && currentSolution && targetSolution.filePath !== currentSolution.filePath) {
+            outputChannel.appendLine(`Auto-switching to solution: ${targetSolution.displayName}`);
+            solutionState.setActiveSolution(targetSolution);
+        }
+    });
+
+    context.subscriptions.push(editorWatcher);
 }
 
 /**
@@ -253,6 +339,60 @@ function handleConfigurationChange(e: vscode.ConfigurationChangeEvent): void {
 function updateStatusBar(text: string, busy: boolean): void {
     if (statusBarItem) {
         statusBarItem.text = busy ? `$(sync~spin) ${text}` : `$(search) ${text}`;
+    }
+}
+
+/**
+ * Updates status bar with solution information
+ */
+function updateStatusBarForSolution(solution: { displayName: string; filePath: string } | null): void {
+    if (!statusBarItem) {
+        return;
+    }
+
+    const solutionState = getSolutionState();
+    const solutionCount = solutionState.getSolutionCount();
+
+    if (!solution) {
+        statusBarItem.text = '$(warning) No Solution';
+        statusBarItem.tooltip = 'No solution selected. Click to select a solution.';
+        statusBarItem.command = 'loggerUsage.selectSolution';
+    } else {
+        const countText = solutionCount > 1 ? ` (1 of ${solutionCount})` : '';
+        statusBarItem.text = `$(database) ${solution.displayName}${countText}`;
+        statusBarItem.tooltip = `Solution: ${solution.filePath}\nClick to ${solutionCount > 1 ? 'switch solution' : 'analyze'}`;
+        statusBarItem.command = solutionCount > 1 ? 'loggerUsage.selectSolution' : 'loggerUsage.analyze';
+    }
+}
+
+/**
+ * Initializes solution state on activation
+ */
+async function initializeSolutionState(): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+        outputChannel.appendLine('No workspace folders open');
+        return;
+    }
+
+    const solutionState = getSolutionState();
+    
+    // Find all solutions in workspace
+    const solutions = await findAllSolutions(workspaceFolders);
+    solutionState.setAllSolutions(solutions);
+
+    outputChannel.appendLine(`Found ${solutions.length} solution(s) in workspace`);
+
+    // Set default active solution (first one)
+    if (solutions.length > 0) {
+        const defaultSolution = await getDefaultSolution(workspaceFolders);
+        if (defaultSolution) {
+            solutionState.setActiveSolution(defaultSolution);
+            outputChannel.appendLine(`Default solution set to: ${defaultSolution.displayName}`);
+            updateStatusBarForSolution(defaultSolution);
+        }
+    } else {
+        updateStatusBarForSolution(null);
     }
 }
 

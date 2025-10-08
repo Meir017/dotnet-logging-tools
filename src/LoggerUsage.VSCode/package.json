@@ -109,6 +109,11 @@
           "type": "boolean",
           "default": false,
           "description": "Show only logging statements with inconsistencies by default"
+        },
+        "loggerUsage.autoSwitchSolution": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically switch active solution when opening files from different solutions"
         }
       }
     },

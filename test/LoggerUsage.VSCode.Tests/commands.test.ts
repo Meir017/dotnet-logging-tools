@@ -100,12 +100,9 @@ suite('Commands Test Suite', () => {
     const outputChannel = createMockOutputChannel();
     const commands = new Commands(analysisService, outputChannel);
 
-    // Commands class tracks active solution
-    assert.strictEqual(typeof commands.getActiveSolutionPath, 'function',
-      'getActiveSolutionPath should exist');
-
-    const initialPath = commands.getActiveSolutionPath();
-    assert.strictEqual(initialPath, null, 'Initial active solution should be null');
+    // Commands class now uses SolutionState singleton for solution tracking
+    // No longer has getActiveSolutionPath method - solution state is managed centrally
+    assert.ok(commands, 'Commands instance should be created successfully');
   });
 
   test('loggerUsage.exportInsights should prompt for format selection', async () => {
