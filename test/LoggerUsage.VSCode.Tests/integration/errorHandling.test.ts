@@ -78,13 +78,13 @@ suite('Error Handling Integration Test Suite', () => {
 
     try {
       await vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // If analysis completes, the error handling is working
       assert.ok(true, 'Analysis handled file system operations gracefully');
     } catch (error) {
       // Even if it throws, it should be a handled error
       assert.ok(error instanceof Error, 'Error should be an Error instance');
-      
+
       // Check that it's not an unhandled crash
       const errorMessage = (error as Error).message.toLowerCase();
       assert.ok(
@@ -115,14 +115,14 @@ suite('Error Handling Integration Test Suite', () => {
 
       try {
         await vscode.commands.executeCommand('loggerUsage.analyze');
-        
+
         // If it completes without timeout, that's also acceptable (very fast analysis)
         assert.ok(true, 'Analysis completed (possibly before timeout threshold)');
       } catch (error) {
         // Check if it's a timeout error
         const errorMessage = (error as Error).message;
         const isTimeoutError = errorMessage.includes('timeout') || errorMessage.includes('timed out');
-        
+
         assert.ok(
           isTimeoutError || error instanceof Error,
           'Should handle timeout gracefully or complete normally'
@@ -148,13 +148,13 @@ suite('Error Handling Integration Test Suite', () => {
     try {
       // Trigger analysis - the bridge should handle any JSON parsing errors
       await vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // If analysis completes, communication error handling is working
       assert.ok(true, 'Bridge handled communication successfully');
     } catch (error) {
       // Even if there's an error, it should be handled gracefully
       assert.ok(error instanceof Error, 'Error should be handled as Error instance');
-      
+
       // Verify it's not a communication crash
       const errorMessage = (error as Error).message.toLowerCase();
       assert.ok(
@@ -177,28 +177,28 @@ suite('Error Handling Integration Test Suite', () => {
     try {
       // Start first analysis (don't await yet)
       const firstAnalysis = vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // Wait a bit to ensure first analysis has started
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Start second analysis while first is running
       const secondAnalysis = vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // Wait for both to complete (or fail gracefully)
       const results = await Promise.allSettled([firstAnalysis, secondAnalysis]);
-      
+
       // At least one should succeed, or both should fail gracefully
       const hasSuccess = results.some(r => r.status === 'fulfilled');
-      const allHandled = results.every(r => 
-        r.status === 'fulfilled' || 
+      const allHandled = results.every(r =>
+        r.status === 'fulfilled' ||
         (r.status === 'rejected' && r.reason instanceof Error)
       );
-      
+
       assert.ok(
         hasSuccess || allHandled,
         'Concurrent requests should be handled gracefully'
       );
-      
+
       // No crashes - extension is still responsive
       assert.ok(true, 'Extension handled concurrent requests without crashing');
     } catch (error) {
@@ -220,18 +220,18 @@ suite('Error Handling Integration Test Suite', () => {
 
     try {
       await vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // If analysis completes, dependency handling is working
       // (either no missing deps, or handled gracefully with partial results)
       assert.ok(true, 'Analysis handled dependencies correctly');
     } catch (error) {
       // Check if it's a missing dependencies error
       const errorMessage = (error as Error).message.toLowerCase();
-      const isMissingDeps = errorMessage.includes('missing') || 
+      const isMissingDeps = errorMessage.includes('missing') ||
                            errorMessage.includes('dependencies') ||
                            errorMessage.includes('nuget') ||
                            errorMessage.includes('restore');
-      
+
       if (isMissingDeps) {
         // Verify it's handled gracefully with helpful message
         assert.ok(
@@ -259,17 +259,17 @@ suite('Error Handling Integration Test Suite', () => {
     try {
       // First attempt at analysis
       await vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // If successful, verify retry command is still available
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
         commands.includes('loggerUsage.analyze'),
         'Analyze command should be available for retry'
       );
-      
+
       // Try analysis again (simulating retry)
       await vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       assert.ok(true, 'Retry mechanism works correctly');
     } catch (error) {
       // Even after error, retry should be possible
@@ -278,7 +278,7 @@ suite('Error Handling Integration Test Suite', () => {
         commands.includes('loggerUsage.analyze'),
         'Analyze command should still be available after error'
       );
-      
+
       // Verify error is handled gracefully
       assert.ok(error instanceof Error, 'Error should be handled as Error instance');
     }
@@ -299,24 +299,24 @@ suite('Error Handling Integration Test Suite', () => {
       // Find the Logger Usage output channel
       // Note: VS Code API doesn't provide direct access to read output channel content
       // But we can verify the channel exists and analysis runs with logging
-      
+
       await vscode.commands.executeCommand('loggerUsage.analyze');
-      
+
       // If analysis completes, logging is working
       // The output channel will have logged the analysis progress
       assert.ok(true, 'Analysis completed with logging to output channel');
-      
+
       // Verify we can open the output channel
       await vscode.commands.executeCommand('workbench.action.output.toggleOutput');
-      
+
       assert.ok(true, 'Output channel is accessible for debugging');
     } catch (error) {
       // Even on error, logging should occur
       assert.ok(error instanceof Error, 'Error should be logged to output channel');
-      
+
       // Output channel should still be accessible
       await vscode.commands.executeCommand('workbench.action.output.toggleOutput');
-      
+
       assert.ok(true, 'Output channel accessible even after error');
     }
   });
