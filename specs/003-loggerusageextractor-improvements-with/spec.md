@@ -86,17 +86,17 @@ public sealed class LoggerUsageProgress
     /// Gets the percentage of completion (0-100).
     /// </summary>
     public required int PercentComplete { get; init; }
-    
+
     /// <summary>
     /// Gets the description of the current operation.
     /// </summary>
     public required string OperationDescription { get; init; }
-    
+
     /// <summary>
     /// Gets the path of the file currently being analyzed, if applicable.
     /// </summary>
     public string? CurrentFilePath { get; init; }
-    
+
     /// <summary>
     /// Gets the name of the analyzer currently running, if applicable.
     /// </summary>
@@ -119,7 +119,7 @@ public class LoggerUsageExtractor
     {
         // Implementation details in tasks
     }
-    
+
     // Updated method signature - IProgress parameter added, AdhocWorkspace auto-creation
     public async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesWithSolutionAsync(
         Compilation compilation,
@@ -131,6 +131,108 @@ public class LoggerUsageExtractor
         // Implementation details in tasks
     }
 }
+```
+
+### ProgressReporter Implementation
+
+**Thread-Safe Increment-Based Progress Tracking:**
+
+```csharp
+internal class ProgressReporter
+{
+    private readonly object _lock = new();
+    private int _completedFiles = 0;
+    private int _totalFiles = 0;
+    private int _projectIndex = 0;
+    private int _totalProjects = 1;
+    private long _lastProgressReportTimestamp = 0;
+    private const int ProgressReportIntervalMs = 100;
+
+    /// <summary>
+    /// Sets the project context for progress calculation.
+    /// Thread-safe.
+    /// </summary>
+    public void SetProjectContext(int projectIndex, int totalProjects)
+    {
+        lock (_lock)
+        {
+            _projectIndex = projectIndex;
+            _totalProjects = totalProjects;
+            _completedFiles = 0;
+            _totalFiles = 0;
+        }
+    }
+
+    /// <summary>
+    /// Sets the total number of files to be analyzed.
+    /// Thread-safe. Resets completed count.
+    /// </summary>
+    public void SetTotalFiles(int totalFiles)
+    {
+        lock (_lock)
+        {
+            _totalFiles = totalFiles;
+            _completedFiles = 0;
+        }
+    }
+
+    /// <summary>
+    /// Atomically increments completed file count and reports progress if throttle elapsed.
+    /// Thread-safe - can be called from parallel tasks.
+    /// </summary>
+    public void IncrementFileProgress(string fileName)
+    {
+        // Atomically increment and check throttle inside lock
+        lock (_lock)
+        {
+            _completedFiles++;
+            var elapsed = Stopwatch.GetElapsedTime(_lastProgressReportTimestamp).TotalMilliseconds;
+            var shouldReport = elapsed >= ProgressReportIntervalMs ||
+                              _completedFiles == 1 ||
+                              _completedFiles == _totalFiles;
+
+            if (!shouldReport) return;
+
+            _lastProgressReportTimestamp = Stopwatch.GetTimestamp();
+
+            // Calculate and report progress
+            var percent = CalculatePercentage();
+            Report(percent, fileName);
+        }
+    }
+
+    /// <summary>
+    /// Reports project-level progress.
+    /// Thread-safe.
+    /// </summary>
+    public void ReportProjectProgress(string projectName)
+    {
+        lock (_lock)
+        {
+            var percent = _totalProjects > 0 ? (_projectIndex * 100) / _totalProjects : 0;
+            Report(percent, $"Analyzing project {_projectIndex + 1} of {_totalProjects}: {projectName}");
+        }
+    }
+}
+```
+
+**Usage Pattern:**
+
+```csharp
+// Set context before processing
+reporter.SetProjectContext(projectIndex, totalProjects);
+reporter.SetTotalFiles(syntaxTrees.Count);
+
+// Process files in parallel
+var tasks = syntaxTrees.Select(async syntaxTree =>
+{
+    // Analyze file...
+
+    // Increment progress (thread-safe)
+    reporter.IncrementFileProgress(syntaxTree.FilePath);
+});
+
+await Task.WhenAll(tasks);
 ```
 
 ### Progress Reporting Strategy
@@ -193,6 +295,25 @@ public class LoggerUsageExtractor
    - Enables accurate progress calculation when called from workspace analysis
    - Maintains backward compatibility via default parameters
 
+6. **Thread-Safe Increment-Based Progress Tracking**: Refactored from index-based to increment-based progress tracking:
+   - **Problem**: Parallel async tasks using `Select(async (syntaxTree, index) =>` had race conditions:
+     - The `index` parameter doesn't represent actual completion order
+     - Shared `lastProgressReport` timestamp across parallel tasks caused race conditions
+     - Progress could be reported out-of-order or with incorrect percentages
+   - **Solution**: Implemented increment-based progress tracking with internal counter:
+     - Added `IncrementFileProgress(fileName)` method that atomically increments completion counter
+     - All state protected by lock: `_completedFiles`, `_totalFiles`, `_projectIndex`, `_totalProjects`, `_lastProgressReportTimestamp`
+     - `SetTotalFiles(totalFiles)` called before parallel processing to set expected count
+     - Each parallel task calls `IncrementFileProgress()` after completing file analysis
+     - Progress calculated from actual completion count, not unreliable index
+     - Throttling logic moved inside lock for thread-safety
+   - **Benefits**:
+     - ✅ Thread-safe: Lock protects all shared state
+     - ✅ Accurate: Progress based on actual completed files, not task index
+     - ✅ Reliable: No race conditions on timestamp or counters
+     - ✅ Clean API: `SetTotalFiles()` + `IncrementFileProgress()` pattern is clear
+   - **Removed APIs**: Deleted obsolete `ReportFileProgress(projectIndex, totalProjects, fileIndex, totalFiles, fileName)` and `ReportAnalyzerProgress()` methods since increment-based approach replaces them
+
 ### AdhocWorkspace Creation Flow
 
 ```csharp
@@ -202,9 +323,9 @@ private async Task<(Solution, IDisposable?)> EnsureSolutionAsync(Compilation com
     {
         return (solution, null);
     }
-    
+
     _logger.LogInformation("Creating AdhocWorkspace for compilation '{AssemblyName}'", compilation.AssemblyName);
-    
+
     var workspace = new AdhocWorkspace();
     var projectInfo = ProjectInfo.Create(
         ProjectId.CreateNewId(),
@@ -214,9 +335,9 @@ private async Task<(Solution, IDisposable?)> EnsureSolutionAsync(Compilation com
         LanguageNames.CSharp,
         compilationOptions: compilation.Options,
         metadataReferences: compilation.References);
-    
+
     var project = workspace.AddProject(projectInfo);
-    
+
     // Add syntax trees to project
     foreach (var syntaxTree in compilation.SyntaxTrees)
     {
@@ -224,11 +345,11 @@ private async Task<(Solution, IDisposable?)> EnsureSolutionAsync(Compilation com
             DocumentId.CreateNewId(project.Id),
             Path.GetFileName(syntaxTree.FilePath),
             filePath: syntaxTree.FilePath);
-        
+
         var document = workspace.AddDocument(documentInfo);
         await document.WithSyntaxRoot(syntaxTree.GetRoot());
     }
-    
+
     return (workspace.CurrentSolution, workspace);
 }
 ```
@@ -381,33 +502,33 @@ var result = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 ## Risks & Mitigations
 
 ### Risk 1: Performance Degradation
-**Impact:** Progress reporting may slow down analysis significantly  
-**Likelihood:** Medium  
-**Mitigation:** 
+**Impact:** Progress reporting may slow down analysis significantly
+**Likelihood:** Medium
+**Mitigation:**
 - Measure overhead in benchmarks
 - Make progress reporting configurable
 - Use efficient progress calculation (avoid expensive operations)
 - Cache progress calculations where possible
 
 ### Risk 2: Memory Overhead
-**Impact:** AdhocWorkspace creation may increase memory usage substantially  
-**Likelihood:** Low  
+**Impact:** AdhocWorkspace creation may increase memory usage substantially
+**Likelihood:** Low
 **Mitigation:**
 - Dispose workspaces promptly after analysis
 - Monitor memory in integration tests
 - Add configuration to disable AdhocWorkspace creation if needed
 
 ### Risk 3: Thread Safety Issues
-**Impact:** Concurrent progress reports may cause race conditions  
-**Likelihood:** Low  
+**Impact:** Concurrent progress reports may cause race conditions
+**Likelihood:** Low
 **Mitigation:**
 - Use thread-safe progress reporting patterns
 - Add concurrency tests
 - Document thread-safety guarantees
 
 ### Risk 4: Breaking Changes
-**Impact:** API changes may break existing consumers  
-**Likelihood:** Very Low  
+**Impact:** API changes may break existing consumers
+**Likelihood:** Very Low
 **Mitigation:**
 - Use optional parameters for backward compatibility
 - Maintain existing method signatures
@@ -416,27 +537,27 @@ var result = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 ## Alternatives Considered
 
 ### Alternative 1: Callback-Based Progress
-**Description:** Use callback methods instead of `IProgress<T>`  
-**Pros:** More flexible, allows for different progress patterns  
-**Cons:** Less idiomatic for .NET, harder to use with async/await  
+**Description:** Use callback methods instead of `IProgress<T>`
+**Pros:** More flexible, allows for different progress patterns
+**Cons:** Less idiomatic for .NET, harder to use with async/await
 **Decision:** Rejected - `IProgress<T>` is the standard .NET pattern
 
 ### Alternative 2: Event-Based Progress
-**Description:** Use events for progress notifications  
-**Pros:** Familiar pattern, supports multiple subscribers  
-**Cons:** Requires careful event handler management, memory leak risks  
+**Description:** Use events for progress notifications
+**Pros:** Familiar pattern, supports multiple subscribers
+**Cons:** Requires careful event handler management, memory leak risks
 **Decision:** Rejected - `IProgress<T>` is safer and more modern
 
 ### Alternative 3: Always Create AdhocWorkspace
-**Description:** Always create `AdhocWorkspace` regardless of solution parameter  
-**Pros:** Simpler API, consistent behavior  
-**Cons:** Performance overhead when solution is already available  
+**Description:** Always create `AdhocWorkspace` regardless of solution parameter
+**Pros:** Simpler API, consistent behavior
+**Cons:** Performance overhead when solution is already available
 **Decision:** Rejected - Conditional creation provides better performance
 
 ### Alternative 4: Separate Method for AdhocWorkspace
-**Description:** Create new `ExtractLoggerUsagesWithAdhocWorkspace` method  
-**Pros:** Explicit API, no auto-magic behavior  
-**Cons:** API proliferation, extra method to maintain  
+**Description:** Create new `ExtractLoggerUsagesWithAdhocWorkspace` method
+**Pros:** Explicit API, no auto-magic behavior
+**Cons:** API proliferation, extra method to maintain
 **Decision:** Rejected - Auto-creation keeps API cleaner
 
 ## Open Questions
