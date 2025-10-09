@@ -10,10 +10,10 @@ public class TransportConfigurationTests
     public void ServerStartup_WithNoTransportConfig_DefaultsToHttp()
     {
         // Arrange: No transport configuration provided
-        
+
         // Act: Read configuration
         var transportOptions = new TransportOptions();
-        
+
         // Assert: Should default to HTTP
         Assert.Equal(TransportMode.Http, transportOptions.Mode);
     }
@@ -28,12 +28,12 @@ public class TransportConfigurationTests
                 ["Transport:Mode"] = "Http"
             })
             .Build();
-        
+
         // Act: Bind configuration
         var transportOptions = configuration
             .GetSection(TransportOptions.SectionName)
             .Get<TransportOptions>();
-        
+
         // Assert: Should be Http
         Assert.NotNull(transportOptions);
         Assert.Equal(TransportMode.Http, transportOptions.Mode);
@@ -49,12 +49,12 @@ public class TransportConfigurationTests
                 ["Transport:Mode"] = "Stdio"
             })
             .Build();
-        
+
         // Act: Bind configuration
         var transportOptions = configuration
             .GetSection(TransportOptions.SectionName)
             .Get<TransportOptions>();
-        
+
         // Assert: Should be Stdio
         Assert.NotNull(transportOptions);
         Assert.Equal(TransportMode.Stdio, transportOptions.Mode);
@@ -64,7 +64,7 @@ public class TransportConfigurationTests
     [InlineData("Invalid")]
     [InlineData("WebSocket")]
     [InlineData("")]
-    public void ConfigurationBinding_WithInvalidMode_ThrowsOrDefaultsToHttp(string invalidMode)
+    public void ConfigurationBinding_WithInvalidMode_ThrowsException(string invalidMode)
     {
         // Arrange: Configuration with invalid mode
         var configuration = new ConfigurationBuilder()
@@ -73,16 +73,17 @@ public class TransportConfigurationTests
                 ["Transport:Mode"] = invalidMode
             })
             .Build();
-        
-        // Act & Assert: Should either throw or default to Http
-        // Exact behavior TBD during implementation
-        var transportOptions = configuration
-            .GetSection(TransportOptions.SectionName)
-            .Get<TransportOptions>();
-        
-        // For now, expect default (Http) behavior
-        Assert.NotNull(transportOptions);
-        Assert.Equal(TransportMode.Http, transportOptions.Mode);
+
+        // Act & Assert: Should throw InvalidOperationException when binding
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+        {
+            configuration
+                .GetSection(TransportOptions.SectionName)
+                .Get<TransportOptions>();
+        });
+
+        // Verify exception message indicates configuration error
+        Assert.Contains("Transport:Mode", exception.Message);
     }
 
     [Theory]
@@ -93,7 +94,7 @@ public class TransportConfigurationTests
     [InlineData("STDIO", TransportMode.Stdio)]
     [InlineData("Stdio", TransportMode.Stdio)]
     public void ConfigurationBinding_WithVariousCasing_ParsesCorrectly(
-        string modeString, 
+        string modeString,
         TransportMode expectedMode)
     {
         // Arrange: Configuration with various casing
@@ -103,12 +104,12 @@ public class TransportConfigurationTests
                 ["Transport:Mode"] = modeString
             })
             .Build();
-        
+
         // Act: Bind configuration
         var transportOptions = configuration
             .GetSection(TransportOptions.SectionName)
             .Get<TransportOptions>();
-        
+
         // Assert: Should parse correctly regardless of case
         Assert.NotNull(transportOptions);
         Assert.Equal(expectedMode, transportOptions.Mode);
@@ -128,12 +129,12 @@ public class TransportConfigurationTests
                 ["Transport:Mode"] = "Stdio"  // Command-line override
             })
             .Build();
-        
+
         // Act: Bind configuration
         var transportOptions = configuration
             .GetSection(TransportOptions.SectionName)
             .Get<TransportOptions>();
-        
+
         // Assert: Command-line should win
         Assert.NotNull(transportOptions);
         Assert.Equal(TransportMode.Stdio, transportOptions.Mode);
