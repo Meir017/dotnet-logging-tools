@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using LoggerUsage;
+using LoggerUsage.Mcp;
 using LoggerUsage.Models;
 using LoggerUsage.ReportGenerator;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,16 +26,35 @@ public class LoggerUsageExtractorTool(
     ILogger<LoggerUsageExtractorTool> logger,
     IWorkspaceFactory workspaceFactory,
     LoggerUsageExtractor loggerUsageExtractor,
-    ILoggerReportGeneratorFactory loggerReportGeneratorFactory)
+    ILoggerReportGeneratorFactory loggerReportGeneratorFactory,
+    McpServer mcpServer,
+    ILoggerFactory loggerFactory)
 {
+    /// <summary>
+    /// Analyzes logger usages in a C# project file (.csproj).
+    /// </summary>
+    /// <param name="fullPathToCsproj">The absolute path to the .csproj file to analyze.</param>
+    /// <param name="progressToken">Optional progress token for tracking analysis progress. When provided, the server will send progress notifications during analysis.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the logger usage extraction results.</returns>
     [McpServerTool(Name = "analyze_logger_usages_in_csproj")]
     [Description("Analyze logger usages of C# files in a csproj file. Extracts logging patterns, custom tag names, tag providers, data classifications, and transitive properties from LogProperties parameters.")]
     public async Task<LoggerUsageExtractionResult> AnalyzeLoggerUsagesInCsproj(
-        string fullPathToCsproj)
+        string fullPathToCsproj,
+        ProgressToken? progressToken = null)
     {
         using var workspace = await workspaceFactory.Create(new FileInfo(fullPathToCsproj));
 
-        var loggerUsage = await loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace);
+        // Create progress adapter if progress token provided
+        IProgress<LoggerUsageProgress>? progress = null;
+        if (progressToken is not null)
+        {
+            progress = new McpProgressAdapter(
+                mcpServer,
+                progressToken.Value,
+                loggerFactory.CreateLogger<McpProgressAdapter>());
+        }
+
+        var loggerUsage = await loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace, progress);
         var reportGenerator = loggerReportGeneratorFactory.GetReportGenerator(".json");
         var report = reportGenerator.GenerateReport(loggerUsage);
 
