@@ -8,6 +8,22 @@ using ModelContextProtocol.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Read transport configuration
+var transportOptions = builder.Configuration
+    .GetSection(TransportOptions.SectionName)
+    .Get<TransportOptions>() ?? new TransportOptions();
+
+// Log selected transport mode to console (before DI container is built)
+Console.WriteLine($"Transport mode configured: {transportOptions.Mode}");
+
+// Validate transport mode - currently only HTTP is supported
+if (transportOptions.Mode != TransportMode.Http)
+{
+    Console.WriteLine($"WARNING: STDIO transport mode is not yet supported by ModelContextProtocol.AspNetCore 0.4.0-preview.1. Falling back to HTTP transport.");
+    transportOptions = new TransportOptions { Mode = TransportMode.Http };
+}
+
+// Configure MCP server with HTTP transport
 builder.Services.AddMcpServer()
     .WithHttpTransport()
     .WithTools<LoggerUsageExtractorTool>();
@@ -16,6 +32,10 @@ builder.Services.AddLoggerUsageExtractor()
     .AddMSBuild();
 
 var app = builder.Build();
+
+// Log after app is built
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("MCP Server starting with transport mode: {TransportMode}", transportOptions.Mode);
 
 app.MapMcp();
 
