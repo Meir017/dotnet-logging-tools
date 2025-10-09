@@ -9,6 +9,13 @@ internal class ProgressReporter
 {
     private readonly IProgress<LoggerUsageProgress>? _progress;
     private readonly bool _isEnabled;
+    private readonly object _lock = new();
+    private int _completedFiles = 0;
+    private int _totalFiles = 0;
+    private int _projectIndex = 0;
+    private int _totalProjects = 1;
+    private long _lastProgressReportTimestamp = 0;
+    private const int ProgressReportIntervalMs = 100;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProgressReporter"/> class.
@@ -18,57 +25,85 @@ internal class ProgressReporter
     {
         _progress = progress;
         _isEnabled = progress != null;
+        _lastProgressReportTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
     }
 
     /// <summary>
-    /// Reports progress for project-level operations.
+    /// Sets the project context for progress calculation.
     /// </summary>
     /// <param name="projectIndex">Zero-based index of the current project.</param>
     /// <param name="totalProjects">Total number of projects to analyze.</param>
-    /// <param name="projectName">Name of the project being analyzed.</param>
-    public void ReportProjectProgress(int projectIndex, int totalProjects, string projectName)
+    public void SetProjectContext(int projectIndex, int totalProjects)
+    {
+        lock (_lock)
+        {
+            _projectIndex = projectIndex;
+            _totalProjects = totalProjects;
+            _completedFiles = 0;
+            _totalFiles = 0;
+        }
+    }
+
+    /// <summary>
+    /// Sets the total number of files to be analyzed in the current project.
+    /// </summary>
+    /// <param name="totalFiles">Total number of files in the current project.</param>
+    public void SetTotalFiles(int totalFiles)
+    {
+        lock (_lock)
+        {
+            _totalFiles = totalFiles;
+            _completedFiles = 0;
+        }
+    }
+
+    /// <summary>
+    /// Increments the completed file count and reports progress if appropriate (throttled).
+    /// This method is thread-safe and can be called from parallel tasks.
+    /// </summary>
+    /// <param name="fileName">Name of the file that was completed.</param>
+    public void IncrementFileProgress(string fileName)
     {
         if (!_isEnabled)
         {
             return;
         }
 
-        var percent = totalProjects > 0 ? (projectIndex * 100) / totalProjects : 0;
+        int currentCompleted;
+        int total;
+        int projectIdx;
+        int totalProj;
+        bool shouldReport;
 
-        try
+        lock (_lock)
         {
-            _progress!.Report(new LoggerUsageProgress
+            _completedFiles++;
+            currentCompleted = _completedFiles;
+            total = _totalFiles;
+            projectIdx = _projectIndex;
+            totalProj = _totalProjects;
+
+            // Throttle progress reports (except for first and last)
+            var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_lastProgressReportTimestamp).TotalMilliseconds;
+            shouldReport = elapsed >= ProgressReportIntervalMs ||
+                          currentCompleted == 1 ||
+                          currentCompleted == total;
+
+            if (shouldReport)
             {
-                PercentComplete = percent,
-                OperationDescription = $"Analyzing project {projectIndex + 1} of {totalProjects}: {projectName}"
-            });
+                _lastProgressReportTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+            }
         }
-        catch
-        {
-            // Ignore progress reporting errors
-        }
-    }
 
-    /// <summary>
-    /// Reports progress for file-level operations within a project.
-    /// </summary>
-    /// <param name="projectIndex">Zero-based index of the current project.</param>
-    /// <param name="totalProjects">Total number of projects to analyze.</param>
-    /// <param name="fileIndex">Zero-based index of the current file within the project.</param>
-    /// <param name="totalFiles">Total number of files in the current project.</param>
-    /// <param name="fileName">Name of the file being analyzed.</param>
-    public void ReportFileProgress(int projectIndex, int totalProjects, int fileIndex, int totalFiles, string fileName)
-    {
-        if (!_isEnabled)
+        if (!shouldReport)
         {
             return;
         }
 
         // Calculate percentage based on overall progress across all projects
-        // Each project gets an equal share of the 100% progress
-        var projectWeight = 100.0 / Math.Max(1, totalProjects);
-        var projectBasePercent = projectIndex * projectWeight;
-        var fileProgressWithinProject = totalFiles > 0 ? (fileIndex / (double)totalFiles) : 0;
+        var projectWeight = 100.0 / Math.Max(1, totalProj);
+        var projectBasePercent = projectIdx * projectWeight;
+        var fileProgressWithinProject = total > 0 ? ((currentCompleted - 1) / (double)total) : 0;
         var percent = (int)(projectBasePercent + (fileProgressWithinProject * projectWeight));
 
         // Extract just the filename for cleaner display
@@ -94,35 +129,33 @@ internal class ProgressReporter
     }
 
     /// <summary>
-    /// Reports progress for analyzer-level operations.
+    /// Reports progress for project-level operations.
     /// </summary>
-    /// <param name="projectIndex">Zero-based index of the current project.</param>
-    /// <param name="totalProjects">Total number of projects to analyze.</param>
-    /// <param name="fileIndex">Zero-based index of the current file within the project.</param>
-    /// <param name="totalFiles">Total number of files in the current project.</param>
-    /// <param name="analyzerName">Name of the analyzer being executed.</param>
-    /// <param name="filePath">Path of the file being analyzed.</param>
-    public void ReportAnalyzerProgress(int projectIndex, int totalProjects, int fileIndex, int totalFiles, string analyzerName, string? filePath = null)
+    /// <param name="projectName">Name of the project being analyzed.</param>
+    public void ReportProjectProgress(string projectName)
     {
         if (!_isEnabled)
         {
             return;
         }
 
-        // Calculate percentage similar to file progress
-        var projectWeight = 100.0 / Math.Max(1, totalProjects);
-        var projectBasePercent = projectIndex * projectWeight;
-        var fileProgressWithinProject = totalFiles > 0 ? (fileIndex / (double)totalFiles) : 0;
-        var percent = (int)(projectBasePercent + (fileProgressWithinProject * projectWeight));
+        int projectIdx;
+        int totalProj;
+
+        lock (_lock)
+        {
+            projectIdx = _projectIndex;
+            totalProj = _totalProjects;
+        }
+
+        var percent = totalProj > 0 ? (projectIdx * 100) / totalProj : 0;
 
         try
         {
             _progress!.Report(new LoggerUsageProgress
             {
                 PercentComplete = percent,
-                OperationDescription = $"Running analyzer: {analyzerName}",
-                CurrentFilePath = filePath,
-                CurrentAnalyzer = analyzerName
+                OperationDescription = $"Analyzing project {projectIdx + 1} of {totalProj}: {projectName}"
             });
         }
         catch

@@ -36,12 +36,18 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
         var reporter = new Services.ProgressReporter(progress);
 
+        // Initialize project context for progress tracking
+        reporter.SetProjectContext(0, projects.Count);
+
         for (int i = 0; i < projects.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var project = projects[i];
-            reporter.ReportProjectProgress(i, projects.Count, project.Name ?? "Unknown");
+
+            // Update project context for this iteration
+            reporter.SetProjectContext(i, projects.Count);
+            reporter.ReportProjectProgress(project.Name ?? "Unknown");
 
             if (project.Language != LanguageNames.CSharp)
             {
@@ -150,30 +156,23 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
                 .ToList();
 
-            // Track last progress report time to avoid too frequent updates
-            var lastProgressReport = Stopwatch.GetTimestamp();
-            const int progressReportIntervalMs = 100; // Report progress at most every 100ms
+            // Set total files for progress tracking
+            reporter.SetTotalFiles(syntaxTrees.Count);
 
             // Process syntax trees in parallel using async approach
-            var syntaxTreeTasks = syntaxTrees.Select(async (syntaxTree, index) =>
+            var syntaxTreeTasks = syntaxTrees.Select(async syntaxTree =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
-                
-                // Report file progress, but throttle to avoid too many updates
-                var elapsed = Stopwatch.GetElapsedTime(lastProgressReport).TotalMilliseconds;
-                if (elapsed >= progressReportIntervalMs || index == 0 || index == syntaxTrees.Count - 1)
-                {
-                    reporter.ReportFileProgress(projectIndex, totalProjects, index, syntaxTrees.Count, syntaxTree.FilePath);
-                    lastProgressReport = Stopwatch.GetTimestamp();
-                }
 
                 var root = syntaxTree.GetRoot();
                 var semanticModel = workingCompilation.GetSemanticModel(syntaxTree);
 
                 if (root == null || semanticModel == null)
                 {
+                    // Still increment progress even if we skip the file
+                    reporter.IncrementFileProgress(syntaxTree.FilePath);
                     return;
                 }
 
@@ -198,6 +197,9 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 });
 
                 var allUsages = await Task.WhenAll(analyzerTasks);
+
+                // Report progress after completing this file (thread-safe, throttled internally)
+                reporter.IncrementFileProgress(syntaxTree.FilePath);
 
                 foreach (var usages in allUsages)
                 {
