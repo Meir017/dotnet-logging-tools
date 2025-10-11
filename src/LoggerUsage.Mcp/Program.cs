@@ -3,41 +3,58 @@ using LoggerUsage;
 using LoggerUsage.Mcp;
 using LoggerUsage.Models;
 using LoggerUsage.ReportGenerator;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Http.Features;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
-IHostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 var transportOptions = builder.Configuration
     .GetSection(TransportOptions.SectionName)
-    .Get<TransportOptions>() ?? new TransportOptions();
-
-builder = transportOptions.Mode switch
-{
-    TransportMode.Http => WebApplication.CreateBuilder(args),
-    TransportMode.Stdio => builder,
-    _ => throw new NotSupportedException($"Unsupported transport mode: {transportOptions.Mode}")
-};
+    .Get<TransportOptions>() ?? throw new InvalidOperationException("Failed to load transport configuration.");
 
 builder.Services.AddLoggerUsageExtractor().AddMSBuild();
 
 var mcp = builder.Services.AddMcpServer()
     .WithTools<LoggerUsageExtractorTool>();
 
-IHost app = null!;
 if (transportOptions.Mode is TransportMode.Stdio)
 {
+    builder.WebHost.UseServer(new NoOpServer());
     mcp.WithStdioServerTransport();
-    app = ((HostApplicationBuilder)builder).Build();
 }
 else if (transportOptions.Mode is TransportMode.Http)
 {
     mcp.WithHttpTransport();
-    app = ((WebApplicationBuilder)builder).Build();
-    ((WebApplication)app).MapMcp();
+}
+
+var app = builder.Build();
+if (transportOptions.Mode is TransportMode.Http)
+{
+    app.MapMcp();
 }
 
 await app.RunAsync();
+
+internal class NoOpServer : IServer
+{
+    public IFeatureCollection Features { get; } = new FeatureCollection();
+
+    public void Dispose()
+    {
+    }
+
+    public Task StartAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellationToken) where TContext : notnull
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+}
 
 [McpServerToolType]
 public class LoggerUsageExtractorTool(

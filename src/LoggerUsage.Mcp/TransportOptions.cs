@@ -6,7 +6,7 @@ namespace LoggerUsage.Mcp;
 public enum TransportMode
 {
     /// <summary>
-    /// HTTP transport (default, backward compatible).
+    /// HTTP transport.
     /// </summary>
     Http = 0,
 
@@ -27,7 +27,7 @@ public class TransportOptions
     public const string SectionName = "Transport";
 
     /// <summary>
-    /// Gets or sets the transport mode. Defaults to HTTP for backward compatibility.
+    /// Gets or sets the transport mode. Defaults to <see cref="TransportMode.Stdio"/>.
     /// </summary>
-    public TransportMode Mode { get; set; } = TransportMode.Http;
+    public TransportMode Mode { get; set; } = TransportMode.Stdio;
 }
