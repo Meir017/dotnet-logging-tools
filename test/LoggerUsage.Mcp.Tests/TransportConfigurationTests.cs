@@ -7,15 +7,15 @@ namespace LoggerUsage.Mcp.Tests;
 public class TransportConfigurationTests
 {
     [Fact]
-    public void ServerStartup_WithNoTransportConfig_DefaultsToHttp()
+    public void ServerStartup_WithNoTransportConfig_DefaultsToStdio()
     {
         // Arrange: No transport configuration provided
 
         // Act: Read configuration
         var transportOptions = new TransportOptions();
 
-        // Assert: Should default to HTTP
-        Assert.Equal(TransportMode.Http, transportOptions.Mode);
+        // Assert: Should default to STDIO (more appropriate for MCP servers)
+        Assert.Equal(TransportMode.Stdio, transportOptions.Mode);
     }
 
     [Fact]
