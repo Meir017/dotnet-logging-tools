@@ -1936,12 +1936,12 @@ public class Address
         addressProp.Should().NotBeNull();
         addressProp!.Type.Should().Be("Address");
         addressProp.NestedProperties.Should().NotBeNull();
-        addressProp.NestedProperties.Should().HaveCount(3);
+        addressProp.NestedProperties!.Should().HaveCount(3);
         
         // Verify nested Address properties
-        addressProp.NestedProperties.Should().Contain(p => p.Name == "Street" && p.Type == "string");
-        addressProp.NestedProperties.Should().Contain(p => p.Name == "City" && p.Type == "string");
-        addressProp.NestedProperties.Should().Contain(p => p.Name == "ZipCode" && p.Type == "string");
+        addressProp.NestedProperties!.Should().Contain(p => p.Name == "Street" && p.Type == "string");
+        addressProp.NestedProperties!.Should().Contain(p => p.Name == "City" && p.Type == "string");
+        addressProp.NestedProperties!.Should().Contain(p => p.Name == "ZipCode" && p.Type == "string");
     }
 
     [Fact]
@@ -2055,15 +2055,15 @@ public class Employee
         deptProp!.NestedProperties.Should().NotBeNull();
 
         // Level 2: Department
-        deptProp.NestedProperties.Should().HaveCount(2);
-        var managerProp = deptProp.NestedProperties.FirstOrDefault(p => p.Name == "Manager");
+        deptProp.NestedProperties!.Should().HaveCount(2);
+        var managerProp = deptProp.NestedProperties!.FirstOrDefault(p => p.Name == "Manager");
         managerProp.Should().NotBeNull();
         managerProp!.NestedProperties.Should().NotBeNull();
 
         // Level 3: Employee
-        managerProp.NestedProperties.Should().HaveCount(2);
-        managerProp.NestedProperties.Should().Contain(p => p.Name == "EmployeeName" && p.Type == "string");
-        managerProp.NestedProperties.Should().Contain(p => p.Name == "EmployeeId" && p.Type == "int");
+        managerProp.NestedProperties!.Should().HaveCount(2);
+        managerProp.NestedProperties!.Should().Contain(p => p.Name == "EmployeeName" && p.Type == "string");
+        managerProp.NestedProperties!.Should().Contain(p => p.Name == "EmployeeId" && p.Type == "int");
     }
 
     [Fact]
@@ -2170,9 +2170,9 @@ public class Member
         
         // Should extract properties from the element type
         membersProp.NestedProperties.Should().NotBeNull();
-        membersProp.NestedProperties.Should().HaveCount(2);
-        membersProp.NestedProperties.Should().Contain(p => p.Name == "Name" && p.Type == "string");
-        membersProp.NestedProperties.Should().Contain(p => p.Name == "Role" && p.Type == "string");
+        membersProp.NestedProperties!.Should().HaveCount(2);
+        membersProp.NestedProperties!.Should().Contain(p => p.Name == "Name" && p.Type == "string");
+        membersProp.NestedProperties!.Should().Contain(p => p.Name == "Role" && p.Type == "string");
     }
 
     [Fact]
@@ -2225,9 +2225,9 @@ public class Member
         
         // Should extract properties from the element type
         membersProp.NestedProperties.Should().NotBeNull();
-        membersProp.NestedProperties.Should().HaveCount(2);
-        membersProp.NestedProperties.Should().Contain(p => p.Name == "Name" && p.Type == "string");
-        membersProp.NestedProperties.Should().Contain(p => p.Name == "MemberId" && p.Type == "int");
+        membersProp.NestedProperties!.Should().HaveCount(2);
+        membersProp.NestedProperties!.Should().Contain(p => p.Name == "Name" && p.Type == "string");
+        membersProp.NestedProperties!.Should().Contain(p => p.Name == "MemberId" && p.Type == "int");
     }
 
     [Fact]
@@ -2280,9 +2280,9 @@ public class Item
         
         // Should extract properties from the element type
         itemsProp.NestedProperties.Should().NotBeNull();
-        itemsProp.NestedProperties.Should().HaveCount(2);
-        itemsProp.NestedProperties.Should().Contain(p => p.Name == "ItemName" && p.Type == "string");
-        itemsProp.NestedProperties.Should().Contain(p => p.Name == "Price" && p.Type == "decimal");
+        itemsProp.NestedProperties!.Should().HaveCount(2);
+        itemsProp.NestedProperties!.Should().Contain(p => p.Name == "ItemName" && p.Type == "string");
+        itemsProp.NestedProperties!.Should().Contain(p => p.Name == "Price" && p.Type == "decimal");
     }
 
     [Fact]
@@ -2335,8 +2335,8 @@ public interface IConfiguration
         
         // Interface properties should have nested properties extracted
         configProp.NestedProperties.Should().NotBeNull();
-        configProp.NestedProperties.Should().ContainSingle();
-        configProp.NestedProperties.Should().Contain(p => p.Name == "Setting" && p.Type == "string");
+        configProp.NestedProperties!.Should().ContainSingle();
+        configProp.NestedProperties!.Should().Contain(p => p.Name == "Setting" && p.Type == "string");
     }
 
     [Fact]
@@ -2390,9 +2390,9 @@ public abstract class BaseEntity
         
         // Abstract type properties should have nested properties extracted
         entityProp.NestedProperties.Should().NotBeNull();
-        entityProp.NestedProperties.Should().HaveCount(2);
-        entityProp.NestedProperties.Should().Contain(p => p.Name == "Id" && p.Type == "int");
-        entityProp.NestedProperties.Should().Contain(p => p.Name == "Name" && p.Type == "string");
+        entityProp.NestedProperties!.Should().HaveCount(2);
+        entityProp.NestedProperties!.Should().Contain(p => p.Name == "Id" && p.Type == "int");
+        entityProp.NestedProperties!.Should().Contain(p => p.Name == "Name" && p.Type == "string");
     }
 
     [Fact]
@@ -2712,13 +2712,13 @@ public static partial class Log
         var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "Address");
         addressProp.Should().NotBeNull();
         addressProp!.NestedProperties.Should().NotBeNull();
-        addressProp.NestedProperties.Should().HaveCount(2);
+        addressProp.NestedProperties!.Should().HaveCount(2);
 
-        var streetProp = addressProp.NestedProperties.FirstOrDefault(p => p.OriginalName == "Street");
+        var streetProp = addressProp.NestedProperties!.FirstOrDefault(p => p.OriginalName == "Street");
         streetProp.Should().NotBeNull();
         streetProp!.CustomTagName.Should().Be("address.street");
 
-        var cityProp = addressProp.NestedProperties.FirstOrDefault(p => p.OriginalName == "City");
+        var cityProp = addressProp.NestedProperties!.FirstOrDefault(p => p.OriginalName == "City");
         cityProp.Should().NotBeNull();
         cityProp!.CustomTagName.Should().BeNull();
     }
