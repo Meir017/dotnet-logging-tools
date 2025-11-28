@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AwesomeAssertions;
 using LoggerUsage;
 using LoggerUsage.Models;
 using Xunit;
@@ -39,14 +40,14 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.Single(extractionResult.Summary.ParameterTypesByName);
-        Assert.Contains("userId", extractionResult.Summary.ParameterTypesByName.Keys);
-        Assert.Contains("string", extractionResult.Summary.ParameterTypesByName["userId"]);
-        Assert.Equal(1, extractionResult.Summary.TotalParameterUsageCount);
-        Assert.Equal(1, extractionResult.Summary.UniqueParameterNameCount);
-        Assert.Empty(extractionResult.Summary.InconsistentParameterNames);
-        Assert.Single(extractionResult.Summary.CommonParameterNames);
-        Assert.Equal(new LoggerUsageExtractionSummary.CommonParameterNameInfo("userId", 1, "string"), extractionResult.Summary.CommonParameterNames[0]);
+        extractionResult.Summary.ParameterTypesByName.Should().ContainSingle();
+        extractionResult.Summary.ParameterTypesByName.Should().ContainKey("userId");
+        extractionResult.Summary.ParameterTypesByName["userId"].Should().Contain("string");
+        extractionResult.Summary.TotalParameterUsageCount.Should().Be(1);
+        extractionResult.Summary.UniqueParameterNameCount.Should().Be(1);
+        extractionResult.Summary.InconsistentParameterNames.Should().BeEmpty();
+        extractionResult.Summary.CommonParameterNames.Should().ContainSingle();
+        extractionResult.Summary.CommonParameterNames[0].Should().Be(new LoggerUsageExtractionSummary.CommonParameterNameInfo("userId", 1, "string"));
     }
 
     [Fact]
@@ -97,21 +98,21 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.Equal(2, extractionResult.Summary.ParameterTypesByName.Count);
-        Assert.Contains("userId", extractionResult.Summary.ParameterTypesByName.Keys);
-        Assert.Contains("string", extractionResult.Summary.ParameterTypesByName["userId"]);
-        Assert.Contains("int", extractionResult.Summary.ParameterTypesByName["userId"]);
-        Assert.Contains("orderId", extractionResult.Summary.ParameterTypesByName.Keys);
-        Assert.Contains("int", extractionResult.Summary.ParameterTypesByName["orderId"]);
-        Assert.Equal(3, extractionResult.Summary.TotalParameterUsageCount);
-        Assert.Equal(2, extractionResult.Summary.UniqueParameterNameCount);
-        Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x => x.Names.Any(pair => pair.Name == "userId") && x.IssueTypes.Contains("TypeMismatch"));
-        Assert.Equal(2, extractionResult.Summary.CommonParameterNames.Count);
+        extractionResult.Summary.ParameterTypesByName.Should().HaveCount(2);
+        extractionResult.Summary.ParameterTypesByName.Should().ContainKey("userId");
+        extractionResult.Summary.ParameterTypesByName["userId"].Should().Contain("string");
+        extractionResult.Summary.ParameterTypesByName["userId"].Should().Contain("int");
+        extractionResult.Summary.ParameterTypesByName.Should().ContainKey("orderId");
+        extractionResult.Summary.ParameterTypesByName["orderId"].Should().Contain("int");
+        extractionResult.Summary.TotalParameterUsageCount.Should().Be(3);
+        extractionResult.Summary.UniqueParameterNameCount.Should().Be(2);
+        extractionResult.Summary.InconsistentParameterNames.Should().Contain(x => x.Names.Any(pair => pair.Name == "userId") && x.IssueTypes.Contains("TypeMismatch"));
+        extractionResult.Summary.CommonParameterNames.Should().HaveCount(2);
         var userIdCommon = extractionResult.Summary.CommonParameterNames.Find(x => x.Name == "userId");
-        Assert.Equal(2, userIdCommon.Count);
-        Assert.Contains(userIdCommon.MostCommonType, new[] { "string", "int" });
-        Assert.Contains("string", extractionResult.Summary.ParameterTypesByName["userId"]);
-        Assert.Contains("int", extractionResult.Summary.ParameterTypesByName["userId"]);
+        userIdCommon.Count.Should().Be(2);
+        userIdCommon.MostCommonType.Should().BeOneOf("string", "int");
+        extractionResult.Summary.ParameterTypesByName["userId"].Should().Contain("string");
+        extractionResult.Summary.ParameterTypesByName["userId"].Should().Contain("int");
     }
 
     [Fact]
@@ -155,11 +156,11 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.Empty(extractionResult.Summary.ParameterTypesByName);
-        Assert.Equal(0, extractionResult.Summary.TotalParameterUsageCount);
-        Assert.Equal(0, extractionResult.Summary.UniqueParameterNameCount);
-        Assert.Empty(extractionResult.Summary.InconsistentParameterNames);
-        Assert.Empty(extractionResult.Summary.CommonParameterNames);
+        extractionResult.Summary.ParameterTypesByName.Should().BeEmpty();
+        extractionResult.Summary.TotalParameterUsageCount.Should().Be(0);
+        extractionResult.Summary.UniqueParameterNameCount.Should().Be(0);
+        extractionResult.Summary.InconsistentParameterNames.Should().BeEmpty();
+        extractionResult.Summary.CommonParameterNames.Should().BeEmpty();
     }
 
     [Fact]
@@ -213,14 +214,14 @@ public class LoggerUsageSummarizerTests
 
         // Assert
         // There should be a type mismatch for 'userId' (string and int)
-        Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x =>
+        extractionResult.Summary.InconsistentParameterNames.Should().Contain(x =>
             x.IssueTypes.Contains("TypeMismatch")
             && x.Names.All(pair => pair.Name == "userId")
             && x.Names.Any(pair => pair.Type == "string")
             && x.Names.Any(pair => pair.Type == "int")
         );
         // There should be a casing difference group for userId/UserId/userid
-        Assert.Contains(extractionResult.Summary.InconsistentParameterNames, x =>
+        extractionResult.Summary.InconsistentParameterNames.Should().Contain(x =>
             x.IssueTypes.Contains("CasingDifference")
             && x.Names.Select(pair => pair.Name).Distinct().Count() == 3
             && x.Names.Any(pair => pair.Name == "userId")
@@ -286,15 +287,15 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.True(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
-        Assert.Equal(2, extractionResult.Summary.TelemetryStats.ParametersWithCustomTagNames);
-        Assert.Equal(2, extractionResult.Summary.TelemetryStats.PropertiesWithCustomTagNames);
-        Assert.Equal(4, extractionResult.Summary.TelemetryStats.CustomTagNameMappings.Count);
+        extractionResult.Summary.TelemetryStats.HasTelemetryFeatures.Should().BeTrue();
+        extractionResult.Summary.TelemetryStats.ParametersWithCustomTagNames.Should().Be(2);
+        extractionResult.Summary.TelemetryStats.PropertiesWithCustomTagNames.Should().Be(2);
+        extractionResult.Summary.TelemetryStats.CustomTagNameMappings.Should().HaveCount(4);
         
         // Verify mappings
-        Assert.Contains(extractionResult.Summary.TelemetryStats.CustomTagNameMappings, 
+        extractionResult.Summary.TelemetryStats.CustomTagNameMappings.Should().Contain(
             m => m.OriginalName == "userId" && m.CustomTagName == "user.id" && m.Context == "Parameter");
-        Assert.Contains(extractionResult.Summary.TelemetryStats.CustomTagNameMappings, 
+        extractionResult.Summary.TelemetryStats.CustomTagNameMappings.Should().Contain(
             m => m.OriginalName == "Id" && m.CustomTagName == "user.identifier" && m.Context == "Property");
     }
 
@@ -346,15 +347,15 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.True(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
-        Assert.Equal(1, extractionResult.Summary.TelemetryStats.ParametersWithTagProviders);
-        Assert.Single(extractionResult.Summary.TelemetryStats.TagProviders);
+        extractionResult.Summary.TelemetryStats.HasTelemetryFeatures.Should().BeTrue();
+        extractionResult.Summary.TelemetryStats.ParametersWithTagProviders.Should().Be(1);
+        extractionResult.Summary.TelemetryStats.TagProviders.Should().ContainSingle();
         
         var provider = extractionResult.Summary.TelemetryStats.TagProviders[0];
-        Assert.Equal("request", provider.ParameterName);
-        Assert.Equal("MyApp.TagProviders.HttpRequestTagProvider", provider.ProviderTypeName);
-        Assert.Equal("ProvideTags", provider.ProviderMethodName);
-        Assert.True(provider.IsValid);
+        provider.ParameterName.Should().Be("request");
+        provider.ProviderTypeName.Should().Be("MyApp.TagProviders.HttpRequestTagProvider");
+        provider.ProviderMethodName.Should().Be("ProvideTags");
+        provider.IsValid.Should().BeTrue();
     }
 
     [Fact]
@@ -404,8 +405,8 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.True(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
-        Assert.Equal(3, extractionResult.Summary.TelemetryStats.TotalTransitiveProperties);
+        extractionResult.Summary.TelemetryStats.HasTelemetryFeatures.Should().BeTrue();
+        extractionResult.Summary.TelemetryStats.TotalTransitiveProperties.Should().Be(3);
     }
 
     [Fact]
@@ -440,12 +441,12 @@ public class LoggerUsageSummarizerTests
         summarizer.PopulateSummary(extractionResult);
 
         // Assert
-        Assert.False(extractionResult.Summary.TelemetryStats.HasTelemetryFeatures);
-        Assert.Equal(0, extractionResult.Summary.TelemetryStats.ParametersWithCustomTagNames);
-        Assert.Equal(0, extractionResult.Summary.TelemetryStats.PropertiesWithCustomTagNames);
-        Assert.Equal(0, extractionResult.Summary.TelemetryStats.ParametersWithTagProviders);
-        Assert.Equal(0, extractionResult.Summary.TelemetryStats.TotalTransitiveProperties);
-        Assert.Empty(extractionResult.Summary.TelemetryStats.CustomTagNameMappings);
-        Assert.Empty(extractionResult.Summary.TelemetryStats.TagProviders);
+        extractionResult.Summary.TelemetryStats.HasTelemetryFeatures.Should().BeFalse();
+        extractionResult.Summary.TelemetryStats.ParametersWithCustomTagNames.Should().Be(0);
+        extractionResult.Summary.TelemetryStats.PropertiesWithCustomTagNames.Should().Be(0);
+        extractionResult.Summary.TelemetryStats.ParametersWithTagProviders.Should().Be(0);
+        extractionResult.Summary.TelemetryStats.TotalTransitiveProperties.Should().Be(0);
+        extractionResult.Summary.TelemetryStats.CustomTagNameMappings.Should().BeEmpty();
+        extractionResult.Summary.TelemetryStats.TagProviders.Should().BeEmpty();
     }
 }
