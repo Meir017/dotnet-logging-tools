@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
@@ -7,20 +8,23 @@ namespace LoggerUsage.Tests;
 
 internal static class TestUtils
 {
-    public static async Task<Compilation> CreateCompilationAsync(string sourceCode)
+    public static async Task<ImmutableArray<MetadataReference>> GetMetadataReferencesAsync()
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-        var references = await ReferenceAssemblies.Net.Net90
+        return await ReferenceAssemblies.Net.Net90
             .AddPackages([
                 new PackageIdentity("Microsoft.Extensions.Logging.Abstractions", "10.0.1"),
                 new PackageIdentity("Microsoft.Extensions.Telemetry.Abstractions", "10.1.0"),
             ])
-            .ResolveAsync(LanguageNames.CSharp, default);
+            .ResolveAsync(LanguageNames.CSharp, TestContext.Current.CancellationToken);
+    }
 
+    public static async Task<Compilation> CreateCompilationAsync(string sourceCode)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             [syntaxTree],
-            references,
+            await GetMetadataReferencesAsync(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithSpecificDiagnosticOptions(
                 new Dictionary<string, ReportDiagnostic>
                 {
