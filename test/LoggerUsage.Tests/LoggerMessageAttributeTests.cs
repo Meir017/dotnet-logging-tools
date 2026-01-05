@@ -817,12 +817,6 @@ namespace TestNamespace.Services
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateInMemorySolutionWithLoggerMessageProjects()
     {
-        // Create base references
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
-        var logPropertiesReference = MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location);
-        var baseReferences = references.Add(loggerReference).Add(logPropertiesReference);
-
         // Create solution
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution;
@@ -898,7 +892,7 @@ namespace ConsumerProject.Services
             "LoggerProject",
             LanguageNames.CSharp,
             compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync());
 
         solution = solution.AddProject(loggerProjectInfo);
         var loggerProjectId = loggerProjectInfo.Id;
@@ -914,7 +908,7 @@ namespace ConsumerProject.Services
             "ConsumerProject",
             LanguageNames.CSharp,
             compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences,
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(),
             projectReferences: [new ProjectReference(loggerProjectId)]);
 
         solution = solution.AddProject(consumerProjectInfo);
@@ -1531,11 +1525,6 @@ public class UserInfo
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateSimpleCrossProjectSolution()
     {
-        // Simplified version of existing helper for focused testing
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
-        var baseReferences = references.Add(loggerReference);
-
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution;
 
@@ -1580,13 +1569,13 @@ namespace Consumer
         var loggerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync());
         solution = solution.AddProject(loggerProjectInfo);
 
         var consumerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
             LanguageNames.CSharp, compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
-            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(), projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
         solution = solution.AddProject(consumerProjectInfo);
 
         // Add documents
@@ -1598,11 +1587,6 @@ namespace Consumer
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithMultipleInvocations()
     {
-        // Consumer project with multiple invocations of the same LoggerMessage method
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
-        var baseReferences = references.Add(loggerReference);
-
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution;
 
@@ -1648,13 +1632,13 @@ namespace Consumer
         var loggerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync());
         solution = solution.AddProject(loggerProjectInfo);
 
         var consumerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(), projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
         solution = solution.AddProject(consumerProjectInfo);
 
         solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs", loggerCode);
@@ -1665,10 +1649,6 @@ namespace Consumer
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumer1Id, ProjectId consumer2Id)> CreateCrossProjectWithTwoConsumers()
     {
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
-        var baseReferences = references.Add(loggerReference);
-
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution;
 
@@ -1717,19 +1697,19 @@ namespace Consumer2
         var loggerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync());
         solution = solution.AddProject(loggerProjectInfo);
 
         var consumer1ProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("Consumer1"), VersionStamp.Create(), "Consumer1", "Consumer1",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(), projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
         solution = solution.AddProject(consumer1ProjectInfo);
 
         var consumer2ProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("Consumer2"), VersionStamp.Create(), "Consumer2", "Consumer2",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(), projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
         solution = solution.AddProject(consumer2ProjectInfo);
 
         solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs", loggerCode);
@@ -1741,10 +1721,6 @@ namespace Consumer2
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithDifferentInvocationStyles()
     {
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
-        var baseReferences = references.Add(loggerReference);
-
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution;
 
@@ -1790,13 +1766,13 @@ namespace Consumer
         var loggerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync());
         solution = solution.AddProject(loggerProjectInfo);
 
         var consumerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(), projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
         solution = solution.AddProject(consumerProjectInfo);
 
         solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs", loggerCode);
@@ -1807,10 +1783,6 @@ namespace Consumer
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithSimilarMethodNames()
     {
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
-        var baseReferences = references.Add(loggerReference);
-
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution;
 
@@ -1859,13 +1831,13 @@ namespace Consumer
         var loggerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("LoggerLib"), VersionStamp.Create(), "LoggerLib", "LoggerLib",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync());
         solution = solution.AddProject(loggerProjectInfo);
 
         var consumerProjectInfo = ProjectInfo.Create(
             ProjectId.CreateNewId("Consumer"), VersionStamp.Create(), "Consumer", "Consumer",
             LanguageNames.CSharp, compilationOptions: CreateTestCompilationOptions(),
-            metadataReferences: baseReferences, projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
+            metadataReferences: await TestUtils.GetMetadataReferencesAsync(), projectReferences: [new ProjectReference(loggerProjectInfo.Id)]);
         solution = solution.AddProject(consumerProjectInfo);
 
         solution = solution.AddDocument(DocumentId.CreateNewId(loggerProjectInfo.Id), "Logger.cs", loggerCode);
@@ -1931,14 +1903,14 @@ public class Address
         // Verify top-level properties
         Assert.Contains(logPropsParam.Properties, p => p.Name == "Name" && p.Type == "string");
         Assert.Contains(logPropsParam.Properties, p => p.Name == "Age" && p.Type == "int");
-        
+
         // Verify nested Address property
         var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Address");
         Assert.NotNull(addressProp);
         Assert.Equal("Address", addressProp.Type);
         Assert.NotNull(addressProp.NestedProperties);
         Assert.Equal(3, addressProp.NestedProperties.Count);
-        
+
         // Verify nested Address properties
         Assert.Contains(addressProp.NestedProperties, p => p.Name == "Street" && p.Type == "string");
         Assert.Contains(addressProp.NestedProperties, p => p.Name == "City" && p.Type == "string");
@@ -2105,16 +2077,16 @@ public class Node
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.True(logPropsParam.Configuration.Transitive);
-        
+
         // Should have 3 properties: Name, Parent, Child
         Assert.Equal(3, logPropsParam.Properties.Count);
-        
+
         // Parent and Child should not have nested properties (circular reference detected)
         var parentProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Parent");
         var childProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Child");
         Assert.NotNull(parentProp);
         Assert.NotNull(childProp);
-        
+
         // The circular reference detection should prevent nested properties
         Assert.Null(parentProp.NestedProperties);
         Assert.Null(childProp.NestedProperties);
@@ -2162,13 +2134,13 @@ public class Member
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        
+
         Assert.Equal(2, logPropsParam.Properties.Count);
-        
+
         var membersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Members");
         Assert.NotNull(membersProp);
         Assert.Equal("Member[]", membersProp.Type);
-        
+
         // Should extract properties from the element type
         Assert.NotNull(membersProp.NestedProperties);
         Assert.Equal(2, membersProp.NestedProperties.Count);
@@ -2219,11 +2191,11 @@ public class Member
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        
+
         var membersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Members");
         Assert.NotNull(membersProp);
         Assert.Equal("List", membersProp.Type);
-        
+
         // Should extract properties from the element type
         Assert.NotNull(membersProp.NestedProperties);
         Assert.Equal(2, membersProp.NestedProperties.Count);
@@ -2274,11 +2246,11 @@ public class Item
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        
+
         var itemsProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Items");
         Assert.NotNull(itemsProp);
         Assert.Equal("IEnumerable", itemsProp.Type);
-        
+
         // Should extract properties from the element type
         Assert.NotNull(itemsProp.NestedProperties);
         Assert.Equal(2, itemsProp.NestedProperties.Count);
@@ -2327,13 +2299,13 @@ public interface IConfiguration
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        
+
         Assert.Equal(2, logPropsParam.Properties.Count);
-        
+
         var configProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Config");
         Assert.NotNull(configProp);
         Assert.Equal("IConfiguration", configProp.Type);
-        
+
         // Interface properties should have nested properties extracted
         Assert.NotNull(configProp.NestedProperties);
         Assert.Single(configProp.NestedProperties);
@@ -2382,13 +2354,13 @@ public abstract class BaseEntity
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        
+
         Assert.Equal(2, logPropsParam.Properties.Count);
-        
+
         var entityProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Entity");
         Assert.NotNull(entityProp);
         Assert.Equal("BaseEntity", entityProp.Type);
-        
+
         // Abstract type properties should have nested properties extracted
         Assert.NotNull(entityProp.NestedProperties);
         Assert.Equal(2, entityProp.NestedProperties.Count);
@@ -2434,13 +2406,13 @@ public class DataContainer
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        
+
         Assert.Equal(3, logPropsParam.Properties.Count);
-        
+
         // Primitive collections should not have nested properties
         var tagsProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Tags");
         var numbersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Numbers");
-        
+
         Assert.NotNull(tagsProp);
         Assert.NotNull(numbersProp);
         Assert.Null(tagsProp.NestedProperties);
@@ -2598,10 +2570,10 @@ public class UserInfo
 {
     [TagName(""user.id"")]
     public string UserId { get; set; }
-    
+
     [TagName(""user.display_name"")]
     public string DisplayName { get; set; }
-    
+
     public string Email { get; set; }
 }
 
@@ -2664,7 +2636,7 @@ public class Address
 {
     [TagName(""address.street"")]
     public string Street { get; set; }
-    
+
     public string City { get; set; }
 }
 
@@ -2672,7 +2644,7 @@ public class UserInfo
 {
     [TagName(""user.id"")]
     public string UserId { get; set; }
-    
+
     public Address Address { get; set; }
 }
 
@@ -2738,7 +2710,7 @@ public class RequestDetails
 {
     [TagName(""request.method"")]
     public string Method { get; set; }
-    
+
     [TagName(""request.path"")]
     public string Path { get; set; }
 }
@@ -2767,7 +2739,7 @@ public static partial class Log
         Assert.Single(loggerUsages.Results);
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
-        
+
         // Verify parameter with TagName
         Assert.Single(usage.MessageParameters);
         var requestIdParam = usage.MessageParameters[0];
@@ -2886,7 +2858,7 @@ public static partial class Log
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.Equal("user", logPropsParam.ParameterName);
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.Equal("user", tagProvider.ParameterName);
         Assert.Equal("TestNamespace.UserTagProvider", tagProvider.ProviderTypeName);
@@ -2950,7 +2922,7 @@ public static partial class Log
 
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.Equal("request", tagProvider.ParameterName);
         Assert.True(tagProvider.OmitReferenceName);
@@ -3006,10 +2978,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("not found", tagProvider.ValidationMessage);
@@ -3064,10 +3036,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("must be static", tagProvider.ValidationMessage);
@@ -3122,10 +3094,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("must be public or internal", tagProvider.ValidationMessage);
@@ -3181,10 +3153,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("must return void", tagProvider.ValidationMessage);
@@ -3239,10 +3211,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("must have exactly 2 parameters", tagProvider.ValidationMessage);
@@ -3297,10 +3269,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("First parameter must be ITagCollector", tagProvider.ValidationMessage);
@@ -3355,10 +3327,10 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
-        
+
         var tagProvider = logPropsParam.TagProvider;
         Assert.False(tagProvider.IsValid);
         Assert.Contains("Second parameter must be", tagProvider.ValidationMessage);
@@ -3492,7 +3464,7 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.NotNull(logPropsParam.TagProvider);
         Assert.True(logPropsParam.TagProvider.IsValid);
@@ -3539,7 +3511,7 @@ public static partial class Log
 
         var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         Assert.Single(usage.LogPropertiesParameters);
-        
+
         var logPropsParam = usage.LogPropertiesParameters[0];
         Assert.Null(logPropsParam.TagProvider);
     }

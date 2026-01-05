@@ -98,9 +98,6 @@ public class ProjectBClass
     private static async Task<Workspace> CreateTestWorkspace(Dictionary<string, (string FileName, string SourceCode)[]> projectDocuments)
     {
         var workspace = new AdhocWorkspace();
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, TestContext.Current.CancellationToken);
-        references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
-
         foreach (var (projectName, documents) in projectDocuments)
         {
             var projectId = ProjectId.CreateNewId(projectName);
@@ -110,7 +107,7 @@ public class ProjectBClass
                 name: projectName,
                 assemblyName: projectName,
                 LanguageNames.CSharp,
-                metadataReferences: references,
+                metadataReferences: await TestUtils.GetMetadataReferencesAsync(),
                 compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             var proj = workspace.AddProject(projectInfo);
