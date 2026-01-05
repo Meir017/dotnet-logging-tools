@@ -2,8 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LoggerUsage.Tests;
 
@@ -12,9 +10,13 @@ internal static class TestUtils
     public static async Task<Compilation> CreateCompilationAsync(string sourceCode)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
-        references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
-        references = references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.Logging.LogPropertiesAttribute).Assembly.Location));
+        var references = await ReferenceAssemblies.Net.Net90
+            .AddPackages([
+                new PackageIdentity("Microsoft.Extensions.Logging.Abstractions", "10.0.1"),
+                new PackageIdentity("Microsoft.Extensions.Telemetry.Abstractions", "10.1.0"),
+            ])
+            .ResolveAsync(LanguageNames.CSharp, default);
+
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             [syntaxTree],
