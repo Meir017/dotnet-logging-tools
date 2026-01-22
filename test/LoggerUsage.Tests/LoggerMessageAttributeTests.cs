@@ -1,4 +1,3 @@
-using FluentAssertions;
 using LoggerUsage.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -55,9 +54,9 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        loggerUsages.Results.Should().ContainSingle()
-            .Which.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageAttribute);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, loggerUsages.Results[0].MethodType);
     }
 
     public static TheoryData<string, int?, string?> LoggerMessageEventIdScenarios() => new()
@@ -108,31 +107,32 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        var usage = loggerUsages.Results.Should().ContainSingle().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
         if (expectedId == null && expectedName == null)
         {
-            usage.EventId.Should().BeNull();
+            Assert.Null(usage.EventId);
             return;
         }
 
-        var details = usage.EventId.Should().BeOfType<EventIdDetails>().Which;
+        var details = Assert.IsType<EventIdDetails>(usage.EventId);
         if (expectedId is not null)
         {
-            details.Id.Should().Be(ConstantOrReference.Constant(expectedId));
+            Assert.Equal(ConstantOrReference.Constant(expectedId), details.Id);
         }
         else
         {
-            details.Id.Should().BeSameAs(ConstantOrReference.Missing);
+            Assert.Same(ConstantOrReference.Missing, details.Id);
         }
 
         if (expectedName is not null)
         {
-            details.Name.Should().Be(ConstantOrReference.Constant(expectedName));
+            Assert.Equal(ConstantOrReference.Constant(expectedName), details.Name);
         }
         else
         {
-            details.Name.Should().BeSameAs(ConstantOrReference.Missing);
+            Assert.Same(ConstantOrReference.Missing, details.Name);
         }
     }
 
@@ -187,9 +187,9 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        loggerUsages.Results.Should().ContainSingle()
-            .Which.LogLevel.Should().Be(expectedLogLevel);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        Assert.Equal(expectedLogLevel, loggerUsages.Results[0].LogLevel);
     }
 
     public static TheoryData<string, string?> LoggerMessageMessageScenarios() => new()
@@ -228,15 +228,15 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        var result = loggerUsages.Results.Should().ContainSingle().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
         if (expectedMessage == null)
         {
-            string.IsNullOrEmpty(result.MessageTemplate).Should().BeTrue();
+            Assert.True(string.IsNullOrEmpty(loggerUsages.Results[0].MessageTemplate));
         }
         else
         {
-            result.MessageTemplate.Should().Be(expectedMessage);
+            Assert.Equal(expectedMessage, loggerUsages.Results[0].MessageTemplate);
         }
     }
 
@@ -296,16 +296,17 @@ public class LogData
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        var usage = loggerUsages.Results.Should().ContainSingle().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+        var usage = loggerUsages.Results[0];
         if (expectedParameters.Count == 0)
         {
-            usage.MessageParameters.Should().BeEmpty();
+            Assert.Empty(usage.MessageParameters);
         }
         else
         {
-            usage.MessageParameters.Should().HaveCount(expectedParameters.Count);
-            usage.MessageParameters.Should().Equal(expectedParameters);
+            Assert.Equal(expectedParameters.Count, usage.MessageParameters.Count);
+            Assert.Equal(expectedParameters, usage.MessageParameters);
         }
     }
 
@@ -356,19 +357,19 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUserLogin");
-        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMessageAttribute);
-        usage.DeclaringTypeName.Should().Be("TestNamespace.Log");
-        usage.HasInvocations.Should().BeTrue();
-        usage.InvocationCount.Should().Be(1);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
 
-        var invocation = usage.Invocations.Should().ContainSingle().Which;
-        invocation.ContainingType.Should().Be("TestNamespace.UserService");
-        invocation.InvocationLocation.Should().NotBeNull();
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.Equal(LoggerUsageMethodType.LoggerMessageAttribute, usage.MethodType);
+        Assert.Equal("TestNamespace.Log", usage.DeclaringTypeName);
+        Assert.True(usage.HasInvocations);
+        Assert.Equal(1, usage.InvocationCount);
+
+        var invocation = Assert.Single(usage.Invocations);
+        Assert.Equal("TestNamespace.UserService", invocation.ContainingType);
+        Assert.NotNull(invocation.InvocationLocation);
     }
 
     [Fact]
@@ -436,20 +437,20 @@ public class AdminService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUserLogin");
-        usage.HasInvocations.Should().BeTrue();
-        usage.InvocationCount.Should().Be(3);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.True(usage.HasInvocations);
+        Assert.Equal(3, usage.InvocationCount);
 
         // Verify invocations from different containing types
         var userServiceInvocations = usage.Invocations.Where(i => i.ContainingType == "TestNamespace.UserService").ToList();
         var adminServiceInvocations = usage.Invocations.Where(i => i.ContainingType == "TestNamespace.AdminService").ToList();
 
-        userServiceInvocations.Should().HaveCount(2);
-        adminServiceInvocations.Should().ContainSingle();
+        Assert.Equal(2, userServiceInvocations.Count);
+        Assert.Single(adminServiceInvocations);
     }
 
     [Fact]
@@ -498,16 +499,16 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        loggerUsages.Results.Should().HaveCount(2); // LoggerMessage + regular logger call
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count); // LoggerMessage + regular logger call
 
         var loggerMessageUsage = loggerUsages.Results
             .OfType<LoggerMessageUsageInfo>()
             .Single(u => u.MethodName == "UnusedMethod");
 
-        loggerMessageUsage.HasInvocations.Should().BeFalse();
-        loggerMessageUsage.InvocationCount.Should().Be(0);
-        loggerMessageUsage.Invocations.Should().BeEmpty();
+        Assert.False(loggerMessageUsage.HasInvocations);
+        Assert.Equal(0, loggerMessageUsage.InvocationCount);
+        Assert.Empty(loggerMessageUsage.Invocations);
     }
 
     [Fact]
@@ -555,26 +556,26 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasInvocations.Should().BeTrue();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
 
-        var invocation = usage.Invocations.Should().ContainSingle().Which;
-        invocation.Arguments.Should().HaveCount(3); // logger, userId, action
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasInvocations);
+
+        var invocation = Assert.Single(usage.Invocations);
+        Assert.Equal(3, invocation.Arguments.Count); // logger, userId, action
 
         // Verify argument details
         var loggerArg = invocation.Arguments.FirstOrDefault(a => a.Name == "logger");
         var userIdArg = invocation.Arguments.FirstOrDefault(a => a.Name == "userId");
         var actionArg = invocation.Arguments.FirstOrDefault(a => a.Name == "action");
 
-        loggerArg.Should().NotBeNull();
-        userIdArg.Should().NotBeNull();
-        actionArg.Should().NotBeNull();
+        Assert.NotNull(loggerArg);
+        Assert.NotNull(userIdArg);
+        Assert.NotNull(actionArg);
 
-        userIdArg!.Type.Should().Be("int");
-        actionArg!.Type.Should().Be("string");
+        Assert.Equal("int", userIdArg.Type);
+        Assert.Equal("string", actionArg.Type);
     }
 
     [Fact]
@@ -637,16 +638,16 @@ public class UserService
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        loggerUsages.Results.Should().HaveCount(2);
+        Assert.NotNull(loggerUsages);
+        Assert.Equal(2, loggerUsages.Results.Count);
 
         var loginUsage = loggerUsages.Results.OfType<LoggerMessageUsageInfo>()
             .Single(u => u.MethodName == "LogUserLogin");
         var loginFailedUsage = loggerUsages.Results.OfType<LoggerMessageUsageInfo>()
             .Single(u => u.MethodName == "LogUserLoginFailed");
 
-        loginUsage.InvocationCount.Should().Be(2);
-        loginFailedUsage.InvocationCount.Should().Be(1);
+        Assert.Equal(2, loginUsage.InvocationCount);
+        Assert.Equal(1, loginFailedUsage.InvocationCount);
     }
 
     [Fact]
@@ -702,16 +703,16 @@ namespace TestNamespace.Services
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogApplicationStarted");
-        usage.DeclaringTypeName.Should().Be("TestNamespace.Logging.ApplicationLog");
-        usage.HasInvocations.Should().BeTrue();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
 
-        var invocation = usage.Invocations.Should().ContainSingle().Which;
-        invocation.ContainingType.Should().Be("TestNamespace.Services.StartupService");
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogApplicationStarted", usage.MethodName);
+        Assert.Equal("TestNamespace.Logging.ApplicationLog", usage.DeclaringTypeName);
+        Assert.True(usage.HasInvocations);
+
+        var invocation = Assert.Single(usage.Invocations);
+        Assert.Equal("TestNamespace.Services.StartupService", invocation.ContainingType);
     }
 
     [Fact]
@@ -736,25 +737,25 @@ namespace TestNamespace.Services
         var resultsWithoutSolution = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!);
 
         // Assert
-        resultsWithSolution.Should().NotBeNull();
-        resultsWithSolution.Results.Should().ContainSingle();
-        resultsWithoutSolution.Should().NotBeNull();
-        resultsWithoutSolution.Results.Should().ContainSingle();
+        Assert.NotNull(resultsWithSolution);
+        Assert.Single(resultsWithSolution.Results);
+        Assert.NotNull(resultsWithoutSolution);
+        Assert.Single(resultsWithoutSolution.Results);
 
-        var usageWithSolution = resultsWithSolution.Results[0].Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        var usageWithoutSolution = resultsWithoutSolution.Results[0].Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        var usageWithSolution = Assert.IsType<LoggerMessageUsageInfo>(resultsWithSolution.Results[0]);
+        var usageWithoutSolution = Assert.IsType<LoggerMessageUsageInfo>(resultsWithoutSolution.Results[0]);
 
         // Without solution: Should find 0 invocations (no local invocations in logger project)
-        usageWithoutSolution.HasInvocations.Should().BeFalse("Without solution context, should not find cross-project invocations");
-        usageWithoutSolution.InvocationCount.Should().Be(0);
+        Assert.False(usageWithoutSolution.HasInvocations, "Without solution context, should not find cross-project invocations");
+        Assert.Equal(0, usageWithoutSolution.InvocationCount);
 
         // With solution: Should find cross-project invocations using SymbolFinder.FindCallersAsync
-        usageWithSolution.HasInvocations.Should().BeTrue($"With solution context, should find cross-project invocations but found {usageWithSolution.InvocationCount}");
-        usageWithSolution.InvocationCount.Should().Be(2); // Should find 2 invocations from consumer project
+        Assert.True(usageWithSolution.HasInvocations, $"With solution context, should find cross-project invocations but found {usageWithSolution.InvocationCount}");
+        Assert.Equal(2, usageWithSolution.InvocationCount); // Should find 2 invocations from consumer project
 
         // Verify invocations are from the consumer project
-        usageWithSolution.Invocations.Should().AllSatisfy(invocation =>
-            invocation.ContainingType.Should().Contain("ConsumerProject"));
+        Assert.All(usageWithSolution.Invocations, invocation =>
+            Assert.Contains("ConsumerProject", invocation.ContainingType));
     }
 
     [Fact]
@@ -771,23 +772,23 @@ namespace TestNamespace.Services
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!, solution);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUserActivity");
-        usage.DeclaringTypeName.Should().Be("LoggerProject.UserLogger");
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
 
-        usage.HasInvocations.Should().BeTrue($"Expected invocations to be found, but got {usage.InvocationCount} invocations");
-        usage.InvocationCount.Should().Be(2); // Should find invocations in consumer project
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserActivity", usage.MethodName);
+        Assert.Equal("LoggerProject.UserLogger", usage.DeclaringTypeName);
+
+        Assert.True(usage.HasInvocations, $"Expected invocations to be found, but got {usage.InvocationCount} invocations");
+        Assert.Equal(2, usage.InvocationCount); // Should find invocations in consumer project
 
         // Verify invocations from consumer project
         var consumerInvocations = usage.Invocations.Where(i => i.ContainingType.Contains("ConsumerProject")).ToList();
-        consumerInvocations.Should().HaveCount(2);
+        Assert.Equal(2, consumerInvocations.Count);
 
         // Should find invocations in both services
-        usage.Invocations.Should().Contain(i => i.ContainingType == "ConsumerProject.Services.UserService");
-        usage.Invocations.Should().Contain(i => i.ContainingType == "ConsumerProject.Services.ActivityService");
+        Assert.Contains(usage.Invocations, i => i.ContainingType == "ConsumerProject.Services.UserService");
+        Assert.Contains(usage.Invocations, i => i.ContainingType == "ConsumerProject.Services.ActivityService");
     }
 
     [Fact]
@@ -804,14 +805,14 @@ namespace TestNamespace.Services
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(loggerCompilation!); // No solution parameter
 
         // Assert - Should still find the LoggerMessage declaration but no cross-project invocations
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUserActivity");
-        usage.DeclaringTypeName.Should().Be("LoggerProject.UserLogger");
-        usage.HasInvocations.Should().BeFalse(); // Should not find cross-project invocations
-        usage.InvocationCount.Should().Be(0);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserActivity", usage.MethodName);
+        Assert.Equal("LoggerProject.UserLogger", usage.DeclaringTypeName);
+        Assert.False(usage.HasInvocations); // Should not find cross-project invocations
+        Assert.Equal(0, usage.InvocationCount);
     }
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateInMemorySolutionWithLoggerMessageProjects()
@@ -929,8 +930,8 @@ namespace ConsumerProject.Services
         var loggerErrors = loggerCompilation!.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         var consumerErrors = consumerCompilation!.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
 
-        loggerErrors.Should().BeEmpty();
-        consumerErrors.Should().BeEmpty();
+        Assert.Empty(loggerErrors);
+        Assert.Empty(consumerErrors);
 
         return (solution, loggerProjectId, consumerProjectId);
     }
@@ -953,8 +954,8 @@ namespace ConsumerProject.Services
 
         // Find the LoggerMessage partial method symbol
         var partialMethodSymbol = FindLoggerMessageMethodSymbol(loggerCompilation!, "LogUserAction");
-        partialMethodSymbol.Should().NotBeNull();
-        partialMethodSymbol!.IsPartialDefinition.Should().BeTrue();
+        Assert.NotNull(partialMethodSymbol);
+        Assert.True(partialMethodSymbol.IsPartialDefinition);
 
         // Test 1: Search for callers using the partial method symbol
         var callersFromPartial = await SymbolFinder.FindCallersAsync(partialMethodSymbol, solution, TestContext.Current.CancellationToken);
@@ -967,7 +968,7 @@ namespace ConsumerProject.Services
             var callersFromGenerated = await SymbolFinder.FindCallersAsync(generatedMethodSymbol, solution, TestContext.Current.CancellationToken);
 
             // Analysis: Which symbol finds the actual invocations?
-            (callersFromPartial.Any() || callersFromGenerated.Any()).Should().BeTrue(
+            Assert.True(callersFromPartial.Any() || callersFromGenerated.Any(),
                 "Either partial or generated method should find invocations");
         }
     }
@@ -988,7 +989,7 @@ namespace ConsumerProject.Services
         var totalLocations = callers.SelectMany(c => c.Locations).Count();
 
         // Should find multiple invocations from the consumer project
-        totalLocations.Should().BeGreaterOrEqualTo(2, $"Expected at least 2 invocations, found {totalLocations}");
+        Assert.True(totalLocations >= 2, $"Expected at least 2 invocations, found {totalLocations}");
     }
 
     [Fact]
@@ -1017,7 +1018,7 @@ namespace ConsumerProject.Services
         }).ToList();
 
         // Should find invocations from both consumer projects
-        callersByProject.Should().HaveCountGreaterOrEqualTo(2,
+        Assert.True(callersByProject.Count >= 2,
             $"Expected invocations from 2+ projects, found from {callersByProject.Count} projects");
     }
 
@@ -1037,7 +1038,7 @@ namespace ConsumerProject.Services
         var totalLocations = callers.SelectMany(c => c.Locations).Count();
 
         // Should find invocations regardless of syntax style
-        totalLocations.Should().BeGreaterOrEqualTo(2,
+        Assert.True(totalLocations >= 2,
             $"Expected invocations with different syntax styles, found {totalLocations}");
     }
 
@@ -1058,7 +1059,7 @@ namespace ConsumerProject.Services
         var totalLocations = callers.SelectMany(c => c.Locations).Count();
 
         // This test validates that SymbolFinder is precise in its matching
-        totalLocations.Should().Be(1); // Only one correct invocation exists in the test setup
+        Assert.Equal(1, totalLocations); // Only one correct invocation exists in the test setup
     }
 
     #endregion
@@ -1098,24 +1099,24 @@ public class UserInfo
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUserLogin");
-        usage.HasLogProperties.Should().BeTrue();
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.ParameterName.Should().Be("user");
-        logPropsParam.ParameterType.Should().Be("UserInfo");
-        logPropsParam.Properties.Should().HaveCount(3);
-        usage.TotalLogPropertiesCount.Should().Be(3);
+        Assert.Equal("user", logPropsParam.ParameterName);
+        Assert.Equal("UserInfo", logPropsParam.ParameterType);
+        Assert.Equal(3, logPropsParam.Properties.Count);
+        Assert.Equal(3, usage.TotalLogPropertiesCount);
 
         // Verify individual properties
-        logPropsParam.Properties.Should().Contain(p => p.Name == "UserId" && p.Type == "int");
-        logPropsParam.Properties.Should().Contain(p => p.Name == "UserName" && p.Type == "string");
-        logPropsParam.Properties.Should().Contain(p => p.Name == "Email" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "UserId" && p.Type == "int");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "UserName" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Email" && p.Type == "string");
     }
 
     [Fact]
@@ -1157,21 +1158,21 @@ public class OrderInfo
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue();
-        usage.LogPropertiesParameters.Should().HaveCount(2);
-        usage.TotalLogPropertiesCount.Should().Be(5); // 2 user + 3 order properties
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Equal(2, usage.LogPropertiesParameters.Count);
+        Assert.Equal(5, usage.TotalLogPropertiesCount); // 2 user + 3 order properties
 
         var userParam = usage.LogPropertiesParameters.FirstOrDefault(p => p.ParameterName == "user");
         var orderParam = usage.LogPropertiesParameters.FirstOrDefault(p => p.ParameterName == "order");
 
-        userParam.Should().NotBeNull();
-        orderParam.Should().NotBeNull();
-        userParam!.Properties.Should().HaveCount(2);
-        orderParam!.Properties.Should().HaveCount(3);
+        Assert.NotNull(userParam);
+        Assert.NotNull(orderParam);
+        Assert.Equal(2, userParam.Properties.Count);
+        Assert.Equal(3, orderParam.Properties.Count);
     }
 
     [Fact]
@@ -1208,17 +1209,17 @@ public class UserInfo
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue();
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Configuration.OmitReferenceName.Should().BeTrue();
-        logPropsParam.Configuration.SkipNullProperties.Should().BeTrue();
-        logPropsParam.Configuration.Transitive.Should().BeFalse(); // Default value
+        Assert.True(logPropsParam.Configuration.OmitReferenceName);
+        Assert.True(logPropsParam.Configuration.SkipNullProperties);
+        Assert.False(logPropsParam.Configuration.Transitive); // Default value
     }
 
     [Fact]
@@ -1257,25 +1258,25 @@ public class UserInfo
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
 
         // Regular message parameters should still be extracted
-        usage.MessageParameters.Should().HaveCount(2);
-        usage.MessageParameters.Should().Contain(p => p.Name == "userId" && p.Type == "int");
-        usage.MessageParameters.Should().Contain(p => p.Name == "action" && p.Type == "string");
+        Assert.Equal(2, usage.MessageParameters.Count);
+        Assert.Contains(usage.MessageParameters, p => p.Name == "userId" && p.Type == "int");
+        Assert.Contains(usage.MessageParameters, p => p.Name == "action" && p.Type == "string");
 
         // LogProperties should also be extracted
-        usage.HasLogProperties.Should().BeTrue();
-        usage.LogPropertiesParameters.Should().ContainSingle();
-        usage.TotalLogPropertiesCount.Should().Be(2);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
+        Assert.Equal(2, usage.TotalLogPropertiesCount);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.ParameterName.Should().Be("user");
-        logPropsParam.Properties.Should().Contain(p => p.Name == "Email" && p.Type == "string");
-        logPropsParam.Properties.Should().Contain(p => p.Name == "LastLogin" && p.Type == "DateTime");
+        Assert.Equal("user", logPropsParam.ParameterName);
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Email" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "LastLogin" && p.Type == "DateTime");
     }
 
     [Fact]
@@ -1311,17 +1312,17 @@ public class EmptyClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue(); // Has LogProperties parameter
-        usage.LogPropertiesParameters.Should().ContainSingle();
-        usage.TotalLogPropertiesCount.Should().Be(0); // But no actual properties
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties); // Has LogProperties parameter
+        Assert.Single(usage.LogPropertiesParameters);
+        Assert.Equal(0, usage.TotalLogPropertiesCount); // But no actual properties
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.ParameterName.Should().Be("empty");
-        logPropsParam.Properties.Should().BeEmpty(); // No public properties to extract
+        Assert.Equal("empty", logPropsParam.ParameterName);
+        Assert.Empty(logPropsParam.Properties); // No public properties to extract
     }
 
     [Fact]
@@ -1358,12 +1359,12 @@ public class NullableClass
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue();
-        usage.TotalLogPropertiesCount.Should().Be(4);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Equal(4, usage.TotalLogPropertiesCount);
 
         var properties = usage.LogPropertiesParameters[0].Properties;
 
@@ -1372,15 +1373,15 @@ public class NullableClass
         var nonNullableString = properties.FirstOrDefault(p => p.Name == "NonNullableString");
         var nullableString = properties.FirstOrDefault(p => p.Name == "NullableString");
 
-        nonNullableInt.Should().NotBeNull();
-        nullableInt.Should().NotBeNull();
-        nonNullableString.Should().NotBeNull();
-        nullableString.Should().NotBeNull();
+        Assert.NotNull(nonNullableInt);
+        Assert.NotNull(nullableInt);
+        Assert.NotNull(nonNullableString);
+        Assert.NotNull(nullableString);
 
-        nonNullableInt!.IsNullable.Should().BeFalse();
-        nullableInt!.IsNullable.Should().BeTrue();
-        nonNullableString!.IsNullable.Should().BeFalse(); // Non-nullable reference type
-        nullableString!.IsNullable.Should().BeTrue();     // Nullable reference type
+        Assert.False(nonNullableInt.IsNullable);
+        Assert.True(nullableInt.IsNullable);
+        Assert.False(nonNullableString.IsNullable); // Non-nullable reference type
+        Assert.True(nullableString.IsNullable);     // Nullable reference type
     }
 
     [Fact]
@@ -1408,16 +1409,16 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeFalse();
-        usage.LogPropertiesParameters.Should().BeEmpty();
-        usage.TotalLogPropertiesCount.Should().Be(0);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.False(usage.HasLogProperties);
+        Assert.Empty(usage.LogPropertiesParameters);
+        Assert.Equal(0, usage.TotalLogPropertiesCount);
 
         // No message template parameters since template has no placeholders
-        usage.MessageParameters.Should().BeEmpty();
+        Assert.Empty(usage.MessageParameters);
     }
 
     public static TheoryData<string, bool, bool, bool> LogPropertiesConfigurationScenarios() => new()
@@ -1464,16 +1465,16 @@ public class UserInfo
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
 
         var config = usage.LogPropertiesParameters[0].Configuration;
-        config.OmitReferenceName.Should().Be(expectedOmitRef);
-        config.SkipNullProperties.Should().Be(expectedSkipNull);
-        config.Transitive.Should().Be(expectedTransitive);
+        Assert.Equal(expectedOmitRef, config.OmitReferenceName);
+        Assert.Equal(expectedSkipNull, config.SkipNullProperties);
+        Assert.Equal(expectedTransitive, config.Transitive);
     }
 
     #endregion
@@ -1916,32 +1917,32 @@ public class Address
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue();
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Configuration.Transitive.Should().BeTrue();
-        logPropsParam.Properties.Should().HaveCount(3);
+        Assert.True(logPropsParam.Configuration.Transitive);
+        Assert.Equal(3, logPropsParam.Properties.Count);
 
         // Verify top-level properties
-        logPropsParam.Properties.Should().Contain(p => p.Name == "Name" && p.Type == "string");
-        logPropsParam.Properties.Should().Contain(p => p.Name == "Age" && p.Type == "int");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Name" && p.Type == "string");
+        Assert.Contains(logPropsParam.Properties, p => p.Name == "Age" && p.Type == "int");
         
         // Verify nested Address property
         var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Address");
-        addressProp.Should().NotBeNull();
-        addressProp!.Type.Should().Be("Address");
-        addressProp.NestedProperties.Should().NotBeNull();
-        addressProp.NestedProperties!.Should().HaveCount(3);
+        Assert.NotNull(addressProp);
+        Assert.Equal("Address", addressProp.Type);
+        Assert.NotNull(addressProp.NestedProperties);
+        Assert.Equal(3, addressProp.NestedProperties.Count);
         
         // Verify nested Address properties
-        addressProp.NestedProperties!.Should().Contain(p => p.Name == "Street" && p.Type == "string");
-        addressProp.NestedProperties!.Should().Contain(p => p.Name == "City" && p.Type == "string");
-        addressProp.NestedProperties!.Should().Contain(p => p.Name == "ZipCode" && p.Type == "string");
+        Assert.Contains(addressProp.NestedProperties, p => p.Name == "Street" && p.Type == "string");
+        Assert.Contains(addressProp.NestedProperties, p => p.Name == "City" && p.Type == "string");
+        Assert.Contains(addressProp.NestedProperties, p => p.Name == "ZipCode" && p.Type == "string");
     }
 
     [Fact]
@@ -1981,21 +1982,21 @@ public class Address
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.HasLogProperties.Should().BeTrue();
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.True(usage.HasLogProperties);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Configuration.Transitive.Should().BeFalse();
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.False(logPropsParam.Configuration.Transitive);
+        Assert.Equal(2, logPropsParam.Properties.Count);
 
         // Verify Address property has no nested properties
         var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Address");
-        addressProp.Should().NotBeNull();
-        addressProp!.NestedProperties.Should().BeNull();
+        Assert.NotNull(addressProp);
+        Assert.Null(addressProp.NestedProperties);
     }
 
     [Fact]
@@ -2041,29 +2042,29 @@ public class Employee
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Configuration.Transitive.Should().BeTrue();
+        Assert.True(logPropsParam.Configuration.Transitive);
 
         // Level 1: Organization
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.Equal(2, logPropsParam.Properties.Count);
         var deptProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Department");
-        deptProp.Should().NotBeNull();
-        deptProp!.NestedProperties.Should().NotBeNull();
+        Assert.NotNull(deptProp);
+        Assert.NotNull(deptProp.NestedProperties);
 
         // Level 2: Department
-        deptProp.NestedProperties!.Should().HaveCount(2);
-        var managerProp = deptProp.NestedProperties!.FirstOrDefault(p => p.Name == "Manager");
-        managerProp.Should().NotBeNull();
-        managerProp!.NestedProperties.Should().NotBeNull();
+        Assert.Equal(2, deptProp.NestedProperties.Count);
+        var managerProp = deptProp.NestedProperties.FirstOrDefault(p => p.Name == "Manager");
+        Assert.NotNull(managerProp);
+        Assert.NotNull(managerProp.NestedProperties);
 
         // Level 3: Employee
-        managerProp.NestedProperties!.Should().HaveCount(2);
-        managerProp.NestedProperties!.Should().Contain(p => p.Name == "EmployeeName" && p.Type == "string");
-        managerProp.NestedProperties!.Should().Contain(p => p.Name == "EmployeeId" && p.Type == "int");
+        Assert.Equal(2, managerProp.NestedProperties.Count);
+        Assert.Contains(managerProp.NestedProperties, p => p.Name == "EmployeeName" && p.Type == "string");
+        Assert.Contains(managerProp.NestedProperties, p => p.Name == "EmployeeId" && p.Type == "int");
     }
 
     [Fact]
@@ -2098,25 +2099,25 @@ public class Node
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert - Should complete without infinite loop
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Configuration.Transitive.Should().BeTrue();
+        Assert.True(logPropsParam.Configuration.Transitive);
         
         // Should have 3 properties: Name, Parent, Child
-        logPropsParam.Properties.Should().HaveCount(3);
+        Assert.Equal(3, logPropsParam.Properties.Count);
         
         // Parent and Child should not have nested properties (circular reference detected)
         var parentProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Parent");
         var childProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Child");
-        parentProp.Should().NotBeNull();
-        childProp.Should().NotBeNull();
+        Assert.NotNull(parentProp);
+        Assert.NotNull(childProp);
         
         // The circular reference detection should prevent nested properties
-        parentProp!.NestedProperties.Should().BeNull();
-        childProp!.NestedProperties.Should().BeNull();
+        Assert.Null(parentProp.NestedProperties);
+        Assert.Null(childProp.NestedProperties);
     }
 
     [Fact]
@@ -2156,23 +2157,23 @@ public class Member
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.Equal(2, logPropsParam.Properties.Count);
         
         var membersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Members");
-        membersProp.Should().NotBeNull();
-        membersProp!.Type.Should().Be("Member[]");
+        Assert.NotNull(membersProp);
+        Assert.Equal("Member[]", membersProp.Type);
         
         // Should extract properties from the element type
-        membersProp.NestedProperties.Should().NotBeNull();
-        membersProp.NestedProperties!.Should().HaveCount(2);
-        membersProp.NestedProperties!.Should().Contain(p => p.Name == "Name" && p.Type == "string");
-        membersProp.NestedProperties!.Should().Contain(p => p.Name == "Role" && p.Type == "string");
+        Assert.NotNull(membersProp.NestedProperties);
+        Assert.Equal(2, membersProp.NestedProperties.Count);
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "Name" && p.Type == "string");
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "Role" && p.Type == "string");
     }
 
     [Fact]
@@ -2213,21 +2214,21 @@ public class Member
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         
         var membersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Members");
-        membersProp.Should().NotBeNull();
-        membersProp!.Type.Should().Be("List");
+        Assert.NotNull(membersProp);
+        Assert.Equal("List", membersProp.Type);
         
         // Should extract properties from the element type
-        membersProp.NestedProperties.Should().NotBeNull();
-        membersProp.NestedProperties!.Should().HaveCount(2);
-        membersProp.NestedProperties!.Should().Contain(p => p.Name == "Name" && p.Type == "string");
-        membersProp.NestedProperties!.Should().Contain(p => p.Name == "MemberId" && p.Type == "int");
+        Assert.NotNull(membersProp.NestedProperties);
+        Assert.Equal(2, membersProp.NestedProperties.Count);
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "Name" && p.Type == "string");
+        Assert.Contains(membersProp.NestedProperties, p => p.Name == "MemberId" && p.Type == "int");
     }
 
     [Fact]
@@ -2268,21 +2269,21 @@ public class Item
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         
         var itemsProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Items");
-        itemsProp.Should().NotBeNull();
-        itemsProp!.Type.Should().Be("IEnumerable");
+        Assert.NotNull(itemsProp);
+        Assert.Equal("IEnumerable", itemsProp.Type);
         
         // Should extract properties from the element type
-        itemsProp.NestedProperties.Should().NotBeNull();
-        itemsProp.NestedProperties!.Should().HaveCount(2);
-        itemsProp.NestedProperties!.Should().Contain(p => p.Name == "ItemName" && p.Type == "string");
-        itemsProp.NestedProperties!.Should().Contain(p => p.Name == "Price" && p.Type == "decimal");
+        Assert.NotNull(itemsProp.NestedProperties);
+        Assert.Equal(2, itemsProp.NestedProperties.Count);
+        Assert.Contains(itemsProp.NestedProperties, p => p.Name == "ItemName" && p.Type == "string");
+        Assert.Contains(itemsProp.NestedProperties, p => p.Name == "Price" && p.Type == "decimal");
     }
 
     [Fact]
@@ -2321,22 +2322,22 @@ public interface IConfiguration
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.Equal(2, logPropsParam.Properties.Count);
         
         var configProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Config");
-        configProp.Should().NotBeNull();
-        configProp!.Type.Should().Be("IConfiguration");
+        Assert.NotNull(configProp);
+        Assert.Equal("IConfiguration", configProp.Type);
         
         // Interface properties should have nested properties extracted
-        configProp.NestedProperties.Should().NotBeNull();
-        configProp.NestedProperties!.Should().ContainSingle();
-        configProp.NestedProperties!.Should().Contain(p => p.Name == "Setting" && p.Type == "string");
+        Assert.NotNull(configProp.NestedProperties);
+        Assert.Single(configProp.NestedProperties);
+        Assert.Contains(configProp.NestedProperties, p => p.Name == "Setting" && p.Type == "string");
     }
 
     [Fact]
@@ -2376,23 +2377,23 @@ public abstract class BaseEntity
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.Equal(2, logPropsParam.Properties.Count);
         
         var entityProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Entity");
-        entityProp.Should().NotBeNull();
-        entityProp!.Type.Should().Be("BaseEntity");
+        Assert.NotNull(entityProp);
+        Assert.Equal("BaseEntity", entityProp.Type);
         
         // Abstract type properties should have nested properties extracted
-        entityProp.NestedProperties.Should().NotBeNull();
-        entityProp.NestedProperties!.Should().HaveCount(2);
-        entityProp.NestedProperties!.Should().Contain(p => p.Name == "Id" && p.Type == "int");
-        entityProp.NestedProperties!.Should().Contain(p => p.Name == "Name" && p.Type == "string");
+        Assert.NotNull(entityProp.NestedProperties);
+        Assert.Equal(2, entityProp.NestedProperties.Count);
+        Assert.Contains(entityProp.NestedProperties, p => p.Name == "Id" && p.Type == "int");
+        Assert.Contains(entityProp.NestedProperties, p => p.Name == "Name" && p.Type == "string");
     }
 
     [Fact]
@@ -2428,22 +2429,22 @@ public class DataContainer
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         var logPropsParam = usage.LogPropertiesParameters[0];
         
-        logPropsParam.Properties.Should().HaveCount(3);
+        Assert.Equal(3, logPropsParam.Properties.Count);
         
         // Primitive collections should not have nested properties
         var tagsProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Tags");
         var numbersProp = logPropsParam.Properties.FirstOrDefault(p => p.Name == "Numbers");
         
-        tagsProp.Should().NotBeNull();
-        numbersProp.Should().NotBeNull();
-        tagsProp!.NestedProperties.Should().BeNull();
-        numbersProp!.NestedProperties.Should().BeNull();
+        Assert.NotNull(tagsProp);
+        Assert.NotNull(numbersProp);
+        Assert.Null(tagsProp.NestedProperties);
+        Assert.Null(numbersProp.NestedProperties);
     }
 
     #endregion
@@ -2479,17 +2480,17 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUserLogin");
-        usage.MessageParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUserLogin", usage.MethodName);
+        Assert.Single(usage.MessageParameters);
 
         var parameter = usage.MessageParameters[0];
-        parameter.Name.Should().Be("userName");
-        parameter.Type.Should().Be("string");
-        parameter.CustomTagName.Should().Be("user.name");
+        Assert.Equal("userName", parameter.Name);
+        Assert.Equal("string", parameter.Type);
+        Assert.Equal("user.name", parameter.CustomTagName);
     }
 
     [Fact]
@@ -2522,20 +2523,20 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogRequest");
-        usage.MessageParameters.Should().HaveCount(2);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogRequest", usage.MethodName);
+        Assert.Equal(2, usage.MessageParameters.Count);
 
         var requestIdParam = usage.MessageParameters[0];
-        requestIdParam.Name.Should().Be("requestId");
-        requestIdParam.CustomTagName.Should().Be("request.id");
+        Assert.Equal("requestId", requestIdParam.Name);
+        Assert.Equal("request.id", requestIdParam.CustomTagName);
 
         var userIdParam = usage.MessageParameters[1];
-        userIdParam.Name.Should().Be("userId");
-        userIdParam.CustomTagName.Should().Be("user.id");
+        Assert.Equal("userId", userIdParam.Name);
+        Assert.Equal("user.id", userIdParam.CustomTagName);
     }
 
     [Fact]
@@ -2568,19 +2569,19 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MessageParameters.Should().HaveCount(2);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal(2, usage.MessageParameters.Count);
 
         var requestIdParam = usage.MessageParameters[0];
-        requestIdParam.Name.Should().Be("requestId");
-        requestIdParam.CustomTagName.Should().Be("request.id");
+        Assert.Equal("requestId", requestIdParam.Name);
+        Assert.Equal("request.id", requestIdParam.CustomTagName);
 
         var statusParam = usage.MessageParameters[1];
-        statusParam.Name.Should().Be("status");
-        statusParam.CustomTagName.Should().BeNull(); // No TagName attribute
+        Assert.Equal("status", statusParam.Name);
+        Assert.Null(statusParam.CustomTagName); // No TagName attribute
     }
 
     [Fact]
@@ -2623,30 +2624,30 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MethodName.Should().Be("LogUser");
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal("LogUser", usage.MethodName);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.ParameterName.Should().Be("user");
-        logPropsParam.Properties.Should().HaveCount(3);
+        Assert.Equal("user", logPropsParam.ParameterName);
+        Assert.Equal(3, logPropsParam.Properties.Count);
 
         // Verify properties with TagName
         var userIdProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "UserId");
-        userIdProp.Should().NotBeNull();
-        userIdProp!.CustomTagName.Should().Be("user.id");
+        Assert.NotNull(userIdProp);
+        Assert.Equal("user.id", userIdProp.CustomTagName);
 
         var displayNameProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "DisplayName");
-        displayNameProp.Should().NotBeNull();
-        displayNameProp!.CustomTagName.Should().Be("user.display_name");
+        Assert.NotNull(displayNameProp);
+        Assert.Equal("user.display_name", displayNameProp.CustomTagName);
 
         // Verify property without TagName
         var emailProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "Email");
-        emailProp.Should().NotBeNull();
-        emailProp!.CustomTagName.Should().BeNull();
+        Assert.NotNull(emailProp);
+        Assert.Null(emailProp.CustomTagName);
     }
 
     [Fact]
@@ -2694,33 +2695,33 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.Equal(2, logPropsParam.Properties.Count);
 
         // Verify top-level property with TagName
         var userIdProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "UserId");
-        userIdProp.Should().NotBeNull();
-        userIdProp!.CustomTagName.Should().Be("user.id");
+        Assert.NotNull(userIdProp);
+        Assert.Equal("user.id", userIdProp.CustomTagName);
 
         // Verify nested property with TagName
         var addressProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "Address");
-        addressProp.Should().NotBeNull();
-        addressProp!.NestedProperties.Should().NotBeNull();
-        addressProp.NestedProperties!.Should().HaveCount(2);
+        Assert.NotNull(addressProp);
+        Assert.NotNull(addressProp.NestedProperties);
+        Assert.Equal(2, addressProp.NestedProperties.Count);
 
-        var streetProp = addressProp.NestedProperties!.FirstOrDefault(p => p.OriginalName == "Street");
-        streetProp.Should().NotBeNull();
-        streetProp!.CustomTagName.Should().Be("address.street");
+        var streetProp = addressProp.NestedProperties.FirstOrDefault(p => p.OriginalName == "Street");
+        Assert.NotNull(streetProp);
+        Assert.Equal("address.street", streetProp.CustomTagName);
 
-        var cityProp = addressProp.NestedProperties!.FirstOrDefault(p => p.OriginalName == "City");
-        cityProp.Should().NotBeNull();
-        cityProp!.CustomTagName.Should().BeNull();
+        var cityProp = addressProp.NestedProperties.FirstOrDefault(p => p.OriginalName == "City");
+        Assert.NotNull(cityProp);
+        Assert.Null(cityProp.CustomTagName);
     }
 
     [Fact]
@@ -2762,29 +2763,29 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
         
         // Verify parameter with TagName
-        usage.MessageParameters.Should().ContainSingle();
+        Assert.Single(usage.MessageParameters);
         var requestIdParam = usage.MessageParameters[0];
-        requestIdParam.Name.Should().Be("requestId");
-        requestIdParam.CustomTagName.Should().Be("request.id");
+        Assert.Equal("requestId", requestIdParam.Name);
+        Assert.Equal("request.id", requestIdParam.CustomTagName);
 
         // Verify properties with TagName
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.Single(usage.LogPropertiesParameters);
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.Properties.Should().HaveCount(2);
+        Assert.Equal(2, logPropsParam.Properties.Count);
 
         var methodProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "Method");
-        methodProp.Should().NotBeNull();
-        methodProp!.CustomTagName.Should().Be("request.method");
+        Assert.NotNull(methodProp);
+        Assert.Equal("request.method", methodProp.CustomTagName);
 
         var pathProp = logPropsParam.Properties.FirstOrDefault(p => p.OriginalName == "Path");
-        pathProp.Should().NotBeNull();
-        pathProp!.CustomTagName.Should().Be("request.path");
+        Assert.NotNull(pathProp);
+        Assert.Equal("request.path", pathProp.CustomTagName);
     }
 
     [Fact]
@@ -2816,15 +2817,15 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.MessageParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.MessageParameters);
 
         var parameter = usage.MessageParameters[0];
-        parameter.Name.Should().Be("eventType");
-        parameter.CustomTagName.Should().Be("event.type-category");
+        Assert.Equal("eventType", parameter.Name);
+        Assert.Equal("event.type-category", parameter.CustomTagName);
     }
 
     #endregion
@@ -2876,23 +2877,23 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.ParameterName.Should().Be("user");
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.Equal("user", logPropsParam.ParameterName);
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.ParameterName.Should().Be("user");
-        tagProvider.ProviderTypeName.Should().Be("TestNamespace.UserTagProvider");
-        tagProvider.ProviderMethodName.Should().Be("AddTags");
-        tagProvider.OmitReferenceName.Should().BeFalse();
-        tagProvider.IsValid.Should().BeTrue();
-        tagProvider.ValidationMessage.Should().BeNull();
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.Equal("user", tagProvider.ParameterName);
+        Assert.Equal("TestNamespace.UserTagProvider", tagProvider.ProviderTypeName);
+        Assert.Equal("AddTags", tagProvider.ProviderMethodName);
+        Assert.False(tagProvider.OmitReferenceName);
+        Assert.True(tagProvider.IsValid);
+        Assert.Null(tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -2941,19 +2942,19 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
 
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.ParameterName.Should().Be("request");
-        tagProvider.OmitReferenceName.Should().BeTrue();
-        tagProvider.IsValid.Should().BeTrue();
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.Equal("request", tagProvider.ParameterName);
+        Assert.True(tagProvider.OmitReferenceName);
+        Assert.True(tagProvider.IsValid);
     }
 
     [Fact]
@@ -3000,18 +3001,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("not found");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("not found", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3058,18 +3059,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("must be static");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("must be static", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3116,18 +3117,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("must be public or internal");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("must be public or internal", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3175,18 +3176,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("must return void");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("must return void", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3233,18 +3234,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("must have exactly 2 parameters");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("must have exactly 2 parameters", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3291,18 +3292,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("First parameter must be ITagCollector");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("First parameter must be ITagCollector", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3349,18 +3350,18 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
+        Assert.NotNull(logPropsParam.TagProvider);
         
-        var tagProvider = logPropsParam.TagProvider!;
-        tagProvider.IsValid.Should().BeFalse();
-        tagProvider.ValidationMessage.Should().Contain("Second parameter must be");
+        var tagProvider = logPropsParam.TagProvider;
+        Assert.False(tagProvider.IsValid);
+        Assert.Contains("Second parameter must be", tagProvider.ValidationMessage);
     }
 
     [Fact]
@@ -3423,23 +3424,23 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().HaveCount(2);
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Equal(2, usage.LogPropertiesParameters.Count);
 
         var userParam = usage.LogPropertiesParameters.FirstOrDefault(p => p.ParameterName == "user");
-        userParam.Should().NotBeNull();
-        userParam!.TagProvider.Should().NotBeNull();
-        userParam.TagProvider!.ProviderMethodName.Should().Be("AddUserTags");
-        userParam.TagProvider.IsValid.Should().BeTrue();
+        Assert.NotNull(userParam);
+        Assert.NotNull(userParam.TagProvider);
+        Assert.Equal("AddUserTags", userParam.TagProvider.ProviderMethodName);
+        Assert.True(userParam.TagProvider.IsValid);
 
         var requestParam = usage.LogPropertiesParameters.FirstOrDefault(p => p.ParameterName == "request");
-        requestParam.Should().NotBeNull();
-        requestParam!.TagProvider.Should().NotBeNull();
-        requestParam.TagProvider!.ProviderMethodName.Should().Be("AddRequestTags");
-        requestParam.TagProvider.IsValid.Should().BeTrue();
+        Assert.NotNull(requestParam);
+        Assert.NotNull(requestParam.TagProvider);
+        Assert.Equal("AddRequestTags", requestParam.TagProvider.ProviderMethodName);
+        Assert.True(requestParam.TagProvider.IsValid);
     }
 
     [Fact]
@@ -3486,15 +3487,15 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().NotBeNull();
-        logPropsParam.TagProvider!.IsValid.Should().BeTrue();
+        Assert.NotNull(logPropsParam.TagProvider);
+        Assert.True(logPropsParam.TagProvider.IsValid);
     }
 
     [Fact]
@@ -3533,14 +3534,14 @@ public static partial class Log
         var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
 
         // Assert
-        loggerUsages.Should().NotBeNull();
-        
-        var usage = loggerUsages.Results.Should().ContainSingle()
-            .Which.Should().BeOfType<LoggerMessageUsageInfo>().Which;
-        usage.LogPropertiesParameters.Should().ContainSingle();
+        Assert.NotNull(loggerUsages);
+        Assert.Single(loggerUsages.Results);
+
+        var usage = Assert.IsType<LoggerMessageUsageInfo>(loggerUsages.Results[0]);
+        Assert.Single(usage.LogPropertiesParameters);
         
         var logPropsParam = usage.LogPropertiesParameters[0];
-        logPropsParam.TagProvider.Should().BeNull();
+        Assert.Null(logPropsParam.TagProvider);
     }
 
     #endregion
