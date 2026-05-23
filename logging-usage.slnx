@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/LoggerUsage.Cli/LoggerUsage.Cli.csproj" />
+    <Project Path="src/LoggerUsage.Mcp/LoggerUsage.Mcp.csproj" />
+    <Project Path="src/LoggerUsage.MSBuild/LoggerUsage.MSBuild.csproj" />
+    <Project Path="src/LoggerUsage/LoggerUsage.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/LoggerUsage.Cli.Tests/LoggerUsage.Cli.Tests.csproj" />
+    <Project Path="test/LoggerUsage.Mcp.Tests/LoggerUsage.Mcp.Tests.csproj" />
+    <Project Path="test/LoggerUsage.Tests/LoggerUsage.Tests.csproj" />
+  </Folder>
+</Solution>
