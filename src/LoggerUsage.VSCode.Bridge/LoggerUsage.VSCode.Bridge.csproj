@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LoggerUsage\LoggerUsage.csproj" />
     <ProjectReference Include="..\LoggerUsage.MSBuild\LoggerUsage.MSBuild.csproj" />
+      <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
   <ItemGroup>
