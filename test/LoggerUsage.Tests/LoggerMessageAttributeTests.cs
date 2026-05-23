@@ -818,7 +818,7 @@ namespace TestNamespace.Services
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateInMemorySolutionWithLoggerMessageProjects()
     {
         // Create base references
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
         var logPropertiesReference = MetadataReference.CreateFromFile(typeof(LogPropertiesAttribute).Assembly.Location);
         var baseReferences = references.Add(loggerReference).Add(logPropertiesReference);
@@ -1532,7 +1532,7 @@ public class UserInfo
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateSimpleCrossProjectSolution()
     {
         // Simplified version of existing helper for focused testing
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
         var baseReferences = references.Add(loggerReference);
 
@@ -1599,7 +1599,7 @@ namespace Consumer
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithMultipleInvocations()
     {
         // Consumer project with multiple invocations of the same LoggerMessage method
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
         var baseReferences = references.Add(loggerReference);
 
@@ -1665,7 +1665,7 @@ namespace Consumer
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumer1Id, ProjectId consumer2Id)> CreateCrossProjectWithTwoConsumers()
     {
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
         var baseReferences = references.Add(loggerReference);
 
@@ -1741,7 +1741,7 @@ namespace Consumer2
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithDifferentInvocationStyles()
     {
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
         var baseReferences = references.Add(loggerReference);
 
@@ -1807,7 +1807,7 @@ namespace Consumer
 
     private static async Task<(Solution solution, ProjectId loggerProjectId, ProjectId consumerProjectId)> CreateCrossProjectWithSimilarMethodNames()
     {
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, default);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         var loggerReference = MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location);
         var baseReferences = references.Add(loggerReference);
 
