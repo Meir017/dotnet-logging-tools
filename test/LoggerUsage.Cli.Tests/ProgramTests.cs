@@ -27,7 +27,7 @@ public class ProgramTests
 
     [Theory]
     [InlineData("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj")]
-    [InlineData("logging-usage.sln")]
+    [InlineData("logging-usage.slnx")]
     public async Task RunProgramWithPath(params string[] paths)
     {
         // Arrange
