@@ -98,7 +98,7 @@ public class ProjectBClass
     private static async Task<Workspace> CreateTestWorkspace(Dictionary<string, (string FileName, string SourceCode)[]> projectDocuments)
     {
         var workspace = new AdhocWorkspace();
-        var references = await ReferenceAssemblies.Net.Net90.ResolveAsync(LanguageNames.CSharp, TestContext.Current.CancellationToken);
+        var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, TestContext.Current.CancellationToken);
         references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
 
         foreach (var (projectName, documents) in projectDocuments)
