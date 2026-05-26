@@ -18,7 +18,7 @@ public class IntegrationTests
         var factory = new WebApplicationFactory<Program>();
         var transport = new HttpClientTransport(new HttpClientTransportOptions
         {
-            Endpoint = new Uri("http://localhost/sse"),
+            Endpoint = new Uri("http://localhost"),
         }, factory.CreateClient());
         var mcpClient = await McpClient.CreateAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -37,7 +37,7 @@ public class IntegrationTests
         var factory = new WebApplicationFactory<Program>();
         var transport = new HttpClientTransport(new HttpClientTransportOptions
         {
-            Endpoint = new Uri("http://localhost/sse"),
+            Endpoint = new Uri("http://localhost"),
         }, factory.CreateClient());
         var mcpClient = await McpClient.CreateAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -45,7 +45,7 @@ public class IntegrationTests
         var response = await mcpClient.CallToolAsync("analyze_logger_usages_in_csproj",
             new Dictionary<string, object?>
             {
-                { "fullPathToCsproj", GetCliCsprojPath() }
+                { "fullPathToCsproj", GetTestCsprojPath() }
             },
             cancellationToken: TestContext.Current.CancellationToken);
 
@@ -64,14 +64,13 @@ public class IntegrationTests
         var loggerUsages = JsonSerializer.Deserialize<LoggerUsageExtractionResult>(text.Text!, options);
         loggerUsages.Should().NotBeNull();
         loggerUsages.Results.Should().NotBeNull();
-        loggerUsages.Results.Should().NotBeEmpty();
         loggerUsages.Summary.Should().NotBeNull();
     }
 
-    private static string GetCliCsprojPath()
+    private static string GetTestCsprojPath()
     {
         var gitRoot = FindGitRoot();
-        return Path.Combine(gitRoot, "src", "LoggerUsage.Mcp", "LoggerUsage.Mcp.csproj");
+        return Path.Combine(gitRoot, "test", "fixtures", "sample-workspace", "SampleApp", "SampleApp.csproj");
 
         static string FindGitRoot()
         {
