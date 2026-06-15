@@ -1,3 +1,4 @@
+import * as os from 'os';
 import * as path from 'path';
 import { runTests } from '@vscode/test-electron';
 
@@ -16,12 +17,17 @@ async function main() {
     // Need to go up to repo root, then to test/fixtures/sample-workspace
     const testWorkspacePath = path.resolve(__dirname, '../../../../../../test/fixtures/sample-workspace');
 
+    // Use a short user-data-dir under os.tmpdir() to avoid socket path length
+    // limits on macOS (Unix domain sockets are capped at 103 chars).
+    const userDataDir = path.join(os.tmpdir(), 'vsc-test');
+
     // Download VS Code, unzip it and run the integration test
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
       launchArgs: [
-        testWorkspacePath  // Open test workspace on launch
+        testWorkspacePath,  // Open test workspace on launch
+        '--user-data-dir', userDataDir
       ]
     });
   } catch (err) {
