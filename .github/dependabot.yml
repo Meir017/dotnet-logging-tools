@@ -4,3 +4,27 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      build-tooling:
+        patterns:
+          - "Microsoft.Build*"
+          - "Microsoft.NET.StringTools"
+      roslyn:
+        patterns:
+          - "Microsoft.CodeAnalysis*"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+      mcp-and-aspnet:
+        patterns:
+          - "ModelContextProtocol.*"
+          - "Microsoft.AspNetCore.*"
+      testing:
+        patterns:
+          - "AwesomeAssertions"
+          - "xunit*"
+          - "Microsoft.NET.Test.Sdk"
+          - "Microsoft.Testing.Extensions.*"
+      crypto:
+        patterns:
+          - "System.Security.Cryptography.*"
