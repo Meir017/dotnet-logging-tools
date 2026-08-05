@@ -1,6 +1,7 @@
+import * as cp from 'child_process';
 import * as os from 'os';
 import * as path from 'path';
-import { runTests } from '@vscode/test-electron';
+import { downloadAndUnzipVSCode, runTests } from '@vscode/test-electron';
 
 async function main() {
   try {
@@ -21,8 +22,30 @@ async function main() {
     // limits on macOS (Unix domain sockets are capped at 103 chars).
     const userDataDir = path.join(os.tmpdir(), 'vsc-test');
 
+    // Pre-download VS Code so we can strip the macOS quarantine attribute
+    // before launching. Without this, macOS blocks the Electron binary with ENOENT.
+    const vscodeExecutablePath = await downloadAndUnzipVSCode('stable');
+
+    if (process.platform === 'darwin') {
+      try {
+        // vscodeExecutablePath points to the Electron binary inside the .app bundle.
+        // We need to strip quarantine from the entire .app bundle directory.
+        // Walk up until we find a path ending in '.app'.
+        let appBundlePath = vscodeExecutablePath;
+        while (appBundlePath && !appBundlePath.endsWith('.app')) {
+          const parent = path.dirname(appBundlePath);
+          if (parent === appBundlePath) { break; }
+          appBundlePath = parent;
+        }
+        cp.execSync(`xattr -cr "${appBundlePath}"`, { stdio: 'inherit' });
+      } catch {
+        // xattr may not be available in all environments; continue regardless
+      }
+    }
+
     // Download VS Code, unzip it and run the integration test
     await runTests({
+      vscodeExecutablePath,
       extensionDevelopmentPath,
       extensionTestsPath,
       launchArgs: [
