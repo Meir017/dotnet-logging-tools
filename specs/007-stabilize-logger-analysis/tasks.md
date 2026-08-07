@@ -38,4 +38,4 @@
 - [x] T019 Run targeted core and compatibility tests.
 - [x] T020 Run full .NET validation; VS Code package validation deferred to CI because npm registry access is blocked locally.
 - [x] T021 Review final diff and update plan status.
-- [ ] T022 Commit, push, and create the pull request.
+- [x] T022 Commit, push, and create pull request #282.
