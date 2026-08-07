@@ -12,6 +12,9 @@ updates:
       roslyn:
         patterns:
           - "Microsoft.CodeAnalysis*"
+        update-types:
+          - minor
+          - patch
       microsoft-extensions:
         patterns:
           - "Microsoft.Extensions.*"
