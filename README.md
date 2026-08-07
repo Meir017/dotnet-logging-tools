@@ -48,17 +48,16 @@ These features enable:
 
 ### CLI
 
-create HTML/JSON report:
+With the [.NET 10 SDK](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-exec) or later installed, run the CLI directly from NuGet without cloning this repository or installing the tool:
 
 ```bash
-dotnet run --project src/LoggerUsage.Cli -- <path-to-your-sln-or-csproj> <output-file-name>.<html/json>
+dnx LoggerUsage.Cli --prerelease -- <path-to-your-sln-or-csproj> <output-file-name>.<html/json>
 ```
 
 Example report:
 
-run the command:
 ```bash
-dotnet run --project src/LoggerUsage.Cli -- src/LoggerUsage.Cli/LoggerUsage.Cli.csproj report.html
+dnx LoggerUsage.Cli --prerelease -- MySolution.sln report.html
 ```
 
 ![Logger Usage Report in light mode, showing summary cards, most common parameter names, and parameter name inconsistencies, with a light background and dark text for accessibility.](assets/report-light.png)
