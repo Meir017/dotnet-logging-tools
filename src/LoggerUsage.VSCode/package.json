@@ -192,11 +192,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Meir017/dotnet-logging-usage.git"
+    "url": "https://github.com/Meir017/dotnet-logging-tools.git"
   },
   "bugs": {
-    "url": "https://github.com/Meir017/dotnet-logging-usage/issues"
+    "url": "https://github.com/Meir017/dotnet-logging-tools/issues"
   },
-  "homepage": "https://github.com/Meir017/dotnet-logging-usage#readme",
+  "homepage": "https://github.com/Meir017/dotnet-logging-tools#readme",
   "license": "MIT"
 }

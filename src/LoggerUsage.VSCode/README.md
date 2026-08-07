@@ -24,15 +24,15 @@ Get real-time insights into your application's logging statements, detect incons
 4. Click **Install**
 
 ### From VSIX File
-1. Download the `.vsix` file from [GitHub Releases](https://github.com/Meir017/dotnet-logging-usage/releases)
+1. Download the `.vsix` file from [GitHub Releases](https://github.com/Meir017/dotnet-logging-tools/releases)
 2. Open VS Code
 3. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
 4. Type "Install from VSIX" and select the downloaded file
 
 ### From Source
 ```bash
-git clone https://github.com/Meir017/dotnet-logging-usage.git
-cd dotnet-logging-usage/src/LoggerUsage.VSCode
+git clone https://github.com/Meir017/dotnet-logging-tools.git
+cd dotnet-logging-tools/src/LoggerUsage.VSCode
 npm install
 npm run compile
 npm run package
@@ -244,7 +244,7 @@ logger.LogInformation("User email: {Email}", user.Email); // where Email is mark
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see the [main repository](https://github.com/Meir017/dotnet-logging-usage) for:
+Contributions are welcome! Please see the [main repository](https://github.com/Meir017/dotnet-logging-tools) for:
 
 - Filing issues and feature requests
 - Submitting pull requests
@@ -259,7 +259,7 @@ MIT License - See [LICENSE](../../LICENSE) file for details.
 
 - **LoggerUsage CLI**: Command-line tool for CI/CD pipelines
 - **LoggerUsage.Mcp**: Model Context Protocol server for AI integrations
-- **Main Repository**: [Meir017/dotnet-logging-usage](https://github.com/Meir017/dotnet-logging-usage)
+- **Main Repository**: [Meir017/dotnet-logging-tools](https://github.com/Meir017/dotnet-logging-tools)
 
 ---
 

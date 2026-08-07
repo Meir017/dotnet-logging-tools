@@ -21,16 +21,16 @@
         <!-- Package Metadata -->
         <Authors>Meir017</Authors>
         <Company>Meir017</Company>
-        <Product>dotnet-logging-usage</Product>
+        <Product>dotnet-logging-tools</Product>
         <Copyright>Copyright © Meir017 $([System.DateTime]::Now.Year)</Copyright>
 
         <!-- Repository Information -->
-        <RepositoryUrl>https://github.com/Meir017/dotnet-logging-usage</RepositoryUrl>
+        <RepositoryUrl>https://github.com/Meir017/dotnet-logging-tools</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <RepositoryBranch>main</RepositoryBranch>
 
         <!-- Documentation -->
-        <PackageProjectUrl>https://github.com/Meir017/dotnet-logging-usage</PackageProjectUrl>
+        <PackageProjectUrl>https://github.com/Meir017/dotnet-logging-tools</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
 

@@ -408,7 +408,7 @@ function showWelcomeMessage(): void {
         if (selection === 'Analyze Now') {
             vscode.commands.executeCommand('loggerUsage.analyze');
         } else if (selection === 'View Documentation') {
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/Meir017/dotnet-logging-usage#readme'));
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/Meir017/dotnet-logging-tools#readme'));
         }
     });
 }

@@ -212,13 +212,13 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
             await Task.WhenAll(syntaxTreeTasks);
 
-            // TODO: Populate summary.ParameterTypesByName from results
-
-            return new LoggerUsageExtractionResult
+            var result = new LoggerUsageExtractionResult
             {
                 Results = [.. results],
                 Summary = new()
             };
+            new LoggerUsageSummarizer().PopulateSummary(result);
+            return result;
         }
         finally
         {
