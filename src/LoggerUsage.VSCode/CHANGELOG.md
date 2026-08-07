@@ -112,4 +112,4 @@ None (initial release)
 
 ---
 
-**Feedback**: Please file issues and feature requests at [github.com/Meir017/dotnet-logging-usage/issues](https://github.com/Meir017/dotnet-logging-usage/issues)
+**Feedback**: Please file issues and feature requests at [github.com/Meir017/dotnet-logging-tools/issues](https://github.com/Meir017/dotnet-logging-tools/issues)

@@ -26,14 +26,17 @@ namespace LoggerUsage.Analyzers
                     continue;
                 }
 
-                return TryExtractFromOperation(argumentOperation, out eventId);
+                return TryExtractFromOperation(argumentOperation, loggingTypes, out eventId);
             }
 
             eventId = default!;
             return false;
         }
 
-        public static bool TryExtractFromArgument(IOperation argumentOperation, out EventIdBase eventId)
+        public static bool TryExtractFromArgument(
+            IOperation argumentOperation,
+            LoggingTypes loggingTypes,
+            out EventIdBase eventId)
         {
             var unwrapped = argumentOperation.UnwrapConversion();
 
@@ -44,14 +47,17 @@ namespace LoggerUsage.Analyzers
                 return false;
             }
 
-            return TryExtractFromOperation(unwrapped, out eventId);
+            return TryExtractFromOperation(unwrapped, loggingTypes, out eventId);
         }
 
-        private static bool TryExtractFromOperation(IOperation operation, out EventIdBase eventId)
+        private static bool TryExtractFromOperation(
+            IOperation operation,
+            LoggingTypes loggingTypes,
+            out EventIdBase eventId)
         {
             // Handle EventId constructor
             if (operation is IObjectCreationOperation objectCreation &&
-                objectCreation.Type?.Name == nameof(EventId))
+                SymbolEqualityComparer.Default.Equals(objectCreation.Type, loggingTypes.EventId))
             {
                 if (objectCreation.Arguments.Length == 0)
                 {

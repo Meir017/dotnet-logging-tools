@@ -54,7 +54,7 @@
 
 ### Code Quality Gates
 
-- [ ] **Symbol Fidelity**: No string-based type/method comparisons (Constitution Principle 1)
+- [ ] **Symbol Fidelity**: Semantic identity uses canonical Roslyn symbols; no literal type/member/parameter/attribute comparisons (Constitution Principle 1)
   - Rationale: [Explain why this feature complies or requires justification]
 - [ ] **Thread Safety**: Analyzers are stateless, use thread-safe collections (Constitution Principle 3)
   - Rationale: [Explain why this feature complies or requires justification]

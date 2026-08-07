@@ -53,7 +53,10 @@ namespace LoggerUsage.Analyzers
             }
 
             if (operation.Arguments.Length > 1 &&
-                EventIdExtractor.TryExtractFromArgument(operation.Arguments[1].Value, out var eventId))
+                EventIdExtractor.TryExtractFromArgument(
+                    operation.Arguments[1].Value,
+                    loggingTypes,
+                    out var eventId))
             {
                 usage.EventId = eventId;
             }

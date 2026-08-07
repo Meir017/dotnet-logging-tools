@@ -63,8 +63,13 @@ This project follows a **feature branch workflow** with strict protections on th
 
 ### 2. Roslyn Symbol Resolution
 - Always use `LoggingTypes` class to access well-known logging symbols
-- Never compare by string names alone - always use symbol comparison
+- Never identify types, methods, properties, fields, parameters, or attributes with string literals
+- Prefer direct symbol comparison; `nameof(...)` is allowed only as a cheap pre-filter followed by symbol validation
 - Use `ISymbol.Equals()` or `SymbolEqualityComparer` for symbol comparisons
+- Resolve well-known symbols once in `LoggingTypes`, including optional symbols
+- Match arguments through `IArgumentOperation.Parameter` and canonical parameter symbols/ordinals, never parameter-name strings
+- Metadata names and protocol/data keys that have no Roslyn symbol MUST be centralized in clearly named constants; they MUST NOT be used as substitutes for semantic symbol identity
+- Code review MUST reject `.Name == "..."`, `.ToDisplayString() == "..."`, inline metadata-name comparisons, and other literal-based semantic matching in analyzers
 
 ### 3. Thread Safety
 - Extraction runs in parallel across syntax trees
@@ -88,6 +93,17 @@ if (SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, loggingTy
     // This method is on ILogger interface
 }
 ```
+
+`nameof(...)` does not prove identity. This is insufficient on its own:
+
+```csharp
+if (operation.TargetMethod.Name == nameof(ILogger.Log))
+{
+    // A different type may define the same member name.
+}
+```
+
+Use it only before comparing the resolved symbol against the canonical symbol from `LoggingTypes`.
 
 ## Coding Guidelines
 

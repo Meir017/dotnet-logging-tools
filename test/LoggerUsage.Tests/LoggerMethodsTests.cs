@@ -60,29 +60,23 @@ public class TestClass
         details.Name.Should().BeSameAs(ConstantOrReference.Missing);
     }
 
-    public static TheoryData<string[]> LoggerLogArguments() =>
-    [
-        /*
-ILogger: void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter);
+    public static TheoryData<string[], LogLevel, int?, string?, string> LoggerLogArguments() => new()
+    {
+        { ["LogLevel.Information", "new EventId(1)", "\"the-state\"", "null", "(state, ex) => state"], LogLevel.Information, 1, null, "the-state" },
+        { ["LogLevel.Error", "new EventId(3)", "\"Error state\"", "new Exception(\"err\")", "(state, ex) => state"], LogLevel.Error, 3, null, "Error state" },
+        { ["LogLevel.Debug", "default(EventId)", "\"Debug info\"", "null", "(state, ex) => state"], LogLevel.Debug, null, null, "Debug info" },
+        { ["LogLevel.Critical", "new EventId(4, \"CriticalEvent\")", "\"Critical!\"", "ex", "(state, ex) => $\"{state} - {ex?.Message}\""], LogLevel.Critical, 4, "CriticalEvent", "Critical!" },
+        { ["LogLevel.Trace", "new EventId()", "\"Trace message\"", "null", "(state, ex) => state"], LogLevel.Trace, null, null, "Trace message" }
+    };
 
-Extension methods:
-public static void Log(this ILogger logger, LogLevel logLevel, string? message, params object?[] args)
-public static void Log(this ILogger logger, LogLevel logLevel, EventId eventId, string? message, params object?[] args)
-public static void Log(this ILogger logger, LogLevel logLevel, Exception? exception, string? message, params object?[] args)
-public static void Log(this ILogger logger, LogLevel logLevel, EventId eventId, Exception? exception, string? message, params object?[] args)
-
-        */
-        new[] { "LogLevel.Information", "new EventId(1)", "\"the-state\"", "null", "(state, ex) => state.ToString()" },
-        new[] { "LogLevel.Warning", "new EventId(2)", "\"Warning message\"" },
-        new[] { "LogLevel.Error", "new EventId(3)", "\"Error state\"", "new Exception(\"err\")", "(state, ex) => state.ToString()" },
-        new[] { "LogLevel.Debug", "default(EventId)", "\"Debug info\"", "null", "(state, ex) => state.ToString()" },
-        new[] { "LogLevel.Critical", "new EventId(4, \"CriticalEvent\")", "\"Critical!\"", "ex", "(state, ex) => $\"{state} - {ex?.Message}\"" },
-        new[] { "LogLevel.Trace", "new EventId()", "\"Trace message\"", "null", "(state, ex) => state.ToString()" }
-    ];
-
-    [Theory(Skip = "Not implemented yet")]
+    [Theory]
     [MemberData(nameof(LoggerLogArguments))]
-    public async Task TestLoggerLogMethod(string[] logArgs)
+    public async Task TestLoggerLogMethod(
+        string[] logArgs,
+        LogLevel expectedLogLevel,
+        int? expectedEventId,
+        string? expectedEventName,
+        string expectedMessageTemplate)
     {
         // Arrange
         var code = $@"using Microsoft.Extensions.Logging;
@@ -104,8 +98,75 @@ public class TestClass
 
         // Assert
         loggerUsages.Should().NotBeNull();
-        // TODO: replace with Should().ContainSingle() when the method is fixed
-        loggerUsages.Results.Should().BeEmpty();
+        var usage = loggerUsages.Results.Should().ContainSingle().Which;
+        usage.MethodName.Should().Be(nameof(ILogger.Log));
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMethod);
+        usage.LogLevel.Should().Be(expectedLogLevel);
+        usage.MessageTemplate.Should().Be(expectedMessageTemplate);
+        usage.MessageParameters.Should().BeEmpty();
+        usage.Location.StartLineNumber.Should().BeGreaterThan(0);
+        usage.Location.EndLineNumber.Should().BeGreaterThanOrEqualTo(usage.Location.StartLineNumber);
+
+        if (expectedEventId is null)
+        {
+            usage.EventId.Should().BeNull();
+        }
+        else
+        {
+            var eventId = usage.EventId.Should().BeOfType<EventIdDetails>().Which;
+            eventId.Id.Should().Be(ConstantOrReference.Constant(expectedEventId.Value));
+            eventId.Name.Should().Be(expectedEventName is null
+                ? ConstantOrReference.Missing
+                : ConstantOrReference.Constant(expectedEventName));
+        }
+    }
+
+    [Fact]
+    public async Task TestLoggerLogMethod_WithArbitraryState_ReturnsPartialUsage()
+    {
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger, object state)
+    {
+        logger.Log(LogLevel.Warning, new EventId(7), state, null, (value, exception) => value.ToString()!);
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        var usage = loggerUsages.Results.Should().ContainSingle().Which;
+        usage.MethodType.Should().Be(LoggerUsageMethodType.LoggerMethod);
+        usage.LogLevel.Should().Be(LogLevel.Warning);
+        usage.EventId.Should().BeOfType<EventIdDetails>()
+            .Which.Id.Should().Be(ConstantOrReference.Constant(7));
+        usage.MessageTemplate.Should().BeNull();
+        usage.MessageParameters.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TestLoggerLogMethod_WithConstantLocalLogLevel_ExtractsLogLevel()
+    {
+        var compilation = await TestUtils.CreateCompilationAsync(@"using Microsoft.Extensions.Logging;
+namespace TestNamespace;
+
+public class TestClass
+{
+    public void TestMethod(ILogger logger)
+    {
+        const LogLevel level = LogLevel.Warning;
+        logger.Log(level, new EventId(7), ""Warning state"", null, (value, exception) => value);
+    }
+}");
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        var loggerUsages = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        loggerUsages.Results.Should().ContainSingle()
+            .Which.LogLevel.Should().Be(LogLevel.Warning);
     }
 
     public static TheoryData<string, string[]> LoggerExtensionMethods()

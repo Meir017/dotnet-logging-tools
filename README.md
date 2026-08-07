@@ -17,7 +17,8 @@ This tool analyzes .NET projects to extract and summarize logging usage patterns
 
 ### Supported Logging APIs
 
-- **ILogger Extension Methods**: Analyzes usage of `LogInformation`, `LogWarning`, `LogError`, `LogDebug`, `LogTrace`, and `LogCritical` extension methods
+- **ILogger Extension Methods**: Analyzes `LoggerExtensions.Log` overloads and the level-specific `LogInformation`, `LogWarning`, `LogError`, `LogDebug`, `LogTrace`, and `LogCritical` methods
+- **Direct ILogger.Log<TState> Calls**: Analyzes interface and concrete implementation calls, including log level, event ID, constant string state, and inline `KeyValuePair<string, object?>` structured state with `{OriginalFormat}` without executing formatter delegates
 - **[LoggerMessage Attribute](https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator)**: Detects and analyzes methods decorated with `[LoggerMessage]` attribute for high-performance logging
 - **[LoggerMessage.Define](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.loggermessage)**: Analyzes usage of `LoggerMessage.Define` methods for compile-time log message generation
 - **Structured Logging**: Captures parameter names and templates used in structured logging scenarios
@@ -143,9 +144,12 @@ For more information on MCP progress tracking, see the [MCP Progress Documentati
 
 ## Roadmap
 
-- [ ] Add support for `ILogger.Log` method
+- [x] Add support for `LoggerExtensions.Log` overloads
+- [x] Add support for direct `ILogger.Log<TState>` calls
 - [x] Add support for `ILogger.BeginScope` method
-- [ ] Create a summary of the log messages
-- [ ] Integrate AI to suggest improvements and find inconsistencies
+- [x] Create a summary of the log messages
 - [x] For LoggerMessageAttribute - find all invocations of method (see [implementation plan](LoggerMessageAttribute-Invocations-Plan.md))
 - [x] Expose as a MCP
+- [ ] Add incremental workspace analysis and caching for large solutions
+- [ ] Add deterministic CI output such as SARIF
+- [ ] Add symbol-based analysis for custom logging wrappers

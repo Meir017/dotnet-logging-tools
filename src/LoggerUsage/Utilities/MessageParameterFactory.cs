@@ -8,6 +8,12 @@ namespace LoggerUsage.Utilities;
 /// </summary>
 internal static class MessageParameterFactory
 {
+    private static readonly SymbolDisplayFormat StructuredStateDisplayFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat
+            .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)
+            .WithMiscellaneousOptions(
+                SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
+                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     /// <summary>
     /// Creates a MessageParameter from an IOperation with automatic type and kind resolution.
@@ -54,6 +60,21 @@ internal static class MessageParameterFactory
             Name: key,
             Type: GetDisplayString(unwrapped.Type),
             Kind: GetKindString(unwrapped)
+        );
+    }
+
+    public static MessageParameter CreateFromStructuredState(string key, IOperation valueOperation)
+    {
+        var value = valueOperation;
+        while (value is Microsoft.CodeAnalysis.Operations.IConversionOperation { IsImplicit: true } conversion)
+        {
+            value = conversion.Operand;
+        }
+
+        return new MessageParameter(
+            Name: key,
+            Type: value.Type?.ToDisplayString(StructuredStateDisplayFormat) ?? "object",
+            Kind: GetKindString(value)
         );
     }
 

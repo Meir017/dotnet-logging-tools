@@ -149,8 +149,11 @@ namespace LoggerUsage.Analyzers
                 foreach (var property in publicProperties)
                 {
                     // Check if property has LogPropertyIgnore attribute
-                    bool hasIgnoreAttribute = property.GetAttributes()
-                        .Any(attr => attr.AttributeClass?.Name == "LogPropertyIgnoreAttribute");
+                    bool hasIgnoreAttribute = loggingTypes.LogPropertyIgnoreAttribute is not null &&
+                        property.GetAttributes().Any(attribute =>
+                            SymbolEqualityComparer.Default.Equals(
+                                attribute.AttributeClass,
+                                loggingTypes.LogPropertyIgnoreAttribute));
 
                     if (!hasIgnoreAttribute)
                     {
