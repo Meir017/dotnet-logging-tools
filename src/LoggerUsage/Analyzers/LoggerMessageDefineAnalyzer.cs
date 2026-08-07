@@ -12,17 +12,13 @@ namespace LoggerUsage.Analyzers
         IMessageTemplateExtractor messageTemplateExtractor,
         GenericTypeParameterExtractor genericTypeParameterExtractor) : ILoggerUsageAnalyzer
     {
-        public async Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
+        public Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
         {
             var results = new List<LoggerUsageInfo>();
-            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
-            
-            foreach (var invocation in invocations)
+
+            foreach (var operation in context.InvocationIndex.Invocations)
             {
-                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
-                {
-                    continue;
-                }
+                context.CancellationToken.ThrowIfCancellationRequested();
 
                 if (!operation.TargetMethod.ContainingType.Equals(context.LoggingTypes.LoggerMessage, SymbolEqualityComparer.Default)
                     || !operation.TargetMethod.Name.Equals(nameof(LoggerMessage.Define)))
@@ -30,12 +26,13 @@ namespace LoggerUsage.Analyzers
                     continue;
                 }
 
-                results.Add(ExtractLoggerMessageDefineUsage(operation, context.LoggingTypes, invocation));
+                results.Add(ExtractLoggerMessageDefineUsage(
+                    operation,
+                    context.LoggingTypes,
+                    (Microsoft.CodeAnalysis.CSharp.Syntax.InvocationExpressionSyntax)operation.Syntax));
             }
-            
-            // Ensure this is truly async
-            await Task.Yield();
-            return results;
+
+            return Task.FromResult<IEnumerable<LoggerUsageInfo>>(results);
         }
 
         private LoggerUsageInfo ExtractLoggerMessageDefineUsage(IInvocationOperation operation, LoggingTypes loggingTypes, InvocationExpressionSyntax invocation)

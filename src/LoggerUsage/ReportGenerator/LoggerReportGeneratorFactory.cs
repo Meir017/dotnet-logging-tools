@@ -7,6 +7,7 @@ internal class LoggerReportGeneratorFactory : ILoggerReportGeneratorFactory
         ".json" => new JsonLoggerReportGenerator(),
         ".html" => new HtmlLoggerReportGenerator(),
         ".md" or ".markdown" => new MarkdownLoggerReportGenerator(),
+        ".sarif" => new SarifLoggerReportGenerator(),
         _ => throw new NotSupportedException($"The report type '{type}' is not supported.")
     };
 }

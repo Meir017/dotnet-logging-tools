@@ -52,7 +52,7 @@ These features enable:
 With the [.NET 10 SDK](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-exec) or later installed, run the CLI directly from NuGet without cloning this repository or installing the tool:
 
 ```bash
-dnx LoggerUsage.Cli --prerelease -- <path-to-your-sln-or-csproj> <output-file-name>.<html/json>
+dnx LoggerUsage.Cli --prerelease -- <path-to-your-sln-or-csproj> <output-file-name>.<html/json/md/sarif>
 ```
 
 Example report:
@@ -88,6 +88,33 @@ The generated reports include:
 - **HTML**: Interactive report with collapsible sections, dark mode support, and filtering capabilities
 - **JSON**: Structured data with schema version 2.0 for programmatic analysis
 - **Markdown**: Human-readable report suitable for documentation
+- **SARIF 2.1.0**: Deterministic parameter-consistency findings for GitHub code scanning
+
+### GitHub Code Scanning
+
+Generate and upload SARIF in a GitHub Actions workflow:
+
+```yaml
+- name: Generate LoggerUsage SARIF
+  run: dnx LoggerUsage.Cli --prerelease -- MySolution.sln artifacts/logger-usage.sarif
+
+- name: Upload LoggerUsage SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: artifacts/logger-usage.sarif
+```
+
+The initial SARIF rules are:
+
+#### LUT001 Parameter type mismatch
+
+The same logging parameter name is used with conflicting types.
+
+#### LUT002 Parameter casing inconsistency
+
+Logging parameter names differ only by casing.
+
+SARIF contains actionable consistency findings rather than every extracted logging call. Result ordering, repository-relative paths, and fingerprints are stable across equivalent runs.
 
 ## Running the MCP Server Locally
 
@@ -151,5 +178,5 @@ For more information on MCP progress tracking, see the [MCP Progress Documentati
 - [x] For LoggerMessageAttribute - find all invocations of method (see [implementation plan](LoggerMessageAttribute-Invocations-Plan.md))
 - [x] Expose as a MCP
 - [ ] Add incremental workspace analysis and caching for large solutions
-- [ ] Add deterministic CI output such as SARIF
+- [x] Add deterministic CI output such as SARIF
 - [ ] Add symbol-based analysis for custom logging wrappers

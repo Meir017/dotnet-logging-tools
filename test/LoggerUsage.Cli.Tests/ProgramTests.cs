@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using LoggerUsage.MSBuild;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 namespace LoggerUsage.Cli.Tests;
 
@@ -41,9 +44,23 @@ public class ProgramTests
         result.Should().Be(0);
     }
 
+    [Fact]
+    public async Task CreateWorkspace_WithPreCancelledToken_PropagatesCancellation()
+    {
+        var csprojPath = FindPathFromGitRoot("src", "LoggerUsage.Cli", "LoggerUsage.Cli.csproj");
+        var factory = new MSBuildWorkspaceFactory(NullLogger<MSBuildWorkspaceFactory>.Instance);
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+
+        var action = () => factory.Create(new FileInfo(csprojPath), cancellationSource.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [Theory]
     [InlineData("output.json")]
     [InlineData("output.html")]
+    [InlineData("output.sarif")]
     public async Task RunProgramWithPathAndOutputPath(string outputFileName)
     {
         // Arrange
@@ -66,6 +83,11 @@ public class ProgramTests
         // Assert
         result.Should().Be(0);
         File.Exists(outputPath).Should().BeTrue();
+        if (outputFileName.EndsWith(".sarif", StringComparison.Ordinal))
+        {
+            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(outputPath));
+            document.RootElement.GetProperty("version").GetString().Should().Be("2.1.0");
+        }
     }
 
     private static string FindPathFromGitRoot(params string[] paths)

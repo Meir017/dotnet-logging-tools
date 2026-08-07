@@ -8,7 +8,9 @@ public class LoggerUsagePerformanceTests(ITestOutputHelper output)
 {
     private const int TargetLineCount = 5_000;
     private const int LoggingCallCount = 250;
+    private const int ProjectFileCount = 100;
     private const double ConstitutionalTargetMilliseconds = 500;
+    private const long ConstitutionalMemoryBytes = 500L * 1024 * 1024;
 
     [Fact]
     public async Task ExtractLoggerUsagesWithSolutionAsync_NearFiveThousandLines_WarmedMedianMeetsLatencyContract()
@@ -43,6 +45,36 @@ public class LoggerUsagePerformanceTests(ITestOutputHelper output)
         medianMilliseconds.Should().BeLessThan(
             ConstitutionalTargetMilliseconds,
             "the warmed median rejects one noisy CI scheduling sample while enforcing the constitutional contract");
+    }
+
+    [Fact]
+    public async Task ExtractLoggerUsagesWithSolutionAsync_HundredFiles_MeetsMemoryContract()
+    {
+        var sources = Enumerable.Range(0, ProjectFileCount)
+            .Select(index => (
+                $$"""
+                using Microsoft.Extensions.Logging;
+
+                namespace PerformanceBaseline;
+
+                public sealed class LoggingService{{index}}
+                {
+                    public void Log(ILogger logger) =>
+                        logger.LogInformation("Service {Index}", {{index}});
+                }
+                """,
+                $"LoggingService{index}.cs"))
+            .ToArray();
+        var compilation = await TestUtils.CreateCompilationAsync(sources);
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+        var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+
+        var result = await extractor.ExtractLoggerUsagesWithSolutionAsync(compilation);
+
+        var allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
+        output.WriteLine("Hundred-file extraction allocated {0:N0} bytes", allocatedBytes);
+        result.Results.Should().HaveCount(ProjectFileCount);
+        allocatedBytes.Should().BeLessThan(ConstitutionalMemoryBytes);
     }
 
     private static string CreateLargeSource()

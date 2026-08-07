@@ -40,9 +40,12 @@ public class LoggerUsageExtractorTool(
     [Description("Analyze logger usages of C# files in a csproj file. Extracts logging patterns, custom tag names, tag providers, data classifications, and transitive properties from LogProperties parameters.")]
     public async Task<LoggerUsageExtractionResult> AnalyzeLoggerUsagesInCsproj(
         string fullPathToCsproj,
-        ProgressToken? progressToken = null)
+        ProgressToken? progressToken = null,
+        CancellationToken cancellationToken = default)
     {
-        using var workspace = await workspaceFactory.Create(new FileInfo(fullPathToCsproj));
+        using var workspace = await workspaceFactory.Create(
+            new FileInfo(fullPathToCsproj),
+            cancellationToken);
 
         // Create progress adapter if progress token provided
         IProgress<LoggerUsageProgress>? progress = null;
@@ -54,7 +57,10 @@ public class LoggerUsageExtractorTool(
                 loggerFactory.CreateLogger<McpProgressAdapter>());
         }
 
-        var loggerUsage = await loggerUsageExtractor.ExtractLoggerUsagesAsync(workspace, progress);
+        var loggerUsage = await loggerUsageExtractor.ExtractLoggerUsagesAsync(
+            workspace,
+            progress,
+            cancellationToken);
         var reportGenerator = loggerReportGeneratorFactory.GetReportGenerator(".json");
         var report = reportGenerator.GenerateReport(loggerUsage);
 
