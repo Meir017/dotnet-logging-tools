@@ -36,6 +36,8 @@ As a developer analyzing a modern .NET solution, I receive complete and consiste
 - **FR-002**: Direct logger calls MUST be classified as `LoggerMethod`, not `LoggerExtensions`.
 - **FR-003**: The extractor MUST capture the log level and event ID from direct logger calls when statically available.
 - **FR-004**: The extractor MUST use a string state as the message template when statically available and MUST degrade gracefully for other state types.
+- **FR-004a**: The extractor MUST recognize inline `KeyValuePair<string, object?>` structured state when it contains exactly one constant `{OriginalFormat}` entry and MUST correlate parameters to template placeholders.
+- **FR-004b**: The extractor MUST recognize concrete implementations of `ILogger.Log<TState>` without matching unrelated methods with the same signature.
 - **FR-005**: Both public extraction entrypoints MUST return populated summaries.
 - **FR-006**: Public-entrypoint integration tests MUST cover .NET 9 primary-constructor logging, empty messages, C# 14 extension blocks, span-based custom overloads, and unbound-generic `nameof`.
 - **FR-007**: Unsupported custom logging methods MUST not be misclassified as framework logging methods.
@@ -64,4 +66,3 @@ This phase does not add SARIF, AI suggestions, incremental workspace caching, wr
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Scope and exclusions are explicit
-

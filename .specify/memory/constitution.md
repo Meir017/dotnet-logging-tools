@@ -56,7 +56,7 @@ The constitution applies to all components: LoggerUsage (core library), LoggerUs
 ### Principle 1: Roslyn Symbol Fidelity
 
 **Principle Statement**:
-All symbol comparisons MUST use semantic symbol comparison via `ISymbol.Equals()` or `SymbolEqualityComparer`. String-based name comparisons for type/method identification are PROHIBITED except for diagnostic logging purposes.
+All semantic identity checks MUST use `ISymbol.Equals()` or `SymbolEqualityComparer`. Literal-based matching for types, members, parameters, and attributes is prohibited. `nameof(...)` MAY be used only as a pre-filter followed by canonical symbol validation.
 
 **Rationale**:
 Roslyn's symbol model provides accurate semantic information that accounts for namespace disambiguation, generic type instantiation, and overload resolution. String-based comparisons are brittle and fail in the presence of type aliases, using directives, and similar names from different namespaces. This principle ensures analyzer correctness and prevents false positives/negatives.
@@ -66,7 +66,9 @@ Roslyn's symbol model provides accurate semantic information that accounts for n
 - All analyzers MUST use the `LoggingTypes` class to access pre-resolved logging symbols
 - Symbol comparison MUST use `SymbolEqualityComparer.Default.Equals()` or `ISymbol.Equals()`
 - When adding new pattern detection, symbol resolution MUST be added to `LoggingTypes` constructor
-- Code reviews MUST reject string-based type/method identification patterns
+- Arguments MUST be matched through `IArgumentOperation.Parameter` and canonical parameter symbols or ordinals, not parameter-name literals
+- Metadata names and protocol/data keys without Roslyn symbols MUST be centralized in named constants and MUST NOT stand in for semantic identity
+- Code reviews MUST reject string-based type/member/parameter/attribute identification patterns, including `.Name == "..."` and display-string equality
 - Exception: Diagnostic messages may include symbol names as strings for human readability
 
 **Testing Requirements**:

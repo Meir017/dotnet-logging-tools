@@ -37,6 +37,7 @@ public static class LoggerUsageBuilderExtensions
         // Core services
         services.AddSingleton<IScopeAnalysisService, ScopeAnalysisService>();
         services.AddSingleton<IKeyValuePairExtractionService, KeyValuePairExtractionService>();
+        services.AddSingleton<IDirectLogStateExtractor, DirectLogStateExtractor>();
 
         services.AddSingleton<IMessageTemplateExtractor, MessageTemplateExtractor>();
         

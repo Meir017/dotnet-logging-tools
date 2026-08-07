@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Compliance.Classification;
 using Microsoft.Extensions.Logging;
 
 namespace LoggerUsage
@@ -14,15 +15,23 @@ namespace LoggerUsage
             ILogger = loggerInterface;
             LoggerMessageAttribute = compilation.GetTypeByMetadataName(typeof(LoggerMessageAttribute).FullName!)!;
             LogPropertiesAttribute = compilation.GetTypeByMetadataName(typeof(LogPropertiesAttribute).FullName!)!;
-            TagNameAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.TagNameAttribute");
-            TagProviderAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.TagProviderAttribute");
-            ITagCollector = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.ITagCollector");
-            DataClassificationAttribute = compilation.GetTypeByMetadataName("Microsoft.Extensions.Compliance.Classification.DataClassificationAttribute");
+            LogPropertyIgnoreAttribute = compilation.GetTypeByMetadataName(typeof(LogPropertyIgnoreAttribute).FullName!);
+            TagNameAttribute = compilation.GetTypeByMetadataName(typeof(TagNameAttribute).FullName!);
+            TagProviderAttribute = compilation.GetTypeByMetadataName(typeof(TagProviderAttribute).FullName!);
+            ITagCollector = compilation.GetTypeByMetadataName(typeof(ITagCollector).FullName!);
+            DataClassificationAttribute = compilation.GetTypeByMetadataName(typeof(DataClassificationAttribute).FullName!);
             EventId = compilation.GetTypeByMetadataName(typeof(EventId).FullName!)!;
             LogLevel = compilation.GetTypeByMetadataName(typeof(LogLevel).FullName!)!;
             LoggerExtensions = compilation.GetTypeByMetadataName(typeof(LoggerExtensions).FullName!)!;
             LoggerMessage = compilation.GetTypeByMetadataName(typeof(LoggerMessage).FullName!)!;
             Exception = compilation.GetTypeByMetadataName(typeof(Exception).FullName!)!;
+            ILoggerLogMethod = ILogger.GetMembers()
+                .OfType<IMethodSymbol>()
+                .Single(method => method.Name == nameof(Microsoft.Extensions.Logging.ILogger.Log));
+            ILoggerLogEventIdParameter = ILoggerLogMethod.Parameters
+                .Single(parameter => SymbolEqualityComparer.Default.Equals(parameter.Type, EventId));
+            ILoggerLogStateParameter = ILoggerLogMethod.Parameters
+                .Single(parameter => parameter.Type is ITypeParameterSymbol);
             LoggerExtensionModeler = new(this);
 
             var nullableObjectType = compilation.GetSpecialType(SpecialType.System_Object).WithNullableAnnotation(NullableAnnotation.Annotated);
@@ -89,6 +98,11 @@ namespace LoggerUsage
         public INamedTypeSymbol LogPropertiesAttribute { get; }
 
         /// <summary>
+        /// Gets the LogPropertyIgnoreAttribute type symbol, when available.
+        /// </summary>
+        public INamedTypeSymbol? LogPropertyIgnoreAttribute { get; }
+
+        /// <summary>
         /// Gets the TagNameAttribute type symbol from Microsoft.Extensions.Logging.
         /// Returns null if the attribute is not available in the compilation.
         /// </summary>
@@ -131,6 +145,12 @@ namespace LoggerUsage
         /// Gets the logger extension modeler used for analyzing logger extension methods.
         /// </summary>
         public LoggerExtensionModeler LoggerExtensionModeler { get; }
+
+        internal IMethodSymbol ILoggerLogMethod { get; }
+
+        internal IParameterSymbol ILoggerLogEventIdParameter { get; }
+
+        internal IParameterSymbol ILoggerLogStateParameter { get; }
 
         /// <summary>
         /// Gets the DateTime type symbol from System.

@@ -18,7 +18,7 @@ This tool analyzes .NET projects to extract and summarize logging usage patterns
 ### Supported Logging APIs
 
 - **ILogger Extension Methods**: Analyzes `LoggerExtensions.Log` overloads and the level-specific `LogInformation`, `LogWarning`, `LogError`, `LogDebug`, `LogTrace`, and `LogCritical` methods
-- **Direct ILogger.Log<TState> Calls**: Analyzes calls to the interface method, including log level, event ID, and statically known string state without executing formatter delegates
+- **Direct ILogger.Log<TState> Calls**: Analyzes interface and concrete implementation calls, including log level, event ID, constant string state, and inline `KeyValuePair<string, object?>` structured state with `{OriginalFormat}` without executing formatter delegates
 - **[LoggerMessage Attribute](https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator)**: Detects and analyzes methods decorated with `[LoggerMessage]` attribute for high-performance logging
 - **[LoggerMessage.Define](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.loggermessage)**: Analyzes usage of `LoggerMessage.Define` methods for compile-time log message generation
 - **Structured Logging**: Captures parameter names and templates used in structured logging scenarios

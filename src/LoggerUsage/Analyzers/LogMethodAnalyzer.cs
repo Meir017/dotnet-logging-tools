@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using LoggerUsage.Models;
 using LoggerUsage.ParameterExtraction;
 using LoggerUsage.MessageTemplate;
+using LoggerUsage.Services;
 using LoggerUsage.Utilities;
 
 namespace LoggerUsage.Analyzers
@@ -13,6 +14,7 @@ namespace LoggerUsage.Analyzers
     internal class LogMethodAnalyzer(
         ArrayParameterExtractor arrayParameterExtractor,
         IMessageTemplateExtractor messageTemplateExtractor,
+        IDirectLogStateExtractor directLogStateExtractor,
         ILoggerFactory loggerFactory) : ILoggerUsageAnalyzer
     {
         private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
@@ -29,7 +31,7 @@ namespace LoggerUsage.Analyzers
                     continue;
                 }
 
-                var isDirectLoggerMethod = IsDirectLoggerMethod(operation.TargetMethod, context.LoggingTypes);
+                var isDirectLoggerMethod = IsDirectLoggerMethod(operation, context.LoggingTypes);
                 if (!isDirectLoggerMethod &&
                     !context.LoggingTypes.LoggerExtensionModeler.IsLoggerMethod(operation.TargetMethod))
                 {
@@ -64,7 +66,7 @@ namespace LoggerUsage.Analyzers
             };
 
             if ((isDirectLoggerMethod
-                    ? TryExtractDirectEventId(operation, out var eventId)
+                    ? TryExtractDirectEventId(operation, loggingTypes, out var eventId)
                     : EventIdExtractor.TryExtractFromInvocation(operation, loggingTypes, out eventId)))
             {
                 usage.EventId = eventId;
@@ -73,11 +75,14 @@ namespace LoggerUsage.Analyzers
             {
                 usage.LogLevel = logLevel;
             }
-            if (TryExtractMessageTemplateFromArguments(operation, isDirectLoggerMethod, out var messageTemplate))
+            if (isDirectLoggerMethod)
+            {
+                ExtractDirectState(operation, loggingTypes, usage);
+            }
+            else if (TryExtractMessageTemplateFromArguments(operation, out var messageTemplate))
             {
                 usage.MessageTemplate = messageTemplate;
-                if (!isDirectLoggerMethod &&
-                    arrayParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
+                if (arrayParameterExtractor.TryExtractParameters(operation, loggingTypes, messageTemplate, out var messageParameters))
                 {
                     usage.MessageParameters = messageParameters;
                     _logger.LogDebug("Successfully analyzed logger method usage {MethodName} with {Count} parameters", 
@@ -88,25 +93,38 @@ namespace LoggerUsage.Analyzers
             return usage;
         }
 
-        private bool TryExtractMessageTemplateFromArguments(
+        private void ExtractDirectState(
             IInvocationOperation operation,
-            bool isDirectLoggerMethod,
-            out string? messageTemplate)
+            LoggingTypes loggingTypes,
+            LoggerUsageInfo usage)
         {
-            if (isDirectLoggerMethod)
+            var stateArgument = FindArgument(operation, loggingTypes.ILoggerLogStateParameter);
+            if (stateArgument is null)
             {
-                var stateArgument = operation.Arguments.FirstOrDefault(
-                    argument => argument.Parameter?.Name == "state");
-                if (stateArgument != null &&
-                    messageTemplateExtractor.TryExtract(stateArgument.Value, out messageTemplate))
-                {
-                    return true;
-                }
-
-                messageTemplate = null;
-                return false;
+                return;
             }
 
+            if (messageTemplateExtractor.TryExtract(stateArgument.Value, out var constantState))
+            {
+                usage.MessageTemplate = constantState;
+                return;
+            }
+
+            if (directLogStateExtractor.TryExtract(
+                stateArgument.Value,
+                loggingTypes,
+                out var messageTemplate,
+                out var messageParameters))
+            {
+                usage.MessageTemplate = messageTemplate;
+                usage.MessageParameters = messageParameters;
+            }
+        }
+
+        private bool TryExtractMessageTemplateFromArguments(
+            IInvocationOperation operation,
+            out string? messageTemplate)
+        {
             int parameterStartIndex = operation.TargetMethod.IsExtensionMethod ? 1 : 0;
             for (var i = parameterStartIndex; i < operation.TargetMethod.Parameters.Length; i++)
             {
@@ -120,34 +138,61 @@ namespace LoggerUsage.Analyzers
             return false;
         }
 
-        private static bool IsDirectLoggerMethod(IMethodSymbol method, LoggingTypes loggingTypes)
+        private static bool IsDirectLoggerMethod(
+            IInvocationOperation operation,
+            LoggingTypes loggingTypes)
         {
+            var method = operation.TargetMethod;
             if (method.Name != nameof(ILogger.Log))
             {
                 return false;
             }
 
-            return loggingTypes.ILogger.GetMembers(nameof(ILogger.Log))
-                .OfType<IMethodSymbol>()
-                .Any(loggerMethod => SymbolEqualityComparer.Default.Equals(
+            var loggerMethod = loggingTypes.ILoggerLogMethod;
+            if (SymbolEqualityComparer.Default.Equals(
+                method.OriginalDefinition,
+                loggerMethod.OriginalDefinition))
+            {
+                return true;
+            }
+
+            if (operation.Instance?.Type is not INamedTypeSymbol receiverType ||
+                !receiverType.AllInterfaces.Any(interfaceType =>
+                    SymbolEqualityComparer.Default.Equals(interfaceType, loggingTypes.ILogger)))
+            {
+                return false;
+            }
+
+            var implementation = receiverType.FindImplementationForInterfaceMember(loggerMethod) as IMethodSymbol;
+            return implementation is not null &&
+                SymbolEqualityComparer.Default.Equals(
                     method.OriginalDefinition,
-                    loggerMethod.OriginalDefinition));
+                    implementation.OriginalDefinition);
         }
 
         private static bool TryExtractDirectEventId(
             IInvocationOperation operation,
+            LoggingTypes loggingTypes,
             out EventIdBase eventId)
         {
-            var eventIdArgument = operation.Arguments.FirstOrDefault(
-                argument => argument.Parameter?.Name == "eventId");
+            var eventIdArgument = FindArgument(operation, loggingTypes.ILoggerLogEventIdParameter);
             if (eventIdArgument != null)
             {
-                return EventIdExtractor.TryExtractFromArgument(eventIdArgument.Value, out eventId);
+                return EventIdExtractor.TryExtractFromArgument(
+                    eventIdArgument.Value,
+                    loggingTypes,
+                    out eventId);
             }
 
             eventId = default!;
             return false;
         }
+
+        private static IArgumentOperation? FindArgument(
+            IInvocationOperation operation,
+            IParameterSymbol interfaceParameter) =>
+            operation.Arguments.FirstOrDefault(
+                argument => argument.Parameter?.Ordinal == interfaceParameter.Ordinal);
 
         private static bool TryExtractLogLevel(IInvocationOperation operation, LoggingTypes loggingTypes, out LogLevel logLevel)
         {

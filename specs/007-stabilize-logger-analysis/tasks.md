@@ -39,3 +39,12 @@
 - [x] T020 Run full .NET validation; VS Code package validation deferred to CI because npm registry access is blocked locally.
 - [x] T021 Review final diff and update plan status.
 - [x] T022 Commit, push, and create pull request #282.
+
+## Direct ILogger.Log follow-up
+
+- [x] T023 Add comprehensive direct-call integration coverage.
+- [x] T024 Recognize concrete `ILogger` implementations without false positives.
+- [x] T025 Extract inline structured state with `{OriginalFormat}`.
+- [x] T026 Support collection expressions and named pair arguments.
+- [x] T027 Require exact structured-state types and template correlation.
+- [x] T028 Complete final review, push, and update PR #282.
