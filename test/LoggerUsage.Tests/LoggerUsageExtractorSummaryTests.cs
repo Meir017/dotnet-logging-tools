@@ -60,4 +60,36 @@ public class LoggerUsageExtractorSummaryTests
         compilationResult.Summary.TotalParameterUsageCount.Should().BeGreaterThan(0);
         workspaceResult.Summary.Should().BeEquivalentTo(compilationResult.Summary);
     }
+
+    [Fact]
+    public async Task ExtractLoggerUsagesAsync_PopulatesAggregateSummaryAcrossProjects()
+    {
+        var sourceCompilation = await TestUtils.CreateCompilationAsync(Source);
+        using var workspace = new AdhocWorkspace();
+
+        for (var index = 0; index < 2; index++)
+        {
+            var project = workspace.AddProject(
+                ProjectInfo.Create(
+                    ProjectId.CreateNewId(),
+                    VersionStamp.Default,
+                    $"TestProject{index}",
+                    $"TestProject{index}",
+                    LanguageNames.CSharp,
+                    compilationOptions: sourceCompilation.Options,
+                    metadataReferences: sourceCompilation.References));
+            workspace.AddDocument(project.Id, $"TestDocument{index}.cs", SourceText.From(Source));
+        }
+
+        var extractor = TestUtils.CreateLoggerUsageExtractor();
+
+        var result = await extractor.ExtractLoggerUsagesAsync(workspace);
+
+        result.Results.Should().HaveCount(2);
+        result.Summary.TotalParameterUsageCount.Should().Be(2);
+        result.Summary.UniqueParameterNameCount.Should().Be(1);
+        result.Summary.ParameterTypesByName["OrderId"].Should().ContainSingle().Which.Should().Be("int");
+        result.Summary.CommonParameterNames.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new { Name = "OrderId", Count = 2 });
+    }
 }

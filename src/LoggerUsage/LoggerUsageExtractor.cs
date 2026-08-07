@@ -62,13 +62,11 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
             _logger.LogInformation("Analyzing project compilation '{Project}' with {Count} references", compilation.AssemblyName, compilation.References.Count());
 
-            var extractionResult = await ExtractLoggerUsagesWithSolutionAsync(
+            var extractionResult = await ExtractLoggerUsagesCoreAsync(
                 compilation,
                 workspace.CurrentSolution,
                 progress,
-                cancellationToken,
-                projectIndex: i,
-                totalProjects: projects.Count);
+                cancellationToken);
             results.AddRange(extractionResult.Results);
         }
 
@@ -100,6 +98,21 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
         CancellationToken cancellationToken = default,
         int projectIndex = 0,
         int totalProjects = 1)
+    {
+        var result = await ExtractLoggerUsagesCoreAsync(
+            compilation,
+            solution,
+            progress,
+            cancellationToken);
+        new LoggerUsageSummarizer().PopulateSummary(result);
+        return result;
+    }
+
+    private async Task<LoggerUsageExtractionResult> ExtractLoggerUsagesCoreAsync(
+        Compilation compilation,
+        Solution? solution,
+        IProgress<Models.LoggerUsageProgress>? progress,
+        CancellationToken cancellationToken)
     {
         var loggerInterface = compilation.GetTypeByMetadataName(typeof(ILogger).FullName!)!;
         if (loggerInterface == null)
@@ -217,7 +230,6 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 Results = [.. results],
                 Summary = new()
             };
-            new LoggerUsageSummarizer().PopulateSummary(result);
             return result;
         }
         finally

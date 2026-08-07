@@ -11,7 +11,9 @@ internal static class TestUtils
 {
     public static async Task<Compilation> CreateCompilationAsync(string sourceCode)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+        var syntaxTree = CSharpSyntaxTree.ParseText(
+            sourceCode,
+            new CSharpParseOptions(LanguageVersion.CSharp14));
         var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
         references = references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.Logging.LogPropertiesAttribute).Assembly.Location));
