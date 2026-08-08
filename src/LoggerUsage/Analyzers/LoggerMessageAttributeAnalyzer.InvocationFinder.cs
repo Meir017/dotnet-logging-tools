@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace LoggerUsage.Analyzers
 {
@@ -47,28 +48,52 @@ namespace LoggerUsage.Analyzers
             LoggingAnalysisContext context)
         {
             var invocations = new List<LoggerMessageInvocation>();
-            var callers = await SymbolFinder.FindCallersAsync(declaration.MethodSymbol, context.Solution!);
+            var searchStart = Stopwatch.GetTimestamp();
+            var callers = await SymbolFinder.FindCallersAsync(
+                declaration.MethodSymbol,
+                context.Solution!,
+                context.CancellationToken);
+            logger.LogDebug(
+                "SymbolFinder returned {CallerCount} callers for {MethodName} in {Duration}ms",
+                callers.Count(),
+                declaration.MethodSymbol.Name,
+                Stopwatch.GetElapsedTime(searchStart).TotalMilliseconds);
 
             foreach (var caller in callers)
             {
+                context.CancellationToken.ThrowIfCancellationRequested();
                 foreach (var location in caller.Locations)
                 {
                     if (location.IsInSource && location.SourceTree != null)
                     {
-                        var syntaxRoot = await location.SourceTree.GetRootAsync();
-
-                        // Navigate from identifier -> member access -> invocation
-                        if (syntaxRoot.FindNode(location.SourceSpan) is IdentifierNameSyntax identifierName // the method name - e.g. LogUserActivity
-                            && identifierName.Parent is MemberAccessExpressionSyntax memberAccess // the member access - e.g. UserLogger.LogUserActivity
-                            && memberAccess.Parent is InvocationExpressionSyntax invocationExpression // the invocation expression - e.g. UserLogger.LogUserActivity(...)
-                            && context.Solution is not null)
+                        if (context.Solution is not null)
                         {
-                            var document = context.Solution.GetDocumentId(location.SourceTree);
-                            var project = context.Solution.GetProject(document!.ProjectId);
-                            var compilation = await project!.GetCompilationAsync();
-                            var semanticModel = compilation!.GetSemanticModel(location.SourceTree);
+                            var document = context.Solution.GetDocument(location.SourceTree);
+                            if (document is null)
+                            {
+                                continue;
+                            }
 
-                            if (semanticModel.GetOperation(invocationExpression) is IInvocationOperation operation)
+                            var syntaxRoot = context.SolutionCache is null
+                                ? await document.GetSyntaxRootAsync(context.CancellationToken)
+                                : await context.SolutionCache.GetRootAsync(document, context.CancellationToken);
+                            if (syntaxRoot is null)
+                            {
+                                continue;
+                            }
+
+                            var invocationExpression = syntaxRoot
+                                .FindNode(location.SourceSpan)
+                                .FirstAncestorOrSelf<InvocationExpressionSyntax>();
+                            if (invocationExpression is null)
+                            {
+                                continue;
+                            }
+
+                            var semanticModel = context.SolutionCache is null
+                                ? await document.GetSemanticModelAsync(context.CancellationToken)
+                                : await context.SolutionCache.GetSemanticModelAsync(document, context.CancellationToken);
+                            if (semanticModel?.GetOperation(invocationExpression, context.CancellationToken) is IInvocationOperation operation)
                             {
                                 invocations.Add(CreateLoggerMessageInvocation(operation, invocationExpression, syntaxRoot, semanticModel));
                             }
@@ -88,17 +113,13 @@ namespace LoggerUsage.Analyzers
             LoggingAnalysisContext context)
         {
             var invocations = new List<LoggerMessageInvocation>();
-            var invocationNodes = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
-
-            foreach (var invocationNode in invocationNodes)
+            foreach (var operation in context.InvocationIndex.Invocations)
             {
-                if (context.SemanticModel.GetOperation(invocationNode) is not IInvocationOperation operation)
-                {
-                    continue;
-                }
+                context.CancellationToken.ThrowIfCancellationRequested();
 
                 if (IsLoggerMessageMethodInvocation(operation, declaration))
                 {
+                    var invocationNode = (InvocationExpressionSyntax)operation.Syntax;
                     var invocation = CreateLoggerMessageInvocation(operation, invocationNode, context.Root, context.SemanticModel);
                     invocations.Add(invocation);
 

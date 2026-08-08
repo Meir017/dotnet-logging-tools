@@ -11,15 +11,24 @@ internal static class TestUtils
 {
     public static async Task<Compilation> CreateCompilationAsync(string sourceCode)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(
-            sourceCode,
-            new CSharpParseOptions(LanguageVersion.CSharp14));
+        return await CreateCompilationAsync([(sourceCode, string.Empty)]);
+    }
+
+    public static async Task<Compilation> CreateCompilationAsync(
+        params (string SourceCode, string FilePath)[] sources)
+    {
+        var syntaxTrees = sources
+            .Select(source => CSharpSyntaxTree.ParseText(
+                source.SourceCode,
+                new CSharpParseOptions(LanguageVersion.CSharp14),
+                source.FilePath))
+            .ToArray();
         var references = await ReferenceAssemblies.Net.Net100.ResolveAsync(LanguageNames.CSharp, default);
         references = references.Add(MetadataReference.CreateFromFile(typeof(ILogger).Assembly.Location));
         references = references.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.Logging.LogPropertiesAttribute).Assembly.Location));
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
-            [syntaxTree],
+            syntaxTrees,
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithSpecificDiagnosticOptions(
                 new Dictionary<string, ReportDiagnostic>

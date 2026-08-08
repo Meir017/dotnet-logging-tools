@@ -19,17 +19,13 @@ namespace LoggerUsage.Analyzers
     {
         private readonly ILogger<LogMethodAnalyzer> _logger = loggerFactory.CreateLogger<LogMethodAnalyzer>();
         
-        public async Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
+        public Task<IEnumerable<LoggerUsageInfo>> AnalyzeAsync(LoggingAnalysisContext context)
         {
             var results = new List<LoggerUsageInfo>();
-            var invocations = context.Root.DescendantNodes().OfType<InvocationExpressionSyntax>();
-            
-            foreach (var invocation in invocations)
+
+            foreach (var operation in context.InvocationIndex.Invocations)
             {
-                if (context.SemanticModel.GetOperation(invocation) is not IInvocationOperation operation)
-                {
-                    continue;
-                }
+                context.CancellationToken.ThrowIfCancellationRequested();
 
                 var isDirectLoggerMethod = IsDirectLoggerMethod(operation, context.LoggingTypes);
                 if (!isDirectLoggerMethod &&
@@ -41,13 +37,11 @@ namespace LoggerUsage.Analyzers
                 results.Add(ExtractLoggerMethodUsage(
                     operation,
                     context.LoggingTypes,
-                    invocation,
+                    (Microsoft.CodeAnalysis.CSharp.Syntax.InvocationExpressionSyntax)operation.Syntax,
                     isDirectLoggerMethod));
             }
-            
-            // Ensure this is truly async
-            await Task.Yield();
-            return results;
+
+            return Task.FromResult<IEnumerable<LoggerUsageInfo>>(results);
         }
 
         private LoggerUsageInfo ExtractLoggerMethodUsage(

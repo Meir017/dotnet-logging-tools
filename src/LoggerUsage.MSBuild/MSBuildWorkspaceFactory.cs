@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
 using Microsoft.CodeAnalysis;
 using Microsoft.Build.Locator;
+using System.Collections.Concurrent;
 
 namespace LoggerUsage.MSBuild;
 
@@ -22,9 +23,14 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
         }
     }
 
-    public async Task<Workspace> Create(FileInfo fileInfo)
+    public Task<Workspace> Create(FileInfo fileInfo) => Create(fileInfo, CancellationToken.None);
+
+    public async Task<Workspace> Create(FileInfo fileInfo, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var workspace = MSBuildWorkspace.Create();
+        var reportedDiagnostics = new ConcurrentDictionary<(WorkspaceDiagnosticKind Kind, string Message), byte>();
+        using var workspaceFailedRegistration = workspace.RegisterWorkspaceFailedHandler(OnWorkspaceFailed);
 
         try
         {
@@ -32,14 +38,20 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
             {
                 var start = Stopwatch.GetTimestamp();
                 LogInfoLoadingSolution(_logger, fileInfo.FullName);
-                var solution = await workspace.OpenSolutionAsync(fileInfo.FullName, new ProjectProgress(_logger));
+                var solution = await workspace.OpenSolutionAsync(
+                    fileInfo.FullName,
+                    new ProjectProgress(_logger),
+                    cancellationToken);
                 _logger.LogInformation("Loaded solution '{path}' with {count} projects in {duration}ms", solution.FilePath, solution.Projects.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
             }
             else if (fileInfo.Extension == ".csproj")
             {
                 var start = Stopwatch.GetTimestamp();
                 LogInfoLoadingProject(_logger, fileInfo.FullName);
-                var project = await workspace.OpenProjectAsync(fileInfo.FullName, new ProjectProgress(_logger));
+                var project = await workspace.OpenProjectAsync(
+                    fileInfo.FullName,
+                    new ProjectProgress(_logger),
+                    cancellationToken);
                 _logger.LogInformation("Loaded project '{path}' with {count} documents in {duration}ms", project.FilePath, project.Documents.Count(), Stopwatch.GetElapsedTime(start).TotalMilliseconds);
             }
             else
@@ -62,11 +74,30 @@ public partial class MSBuildWorkspaceFactory : IWorkspaceFactory
             _logger.LogError(ex, "Solution or project file not found: {Path}", fileInfo.FullName);
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            workspace.Dispose();
+            throw;
+        }
         catch (Exception ex)
         {
             workspace.Dispose();
             _logger.LogError(ex, "Failed to load solution or project: {Path}", fileInfo.FullName);
             throw;
+        }
+
+        void OnWorkspaceFailed(WorkspaceDiagnosticEventArgs args)
+        {
+            if (!reportedDiagnostics.TryAdd((args.Diagnostic.Kind, args.Diagnostic.Message), 0))
+            {
+                return;
+            }
+
+            _logger.LogWarning(
+                "MSBuild workspace diagnostic {Kind} while loading '{Path}': {Message}",
+                args.Diagnostic.Kind,
+                fileInfo.FullName,
+                args.Diagnostic.Message);
         }
     }
 

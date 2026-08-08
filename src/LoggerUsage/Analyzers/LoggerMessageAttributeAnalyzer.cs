@@ -23,7 +23,11 @@ namespace LoggerUsage.Analyzers
             logger.LogTrace("Starting LoggerMessageAttribute analysis");
 
             // Phase 1: Discover LoggerMessage method declarations
-            var declarations = DiscoverLoggerMessageDeclarations(context.LoggingTypes, context.Root, context.SemanticModel);
+            var declarations = DiscoverLoggerMessageDeclarations(
+                context.LoggingTypes,
+                context.Root,
+                context.SemanticModel,
+                context.CancellationToken);
 
             if (!declarations.Any())
             {
@@ -38,6 +42,7 @@ namespace LoggerUsage.Analyzers
             // Phase 2: Find invocations for each declaration
             foreach (var declaration in declarations)
             {
+                context.CancellationToken.ThrowIfCancellationRequested();
                 var invocations = await FindLoggerMessageInvocations(declaration, context);
 
                 // Extract LogProperties information
@@ -64,8 +69,6 @@ namespace LoggerUsage.Analyzers
                 results.Add(loggerMessageUsage);
             }
 
-            // Ensure this is truly async
-            await Task.Yield();
             return results;
         }
 
@@ -75,14 +78,16 @@ namespace LoggerUsage.Analyzers
         private List<LoggerMessageDeclaration> DiscoverLoggerMessageDeclarations(
             LoggingTypes loggingTypes,
             SyntaxNode root,
-            SemanticModel semanticModel)
+            SemanticModel semanticModel,
+            CancellationToken cancellationToken)
         {
             var declarations = new List<LoggerMessageDeclaration>();
             var methodDeclarations = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
 
             foreach (var methodDeclaration in methodDeclarations)
             {
-                if (semanticModel.GetDeclaredSymbol(methodDeclaration) is not IMethodSymbol methodSymbol)
+                cancellationToken.ThrowIfCancellationRequested();
+                if (semanticModel.GetDeclaredSymbol(methodDeclaration, cancellationToken) is not IMethodSymbol methodSymbol)
                 {
                     continue;
                 }

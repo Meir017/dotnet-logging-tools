@@ -14,12 +14,15 @@ internal static class WorkspaceHelper
     /// <param name="compilation">The compilation to analyze.</param>
     /// <param name="solution">Optional existing solution. If null, an AdhocWorkspace will be created.</param>
     /// <param name="logger">Logger for diagnostic messages.</param>
+    /// <param name="cancellationToken">Token used to cancel workspace creation.</param>
     /// <returns>A tuple containing the solution and an optional disposable workspace.</returns>
     public static async Task<(Solution?, IDisposable?)> EnsureSolutionAsync(
         Compilation compilation,
         Solution? solution,
-        ILogger logger)
+        ILogger logger,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (solution != null)
         {
             logger.LogDebug("Using provided solution for analysis");
@@ -28,9 +31,10 @@ internal static class WorkspaceHelper
 
         logger.LogInformation("Creating AdhocWorkspace for compilation '{AssemblyName}'", compilation.AssemblyName);
 
+        AdhocWorkspace? workspace = null;
         try
         {
-            var workspace = new AdhocWorkspace();
+            workspace = new AdhocWorkspace();
 
             var projectInfo = ProjectInfo.Create(
                 ProjectId.CreateNewId(),
@@ -46,11 +50,12 @@ internal static class WorkspaceHelper
             // Add syntax trees as documents
             foreach (var syntaxTree in compilation.SyntaxTrees)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var fileName = string.IsNullOrEmpty(syntaxTree.FilePath)
                     ? $"Document{project.Documents.Count()}.cs"
                     : Path.GetFileName(syntaxTree.FilePath);
 
-                var text = await syntaxTree.GetTextAsync();
+                var text = await syntaxTree.GetTextAsync(cancellationToken);
 
                 // Add document with text content
                 project = project.AddDocument(fileName, text, filePath: syntaxTree.FilePath).Project;
@@ -69,7 +74,7 @@ internal static class WorkspaceHelper
             // This ensures SymbolFinder can properly resolve symbols across documents
             if (finalProject != null)
             {
-                var workspaceCompilation = await finalProject.GetCompilationAsync();
+                var workspaceCompilation = await finalProject.GetCompilationAsync(cancellationToken);
                 logger.LogInformation("AdhocWorkspace created successfully with {DocumentCount} documents, compilation has {TreeCount} trees",
                     finalProject.Documents.Count(),
                     workspaceCompilation?.SyntaxTrees.Count() ?? 0);
@@ -77,8 +82,14 @@ internal static class WorkspaceHelper
 
             return (finalSolution, workspace);
         }
+        catch (OperationCanceledException)
+        {
+            workspace?.Dispose();
+            throw;
+        }
         catch (Exception ex)
         {
+            workspace?.Dispose();
             logger.LogWarning(ex, "Failed to create AdhocWorkspace for compilation '{AssemblyName}'. " +
                 "Solution APIs will not be available.", compilation.AssemblyName);
             return (null, null);

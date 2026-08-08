@@ -70,8 +70,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
             results.AddRange(extractionResult.Results);
         }
 
-        // TODO: Populate summary.ParameterTypesByName from results
-
+        cancellationToken.ThrowIfCancellationRequested();
         var result = new LoggerUsageExtractionResult
         {
             Results = results,
@@ -104,6 +103,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
             solution,
             progress,
             cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         new LoggerUsageSummarizer().PopulateSummary(result);
         return result;
     }
@@ -137,7 +137,8 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
         var (ensuredSolution, workspace) = await Utilities.WorkspaceHelper.EnsureSolutionAsync(
             compilation,
             solution,
-            _logger);
+            _logger,
+            cancellationToken);
 
         try
         {
@@ -164,9 +165,12 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
             var loggingTypes = new LoggingTypes(workingCompilation, workingLoggerInterface);
             var results = new ConcurrentBag<LoggerUsageInfo>();
             var reporter = new Services.ProgressReporter(progress);
+            var solutionCache = ensuredSolution is null
+                ? null
+                : new SolutionAnalysisCache();
 
             var syntaxTrees = workingCompilation.SyntaxTrees
-                .Where(syntaxTree => !syntaxTree.FilePath.EndsWith("LoggerMessage.g.cs"))
+                .Where(syntaxTree => !Utilities.GeneratedCodeDetector.IsGenerated(syntaxTree, cancellationToken))
                 .ToList();
 
             // Set total files for progress tracking
@@ -179,7 +183,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
 
                 _logger.LogDebug("Analyzing file {File}", syntaxTree.FilePath);
 
-                var root = syntaxTree.GetRoot();
+                var root = await syntaxTree.GetRootAsync(cancellationToken);
                 var semanticModel = workingCompilation.GetSemanticModel(syntaxTree);
 
                 if (root == null || semanticModel == null)
@@ -190,8 +194,26 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                 }
 
                 var analysisContext = ensuredSolution != null
-                    ? LoggingAnalysisContext.CreateForWorkspace(loggingTypes, root, semanticModel, ensuredSolution, _logger)
-                    : LoggingAnalysisContext.CreateForCompilation(loggingTypes, root, semanticModel, _logger);
+                    ? LoggingAnalysisContext.CreateForWorkspace(
+                        loggingTypes,
+                        root,
+                        semanticModel,
+                        ensuredSolution,
+                        _logger,
+                        cancellationToken,
+                        solutionCache!)
+                    : LoggingAnalysisContext.CreateForCompilation(
+                        loggingTypes,
+                        root,
+                        semanticModel,
+                        _logger,
+                        cancellationToken);
+
+                _logger.LogDebug(
+                    "Indexed {CandidateCount} invocation candidates with {BindCount} semantic binds in file {File}",
+                    analysisContext.InvocationIndex.CandidateCount,
+                    analysisContext.InvocationIndex.OperationBindCount,
+                    syntaxTree.FilePath);
 
                 // Run all analyzers in parallel for this syntax tree
                 var analyzerTasks = _analyzers.Select(async analyzer =>
@@ -201,6 +223,7 @@ public class LoggerUsageExtractor(IEnumerable<ILoggerUsageAnalyzer> analyzers, I
                     // Note: We don't report analyzer progress to avoid clutter - only log it
 
                     var usages = await analyzer.AnalyzeAsync(analysisContext);
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     var level = usages.Any() ? LogLevel.Information : LogLevel.Debug;
                     var duration = Stopwatch.GetElapsedTime(start);

@@ -1,4 +1,5 @@
 using LoggerUsage.Models;
+using LoggerUsage.Diagnostics;
 
 namespace LoggerUsage;
 
@@ -61,7 +62,7 @@ public class LoggerUsageSummarizer
                 var nameTypePairs = kvp.Value
                     .Select(type => new LoggerUsageExtractionSummary.NameTypePair(kvp.Key, type))
                     .ToList();
-                inconsistenciesRaw.Add((nameTypePairs, "TypeMismatch"));
+                inconsistenciesRaw.Add((nameTypePairs, LoggerUsageRules.TypeMismatchIssue));
             }
         }
 
@@ -77,7 +78,7 @@ public class LoggerUsageSummarizer
             var nameTypePairs = group
                 .SelectMany(name => parameterTypesByName[name].Select(type => new LoggerUsageExtractionSummary.NameTypePair(name, type)))
                 .ToList();
-            inconsistenciesRaw.Add((nameTypePairs, "CasingDifference"));
+            inconsistenciesRaw.Add((nameTypePairs, LoggerUsageRules.CasingDifferenceIssue));
 
             // Only add a TypeMismatch for the group if there are multiple types across all names
             var allTypes = new HashSet<string>();
@@ -90,7 +91,7 @@ public class LoggerUsageSummarizer
             }
             if (allTypes.Count > 1 && group.Count > 1)
             {
-                inconsistenciesRaw.Add((nameTypePairs, "TypeMismatch"));
+                inconsistenciesRaw.Add((nameTypePairs, LoggerUsageRules.TypeMismatchIssue));
             }
         }
 
@@ -116,7 +117,8 @@ public class LoggerUsageSummarizer
                 var mostCommonType = parameterTypesByName[name]
                     .GroupBy(t => t)
                     .OrderByDescending(g => g.Count())
-                    .First().Key;
+                    .Select(group => group.Key)
+                    .FirstOrDefault() ?? "Unknown";
                 return new LoggerUsageExtractionSummary.CommonParameterNameInfo
                 {
                     Name = name,

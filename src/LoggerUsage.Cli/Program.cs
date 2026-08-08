@@ -8,8 +8,23 @@ public class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        using var cancellationSource = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            cancellationSource.Cancel();
+        };
+        Console.CancelKeyPress += cancelHandler;
+
         var worker = CreateWorker(args);
-        return await worker.RunAsync();
+        try
+        {
+            return await worker.RunAsync(cancellationSource.Token);
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+        }
     }
 
     public static LoggerUsageWorker CreateWorker(string[] args, Action<HostApplicationBuilder>? configure = null)

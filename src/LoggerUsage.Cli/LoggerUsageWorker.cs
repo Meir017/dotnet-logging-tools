@@ -18,7 +18,7 @@ public class LoggerUsageWorker(
     private readonly ILoggerReportGeneratorFactory _reportGeneratorFactory = reportGeneratorFactory;
     private readonly IWorkspaceFactory _workspaceFactory = workspaceFactory;
 
-    public async Task<int> RunAsync()
+    public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.Path))
         {
@@ -40,7 +40,7 @@ public class LoggerUsageWorker(
             return -1;
         }
 
-        using var workspace = await _workspaceFactory.Create(fileInfo);
+        using var workspace = await _workspaceFactory.Create(fileInfo, cancellationToken);
 
         // Setup progress reporting if verbose mode is enabled
         IProgress<Models.LoggerUsageProgress>? progress = null;
@@ -55,7 +55,7 @@ public class LoggerUsageWorker(
         try
         {
             var extractionStart = Stopwatch.GetTimestamp();
-            var loggerUsages = await _extractor.ExtractLoggerUsagesAsync(workspace, progress);
+            var loggerUsages = await _extractor.ExtractLoggerUsagesAsync(workspace, progress, cancellationToken);
 
             // Clear progress bar before logging results
             progressBar?.Clear();
@@ -67,10 +67,16 @@ public class LoggerUsageWorker(
             if (!string.IsNullOrWhiteSpace(_options.OutputPath))
             {
                 var outputPathInfo = new FileInfo(_options.OutputPath);
+                var sourceRoot = FindRepositoryRoot(fileInfo.Directory);
 
                 _logger.LogInformation("Writing results to '{outputPath}'", _options.OutputPath);
                 var generator = _reportGeneratorFactory.GetReportGenerator(outputPathInfo.Extension);
-                await File.WriteAllTextAsync(_options.OutputPath, generator.GenerateReport(loggerUsages));
+                await File.WriteAllTextAsync(
+                    _options.OutputPath,
+                    generator.GenerateReport(
+                        loggerUsages,
+                        new ReportGenerationContext(sourceRoot)),
+                    cancellationToken);
                 _logger.LogInformation("Wrote results to '{outputPath}'",
                     _options.OutputPath);
             }
@@ -82,5 +88,21 @@ public class LoggerUsageWorker(
         }
 
         return 0;
+    }
+
+    private static string? FindRepositoryRoot(DirectoryInfo? directory)
+    {
+        while (directory is not null)
+        {
+            if (Directory.Exists(Path.Combine(directory.FullName, ".git"))
+                || File.Exists(Path.Combine(directory.FullName, ".git")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return null;
     }
 }

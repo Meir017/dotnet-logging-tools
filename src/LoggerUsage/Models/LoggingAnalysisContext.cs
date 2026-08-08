@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using LoggerUsage.Analyzers;
 
 namespace LoggerUsage.Models;
 
@@ -16,18 +17,42 @@ public class LoggingAnalysisContext
     /// <param name="semanticModel">The semantic model providing type information for the syntax tree.</param>
     /// <param name="solution">Optional solution for cross-project analysis.</param>
     /// <param name="logger">Logger for diagnostic logging during analysis.</param>
+    /// <param name="cancellationToken">Token used to cancel analysis.</param>
     public LoggingAnalysisContext(
         LoggingTypes loggingTypes,
         SyntaxNode root,
         SemanticModel semanticModel,
         Solution? solution = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default)
+        : this(
+            loggingTypes,
+            root,
+            semanticModel,
+            solution,
+            logger,
+            cancellationToken,
+            solutionCache: null)
+    {
+    }
+
+    private LoggingAnalysisContext(
+        LoggingTypes loggingTypes,
+        SyntaxNode root,
+        SemanticModel semanticModel,
+        Solution? solution,
+        ILogger? logger,
+        CancellationToken cancellationToken,
+        SolutionAnalysisCache? solutionCache)
     {
         LoggingTypes = loggingTypes ?? throw new ArgumentNullException(nameof(loggingTypes));
         Root = root ?? throw new ArgumentNullException(nameof(root));
         SemanticModel = semanticModel ?? throw new ArgumentNullException(nameof(semanticModel));
         Solution = solution;
         Logger = logger;
+        CancellationToken = cancellationToken;
+        InvocationIndex = InvocationAnalysisIndex.Create(root, semanticModel, cancellationToken);
+        SolutionCache = solutionCache;
     }
 
     /// <summary>
@@ -56,6 +81,15 @@ public class LoggingAnalysisContext
     public ILogger? Logger { get; }
 
     /// <summary>
+    /// Gets the token used to cancel analysis.
+    /// </summary>
+    public CancellationToken CancellationToken { get; }
+
+    internal InvocationAnalysisIndex InvocationIndex { get; }
+
+    internal SolutionAnalysisCache? SolutionCache { get; }
+
+    /// <summary>
     /// Creates a new analysis context for workspace analysis.
     /// </summary>
     /// <param name="loggingTypes">The logging types configuration used for analysis.</param>
@@ -63,16 +97,42 @@ public class LoggingAnalysisContext
     /// <param name="semanticModel">The semantic model providing type information for the syntax tree.</param>
     /// <param name="solution">The solution for cross-project analysis.</param>
     /// <param name="logger">Logger for diagnostic logging during analysis.</param>
+    /// <param name="cancellationToken">Token used to cancel analysis.</param>
     /// <returns>A new analysis context configured for workspace analysis.</returns>
     public static LoggingAnalysisContext CreateForWorkspace(
         LoggingTypes loggingTypes,
         SyntaxNode root,
         SemanticModel semanticModel,
         Solution solution,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default)
     {
-        return new LoggingAnalysisContext(loggingTypes, root, semanticModel, solution, logger);
+        return new LoggingAnalysisContext(
+            loggingTypes,
+            root,
+            semanticModel,
+            solution,
+            logger,
+            cancellationToken,
+            solutionCache: null);
     }
+
+    internal static LoggingAnalysisContext CreateForWorkspace(
+        LoggingTypes loggingTypes,
+        SyntaxNode root,
+        SemanticModel semanticModel,
+        Solution solution,
+        ILogger? logger,
+        CancellationToken cancellationToken,
+        SolutionAnalysisCache solutionCache) =>
+        new(
+            loggingTypes,
+            root,
+            semanticModel,
+            solution,
+            logger,
+            cancellationToken,
+            solutionCache);
 
     /// <summary>
     /// Creates a new analysis context for compilation analysis.
@@ -81,13 +141,15 @@ public class LoggingAnalysisContext
     /// <param name="root">The root syntax node of the syntax tree to analyze.</param>
     /// <param name="semanticModel">The semantic model providing type information for the syntax tree.</param>
     /// <param name="logger">Logger for diagnostic logging during analysis.</param>
+    /// <param name="cancellationToken">Token used to cancel analysis.</param>
     /// <returns>A new analysis context configured for compilation analysis.</returns>
     public static LoggingAnalysisContext CreateForCompilation(
         LoggingTypes loggingTypes,
         SyntaxNode root,
         SemanticModel semanticModel,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default)
     {
-        return new LoggingAnalysisContext(loggingTypes, root, semanticModel, null, logger);
+        return new LoggingAnalysisContext(loggingTypes, root, semanticModel, null, logger, cancellationToken);
     }
 }
