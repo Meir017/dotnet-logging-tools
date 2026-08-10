@@ -4,7 +4,7 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Build" Version="18.3.3" />
+    <PackageVersion Include="Microsoft.Build" Version="18.8.2" />
     <PackageVersion Include="Microsoft.Build.Framework" Version="18.8.2" />
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.11.2" />
     <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="18.8.2" />
