@@ -1,8 +1,6 @@
 # dotnet-logging-tools
 
-> *This library is mostly vibe coded using github-copilot with the Claude Sonnet 4 model in agent mode*
-
-Create a summary of which log messages a project writes and the parameters to improve consistency
+Analyze Microsoft.Extensions.Logging usage across .NET projects and generate actionable reports for improving logging consistency.
 
 | Package | Version | Downloads | Description |
 |---------|---------|-----------|-------------|
@@ -10,6 +8,8 @@ Create a summary of which log messages a project writes and the parameters to im
 | [LoggerUsage.Cli](https://www.nuget.org/packages/LoggerUsage.Cli) | [![NuGet version](https://img.shields.io/nuget/v/LoggerUsage.Cli?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.Cli) | [![NuGet downloads](https://img.shields.io/nuget/dt/LoggerUsage.Cli?style=flat-square)](https://www.nuget.org/packages/LoggerUsage.Cli) | Command-line tool for generating HTML/JSON reports |
 | [LoggerUsage.Mcp](https://www.nuget.org/packages/LoggerUsage.Mcp) | [![NuGet version](https://img.shields.io/nuget/v/LoggerUsage.Mcp?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.Mcp) | [![NuGet downloads](https://img.shields.io/nuget/dt/LoggerUsage.Mcp?style=flat-square)](https://www.nuget.org/packages/LoggerUsage.Mcp) | Model Context Protocol server for AI integrations |
 | [LoggerUsage.MSBuild](https://www.nuget.org/packages/LoggerUsage.MSBuild) | [![NuGet version](https://img.shields.io/nuget/v/LoggerUsage.MSBuild?style=flat-square&logo=nuget)](https://www.nuget.org/packages/LoggerUsage.MSBuild) | [![NuGet downloads](https://img.shields.io/nuget/dt/LoggerUsage.MSBuild?style=flat-square)](https://www.nuget.org/packages/LoggerUsage.MSBuild) | MSBuild integration for workspace analysis |
+
+The repository also includes a [VS Code extension](src/LoggerUsage.VSCode/README.md) with real-time analysis, an insights panel, tree navigation, filtering, export, and Problems panel integration.
 
 ## Background
 
@@ -21,7 +21,9 @@ This tool analyzes .NET projects to extract and summarize logging usage patterns
 - **Direct ILogger.Log<TState> Calls**: Analyzes interface and concrete implementation calls, including log level, event ID, constant string state, and inline `KeyValuePair<string, object?>` structured state with `{OriginalFormat}` without executing formatter delegates
 - **[LoggerMessage Attribute](https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator)**: Detects and analyzes methods decorated with `[LoggerMessage]` attribute for high-performance logging
 - **[LoggerMessage.Define](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.loggermessage)**: Analyzes usage of `LoggerMessage.Define` methods for compile-time log message generation
+- **`ILogger.BeginScope`**: Extracts scope message templates and parameters
 - **Structured Logging**: Captures parameter names and templates used in structured logging scenarios
+- **Generated LoggerMessage invocations**: Finds calls to methods generated from `[LoggerMessage]` declarations
 
 The tool helps identify:
 
@@ -29,6 +31,7 @@ The tool helps identify:
 - Most commonly used log parameters
 - Log level distribution across your codebase
 - Template patterns and message structures
+- Log scopes and generated logger method invocations
 
 ### Advanced Telemetry Features
 
@@ -116,15 +119,15 @@ Logging parameter names differ only by casing.
 
 SARIF contains actionable consistency findings rather than every extracted logging call. Result ordering, repository-relative paths, and fingerprints are stable across equivalent runs.
 
-## Running the MCP Server Locally
+## MCP Server
 
-To run the MCP server locally:
+The MCP server exposes an `analyze_logger_usages_in_csproj` tool over HTTP:
 
 ```bash
 dotnet run --project src/LoggerUsage.Mcp
 ```
 
-By default, the server will use the configuration in `src/LoggerUsage.Mcp/appsettings.json`. You can modify this file to adjust server settings as needed.
+The tool accepts an absolute `.csproj` path and returns the complete extraction result. Pass an optional `progressToken` to receive progress notifications during long-running analyses. By default, the server uses the configuration in `src/LoggerUsage.Mcp/appsettings.json`.
 
 ### Progress Tracking
 
@@ -160,23 +163,18 @@ When a `progressToken` is provided, the server will send `notifications/progress
 
 **Features:**
 
-- ✅ Optional parameter (backward compatible - works without progress token)
-- ✅ Real-time progress updates during analysis
-- ✅ Graceful error handling (progress failures don't interrupt analysis)
-- ✅ Low overhead (<5% performance impact)
+- ✅ Optional parameter (backward compatible—works without a progress token)
+- ✅ Progress updates during analysis
+- ✅ Graceful error handling (progress failures do not interrupt analysis)
 
 For more information on MCP progress tracking, see the [MCP Progress Documentation](https://github.com/modelcontextprotocol/csharp-sdk/blob/main/docs/concepts/progress/progress.md).
 
 ![alt text](assets/mcp.png)
 
-## Roadmap
+## Implemented integrations
 
-- [x] Add support for `LoggerExtensions.Log` overloads
-- [x] Add support for direct `ILogger.Log<TState>` calls
-- [x] Add support for `ILogger.BeginScope` method
-- [x] Create a summary of the log messages
-- [x] For LoggerMessageAttribute - find all invocations of method (see [implementation plan](LoggerMessageAttribute-Invocations-Plan.md))
-- [x] Expose as a MCP
-- [ ] Add incremental workspace analysis and caching for large solutions
-- [x] Add deterministic CI output such as SARIF
-- [ ] Add symbol-based analysis for custom logging wrappers
+- **.NET library**: Use `LoggerUsageExtractor` from a Roslyn workspace or compilation.
+- **CLI**: Analyze `.csproj`, `.sln`, and `.slnx` files with optional verbose progress reporting.
+- **Reports**: Generate HTML, JSON, Markdown, and SARIF 2.1.0 output.
+- **MCP server**: Analyze projects from AI clients and optionally receive progress notifications.
+- **VS Code extension**: Perform full and incremental workspace analysis with interactive insights and diagnostics.
